@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>식물 생장 모니터링 — 프로젝트 개요</title>
+<style>
+  :root{
+    --bg:#0d1117; --panel:#141b24; --panel2:#1a2330;
+    --ink:#e6edf3; --dim:#8b98a8; --line:#243140;
+    --teal:#22d3c5; --teal-dim:#0e7a73;
+    --amber:#f4b740; --violet:#a78bfa; --rose:#fb7185;
+    --green:#4ade80;
+    --mono:'SF Mono','Consolas','Noto Sans Mono CJK KR',monospace;
+    --sans:'Pretendard','Noto Sans CJK KR','Apple SD Gothic Neo',system-ui,sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth}
+  body{background:var(--bg);color:var(--ink);font-family:var(--sans);
+    line-height:1.65;-webkit-font-smoothing:antialiased;
+    background-image:
+      radial-gradient(circle at 15% 0%, rgba(34,211,197,.06), transparent 40%),
+      radial-gradient(circle at 85% 20%, rgba(167,139,250,.05), transparent 40%);}
+  .wrap{max-width:1000px;margin:0 auto;padding:0 24px}
+
+  /* ===== HERO ===== */
+  header{padding:64px 0 40px;border-bottom:1px solid var(--line)}
+  .eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:.22em;
+    text-transform:uppercase;color:var(--teal);margin-bottom:18px;
+    display:flex;align-items:center;gap:10px}
+  .eyebrow::before{content:"";width:28px;height:1px;background:var(--teal)}
+  h1{font-size:clamp(32px,5vw,52px);font-weight:800;line-height:1.1;
+    letter-spacing:-.02em;margin-bottom:8px}
+  h1 .accent{color:var(--teal)}
+  .tagline{font-size:clamp(16px,2.2vw,21px);color:var(--dim);font-weight:400;
+    max-width:680px;margin-top:16px}
+  .meta-row{display:flex;flex-wrap:wrap;gap:10px;margin-top:28px}
+  .chip{font-family:var(--mono);font-size:12px;padding:6px 13px;border-radius:999px;
+    border:1px solid var(--line);color:var(--dim);background:var(--panel)}
+  .chip.on{border-color:var(--teal-dim);color:var(--teal)}
+  .cta-row{display:flex;flex-wrap:wrap;gap:12px;margin-top:28px}
+  .cta{display:inline-flex;align-items:center;gap:8px;
+    background:var(--teal);color:#06211e;text-decoration:none;font-weight:700;
+    border-radius:10px;padding:12px 22px;font-size:15px}
+  .cta:hover{background:#3ee3d6;text-decoration:none}
+
+  /* ===== SECTION ===== */
+  section{padding:48px 0;border-bottom:1px solid var(--line)}
+  .sec-head{display:flex;align-items:baseline;gap:14px;margin-bottom:26px}
+  .sec-num{font-family:var(--mono);font-size:13px;color:var(--teal);font-weight:600}
+  h2{font-size:24px;font-weight:700;letter-spacing:-.01em}
+  .sec-sub{color:var(--dim);font-size:15px;margin-top:-16px;margin-bottom:26px}
+
+  /* ===== 요약 카드 ===== */
+  .summary{background:var(--panel);border:1px solid var(--line);border-radius:16px;
+    padding:28px 30px;font-size:16px;line-height:1.8}
+  .summary strong{color:var(--teal);font-weight:600}
+  .summary .lead{font-size:18px;color:var(--ink);margin-bottom:14px}
+
+  /* ===== 흐름도 (시그니처) ===== */
+  .flow{background:var(--panel);border:1px solid var(--line);border-radius:16px;
+    padding:34px 24px;overflow-x:auto}
+  .pipe{display:flex;align-items:stretch;gap:0;min-width:760px}
+  .node{flex:1;background:var(--panel2);border:1px solid var(--line);
+    border-radius:12px;padding:16px 14px;position:relative;text-align:center}
+  .node .ic{font-size:24px;margin-bottom:8px;line-height:1}
+  .node .nt{font-weight:700;font-size:14px;margin-bottom:5px}
+  .node .nd{font-size:11.5px;color:var(--dim);line-height:1.45}
+  .node .tag{font-family:var(--mono);font-size:10px;color:var(--teal);
+    margin-top:8px;display:block;letter-spacing:.04em}
+  .arrow{display:flex;flex-direction:column;align-items:center;justify-content:center;
+    padding:0 6px;color:var(--teal);min-width:54px}
+  .arrow .lbl{font-family:var(--mono);font-size:9.5px;color:var(--dim);
+    margin-bottom:3px;white-space:nowrap}
+  .arrow .ln{font-size:18px;line-height:1}
+  .n1{border-top:2px solid var(--teal)}
+  .n2{border-top:2px solid var(--amber)}
+  .n3{border-top:2px solid var(--violet)}
+  .n4{border-top:2px solid var(--rose)}
+  .n5{border-top:2px solid var(--green)}
+
+  /* ===== 2단 그리드 ===== */
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+  @media(max-width:680px){.grid2{grid-template-columns:1fr}.pipe{min-width:680px}}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;
+    padding:22px 24px}
+  .card h3{font-size:15px;font-weight:700;margin-bottom:16px;
+    display:flex;align-items:center;gap:9px}
+  .card h3 .dot{width:8px;height:8px;border-radius:50%}
+  .dot.hw{background:var(--amber)} .dot.sw{background:var(--violet)}
+  ul.clean{list-style:none}
+  ul.clean li{padding:7px 0;border-bottom:1px solid var(--line);
+    font-size:14px;display:flex;justify-content:space-between;gap:12px}
+  ul.clean li:last-child{border-bottom:none}
+  ul.clean .k{color:var(--ink);font-weight:500}
+  ul.clean .v{color:var(--dim);font-family:var(--mono);font-size:12px;
+    text-align:right;flex-shrink:0}
+
+  /* ===== 가설 카드 ===== */
+  .why{background:var(--panel);border:1px solid var(--line);border-radius:16px;
+    padding:26px 30px;font-size:15px;line-height:1.8;margin-top:4px}
+  .why .q{font-size:17px;color:var(--ink);font-weight:700;margin-bottom:10px}
+  .why strong{color:var(--amber);font-weight:600}
+  .why .eq{font-family:var(--mono);font-size:13px;color:var(--teal);
+    background:#0a0e14;border:1px solid var(--line);border-radius:8px;
+    padding:12px 16px;margin:14px 0;display:block;overflow-x:auto}
+
+  /* ===== 기술스택 ===== */
+  .stack{display:flex;flex-wrap:wrap;gap:10px}
+  .tech{background:var(--panel);border:1px solid var(--line);border-radius:10px;
+    padding:11px 15px;font-size:13px;display:flex;align-items:center;gap:8px}
+  .tech .b{font-family:var(--mono);font-size:10px;padding:2px 7px;border-radius:5px;
+    background:var(--panel2);color:var(--teal);border:1px solid var(--teal-dim)}
+
+  /* ===== 디렉터리 ===== */
+  .tree{background:#0a0e14;border:1px solid var(--line);border-radius:12px;
+    padding:22px 24px;font-family:var(--mono);font-size:13px;line-height:1.9;
+    color:var(--dim);overflow-x:auto;white-space:pre}
+  .tree .d{color:var(--teal)} .tree .f{color:var(--ink)}
+  .tree .c{color:#5a6b7d}
+
+  footer{padding:36px 0 60px;color:var(--dim);font-size:13px;text-align:center}
+  footer code{font-family:var(--mono);color:var(--teal);background:var(--panel);
+    padding:2px 7px;border-radius:5px}
+  a{color:var(--teal);text-decoration:none}
+  a:hover{text-decoration:underline}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <div class="eyebrow">Plant Growth · Jensen's Inequality · IoT</div>
+    <h1>식물 생장<br><span class="accent">모니터링</span> 시스템</h1>
+    <p class="tagline">환경·토양수분을 <strong>MQTT</strong>로 모으고, 카메라가 <strong>투영 캐노피 면적</strong>을 매일 재는 폐루프 급수 시스템. "얼마나 젖었나(평균)"가 아니라 <strong>"수분이 얼마나 흔들렸나(변동성)"</strong>가 생장을 바꾸는지 검정합니다.</p>
+    <div class="meta-row">
+      <span class="chip on">UNO R4 WiFi</span>
+      <span class="chip on">M5Stack Core S3</span>
+      <span class="chip on">BME688 · SCD41 · BH1750</span>
+      <span class="chip on">Watering Unit U101</span>
+      <span class="chip on">MQTT · mosquitto</span>
+      <span class="chip on">Raspberry Pi 5 · Camera</span>
+      <span class="chip on">OpenCV · Streamlit</span>
+      <span class="chip">3대 데모 → 7노드</span>
+    </div>
+    <div class="cta-row">
+      <a class="cta" href="manual.html">📘 구축 가이드 (매뉴얼) →</a>
+    </div>
+  </div>
+</header>
+
+<!-- 1. 프로젝트 요약 -->
+<section>
+  <div class="wrap">
+    <div class="sec-head"><span class="sec-num">01</span><h2>프로젝트 요약</h2></div>
+    <div class="summary">
+      <p class="lead">"수분의 <strong>변동성</strong>이 식물 생장을 바꾸는가"를 <strong>센싱 → 폐루프 급수 → 카메라 계측 → 통계 검정</strong>으로 직접 구성하는 프로젝트입니다.</p>
+      <p>환경 노드(<strong>UNO R4 WiFi + BME688 + SCD41 + BH1750</strong>)가 온습도·기압·VPD·CO₂·조도를, 급수 노드(<strong>M5Stack Core S3 + Watering Unit</strong>)가 화분별 토양수분을 측정해 NTP 정각정렬로 <strong>5분 평균 1건</strong>을 MQTT로 발행합니다. 각 급수 노드는 <strong>브로커가 죽어도 급수를 계속</strong>하는 독립 상태기계(dose·soak·verify·일일상한·fail-safe)입니다. 허브(처음엔 <strong>PC</strong>, 이후 <strong>Raspberry Pi 5</strong>)의 hub.py가 메시지를 구독해 <strong>SQLite</strong>에 쌓고, Pi 카메라가 하루 1회 위에서 찍은 사진을 <strong>ExG + Otsu</strong>로 분할해 <strong>투영 캐노피 면적</strong>(cm²)으로 환산합니다. <strong>Streamlit 대시보드</strong>가 환경·급수·생장을 한 화면에서 보여주고, 처리군을 늘리면 칸이 자동으로 추가됩니다.</p>
+    </div>
+  </div>
+</section>
+
+<!-- 2. 프로세스 흐름도 -->
+<section>
+  <div class="wrap">
+    <div class="sec-head"><span class="sec-num">02</span><h2>프로세스 흐름도</h2></div>
+    <p class="sec-sub">환경·수분이 숫자가 되고, 무선을 거쳐 한 데이터베이스에 모이고, 카메라가 생장을 더해, 사람이 보는 화면과 통계에 닿기까지</p>
+    <div class="flow">
+      <div class="pipe">
+        <div class="node n1">
+          <div class="ic">🌡️</div>
+          <div class="nt">측정</div>
+          <div class="nd">온습도·VPD·CO₂·조도 · 토양수분</div>
+          <span class="tag">BME688 · SCD41 · 수분</span>
+        </div>
+        <div class="arrow"><span class="lbl">10초 샘플</span><span class="ln">→</span></div>
+        <div class="node n2">
+          <div class="ic">💧</div>
+          <div class="nt">폐루프 급수</div>
+          <div class="nd">dose·soak·verify · 브로커 죽어도 계속</div>
+          <span class="tag">Core S3 · 상태기계</span>
+        </div>
+        <div class="arrow"><span class="lbl">publish</span><span class="ln">→</span></div>
+        <div class="node n3">
+          <div class="ic">📮</div>
+          <div class="nt">수집·저장</div>
+          <div class="nd">hub.py가 구독해 DB에 1행씩</div>
+          <span class="tag">mosquitto · SQLite</span>
+        </div>
+        <div class="arrow"><span class="lbl">1일 1회</span><span class="ln">→</span></div>
+        <div class="node n4">
+          <div class="ic">📷</div>
+          <div class="nt">계측</div>
+          <div class="nd">ExG+Otsu → 투영 캐노피 면적(cm²)</div>
+          <span class="tag">Pi Camera · ArUco</span>
+        </div>
+        <div class="arrow"><span class="lbl">RGR·효과크기</span><span class="ln">→</span></div>
+        <div class="node n5">
+          <div class="ic">📊</div>
+          <div class="nt">시각화·검정</div>
+          <div class="nd">게이지·차트·CSV · 사전등록 분석</div>
+          <span class="tag">Streamlit</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 3. 핵심 가설 -->
+<section>
+  <div class="wrap">
+    <div class="sec-head"><span class="sec-num">03</span><h2>핵심 가설 — 왜 변동성인가</h2></div>
+    <div class="why">
+      <p class="q">평균은 같게, 흔들림만 다르게.</p>
+      <p>두 처리군은 <strong>평균 토양수분을 똑같이</strong> 맞추고 <strong>변동폭만</strong> 다르게 둡니다 — <strong>꾸준군</strong>(좁은 밴드)과 <strong>널뜀군</strong>(넓은 밴드). 총 급수량은 통제하지 않고 결과로 따라 나옵니다. 수분–생장 곡선이 휘어 있으면(옌센 부등식), 평균이 같아도 변동성이 생장의 평균을 끌어올리거나 끌어내립니다.</p>
+      <span class="eq">E[f(수분)]  ≠  f(E[수분])      ← 곡률 f″의 부호가 방향을 정한다</span>
+      <p>측정값은 원면적이 아니라 <strong>RGR</strong>(상대생장률, <code>(ln A₂ − ln A₁)/Δt</code>) — 큰 개체가 절대량으로 더 자라므로 원면적 비교는 부당합니다. 결과 해석의 정직함을 위해 <strong>파종 전 사전등록</strong>으로 가설·분석·효과크기를 미리 못 박습니다.</p>
+    </div>
+  </div>
+</section>
+
+<!-- 4. 준비물 -->
+<section>
+  <div class="wrap">
+    <div class="sec-head"><span class="sec-num">04</span><h2>준비물</h2></div>
+    <div class="grid2">
+      <div class="card">
+        <h3><span class="dot hw"></span>하드웨어 (실물)</h3>
+        <ul class="clean">
+          <li><span class="k">Arduino UNO R4 WiFi</span><span class="v">환경 노드 · 5V</span></li>
+          <li><span class="k">Grove Base Shield V2</span><span class="v">I2C ×4 · 5V</span></li>
+          <li><span class="k">BME688 · SCD41 · BH1750</span><span class="v">온습도·CO₂·조도</span></li>
+          <li><span class="k">M5Stack Core S3</span><span class="v">급수 노드</span></li>
+          <li><span class="k">Watering Unit (U101)</span><span class="v">Port B · 1+예비</span></li>
+          <li><span class="k">Raspberry Pi 5 + Camera 3</span><span class="v">카메라 전용</span></li>
+          <li><span class="k">USB 전력계</span><span class="v">★ 핵심 계측</span></li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3><span class="dot sw"></span>소프트웨어 · 라이브러리</h3>
+        <ul class="clean">
+          <li><span class="k">Arduino IDE</span><span class="v">2.x</span></li>
+          <li><span class="k">PubSubClient</span><span class="v">MQTT 발행</span></li>
+          <li><span class="k">Sensirion SCD4x · BME680 · BH1750</span><span class="v">센서</span></li>
+          <li><span class="k">M5Unified</span><span class="v">Core S3</span></li>
+          <li><span class="k">mosquitto</span><span class="v">브로커 (1883)</span></li>
+          <li><span class="k">Python + uv</span><span class="v">paho-mqtt · opencv</span></li>
+          <li><span class="k">picamera2 · streamlit</span><span class="v">계측 · 대시보드</span></li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 5. 기술 스택 -->
+<section>
+  <div class="wrap">
+    <div class="sec-head"><span class="sec-num">05</span><h2>기술 스택</h2></div>
+    <div class="stack">
+      <div class="tech"><span class="b">센서</span>BME688 — 온습도·기압·VPD</div>
+      <div class="tech"><span class="b">센서</span>SCD41 — CO₂ (NDIR)</div>
+      <div class="tech"><span class="b">센서</span>BH1750 — 조도 (lux)</div>
+      <div class="tech"><span class="b">MCU</span>UNO R4 WiFi / M5 Core S3</div>
+      <div class="tech"><span class="b">제어</span>폐루프 급수 상태기계</div>
+      <div class="tech"><span class="b">통신</span>MQTT (mosquitto · 1883)</div>
+      <div class="tech"><span class="b">통신</span>NTP 정각정렬 · 5분 평균</div>
+      <div class="tech"><span class="b">비전</span>OpenCV — ExG + Otsu · ArUco</div>
+      <div class="tech"><span class="b">허브</span>PC → Raspberry Pi 5</div>
+      <div class="tech"><span class="b">SW</span>SQLite (단일 원본)</div>
+      <div class="tech"><span class="b">SW</span>Streamlit 대시보드</div>
+      <div class="tech"><span class="b">분석</span>RGR · 효과크기 · 사전등록</div>
+    </div>
+  </div>
+</section>
+
+<!-- 6. 저장소 구조 -->
+<section>
+  <div class="wrap">
+    <div class="sec-head"><span class="sec-num">06</span><h2>저장소 구조</h2></div>
+    <pre class="tree">
+<span class="d">Plant_Growth_Monitoring_Demo/</span>
+├─ <span class="d">firmware/</span>            <span class="c"># 노드 펌웨어 (.ino)</span>
+│  ├─ <span class="f">plant_env_r4wifi.ino</span>          <span class="c"># 환경 노드 · UNO R4 WiFi</span>
+│  ├─ <span class="f">plant_water_cores3.ino</span>        <span class="c"># 급수 노드 · M5 Core S3</span>
+│  └─ <span class="d">diagnostics/</span>                  <span class="c"># 하드웨어 검증·보정 스케치</span>
+│     ├─ <span class="f">i2c_scan.ino</span> · <span class="f">env_sensor_test.ino</span>
+│     ├─ <span class="f">pin_id.ino</span> · <span class="f">water_touch_test.ino</span> · <span class="f">pump_burst.ino</span>
+│     └─ <span class="f">calib_sat.ino</span>                <span class="c"># 포화점 자동 탐지</span>
+├─ <span class="d">hub/</span>                 <span class="c"># 허브 파이썬 (PC → Pi)</span>
+│  ├─ <span class="f">hub.py</span>                        <span class="c"># MQTT 구독 → SQLite 저장</span>
+│  ├─ <span class="f">dashboard.py</span>                  <span class="c"># 게이지·차트 (Streamlit)</span>
+│  ├─ <span class="f">snap.py</span> · <span class="f">make_marker.py</span>        <span class="c"># 보정 촬영 · ArUco 마커</span>
+│  ├─ <span class="f">leafcv.py</span> · <span class="f">validate.py</span>          <span class="c"># 캐노피 면적 · 종이잎 검증</span>
+│  ├─ <span class="f">config.json</span>                   <span class="c"># ROI · 스케일 · 캡처 고정값</span>
+│  └─ <span class="f">plant.conf</span>                    <span class="c"># mosquitto 브로커 설정</span>
+├─ <span class="d">docs/</span>                <span class="c"># GitHub Pages (/docs)</span>
+│  ├─ <span class="f">index.html</span>                    <span class="c"># 이 개요 문서</span>
+│  └─ <span class="f">manual.html</span>                   <span class="c"># 구축 가이드 (매뉴얼)</span>
+├─ <span class="f">README.md</span>
+└─ <span class="f">.gitignore</span>
+    </pre>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <p>Plant_Growth_Monitoring_Demo · xparapx</p>
+    <p style="margin-top:8px">단계별 구축 절차는 <a href="manual.html">구축 가이드(매뉴얼)</a> &nbsp;·&nbsp; 실행: <code>uv run streamlit run dashboard.py</code></p>
+  </div>
+</footer>
+
+</body>
+</html>

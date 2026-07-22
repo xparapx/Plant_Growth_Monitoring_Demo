@@ -1,0 +1,42 @@
+# ===== Python =====
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+env/
+.uv/
+*.egg-info/
+
+# ===== Streamlit =====
+.streamlit/secrets.toml
+
+# ===== 수집 데이터 (DB는 런타임 생성물 - 커밋 금지) =====
+*.db
+*.sqlite
+*.sqlite3
+*.csv
+
+# ===== 카메라 계측 산출물 (런타임 생성물) =====
+calib.jpg
+*.jpg
+*.jpeg
+*.png
+!docs/**/*.png
+marker_id*.png
+
+# ===== Arduino / 빌드 결과물 =====
+build/
+*.bin
+*.hex
+*.elf
+*.map
+
+# ===== OS / 에디터 =====
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+
+# ===== 로그 =====
+*.log

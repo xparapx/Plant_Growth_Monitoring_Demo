@@ -1,0 +1,14 @@
+{
+  "marker_mm": 50.0,
+  "capture": {
+    "size": [4608, 2592],
+    "lens_position": 1.82,
+    "exposure_us": 20000,
+    "gain": 2.0,
+    "colour_gains": [1.8, 1.6]
+  },
+  "rois": [
+    {"plant_id": "p1", "treat": "A", "x": 800, "y": 600, "w": 900, "h": 900}
+  ],
+  "qc": { "px_per_cm_ref": 0.0, "px_per_cm_tol": 0.03 }
+}
