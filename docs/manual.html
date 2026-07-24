@@ -625,9 +625,11 @@ CREATE TABLE IF NOT EXISTS growth(
   ts        TEXT DEFAULT CURRENT_TIMESTAMP,
   plant_id  TEXT,
   treat     TEXT,
+  phase     TEXT,     -- 'dawn' | 'pm'  <- RGR uses dawn ONLY; pm is for droop
   area_cm2  REAL,     -- projected canopy area (NOT leaf area -- see FAQ)
   area_px   INTEGER,
   px_per_cm REAL,     -- scale at capture (traceability + rig-moved alarm)
+  img_file  TEXT,     -- raw/<file> -- links this row to the evidence image
   ok        INTEGER
 )""")
 conn.commit()
@@ -674,7 +676,7 @@ def on_message(c, u, msg):
         for p in d.get("plants", []):
             p["t"] = d.get("t")
             ins("growth", p,
-                ["plant_id", "treat", "area_cm2", "area_px", "px_per_cm", "ok"])
+                ["plant_id", "treat", "phase", "area_cm2", "area_px", "px_per_cm", "img_file", "ok"])
         print(f"growth: {len(d.get('plants', []))} plants")
 
 def shutdown(signum, frame):
@@ -1958,7 +1960,7 @@ else:
 
 # ── 성장 ──
 st.subheader("성장 — 투영 캐노피 면적")
-g = q("SELECT * FROM growth WHERE ok=1 ORDER BY ts")
+g = q("SELECT * FROM growth WHERE ok=1 AND phase='dawn' ORDER BY ts")   # RGR은 새벽만
 if g.empty:
     st.info("성장 데이터 없음 — grow_node.py 실행")
 else:
@@ -2190,6 +2192,126 @@ if errs:
       <span class="lbl">✓ 데모 단계 합격</span>
       <b>평균 절대오차 &lt; 5%</b>, <b>같은 장면 10회 촬영 변동 &lt; 1%</b>.<br>
       <b>6칸 위치 무관성</b>과 <b>3일 수평선 테스트</b>는 프레임이 선 뒤 — 2단계입니다.
+    </div>
+
+    <h3>5) 왜 ExG인가 — 대안을 실제로 재봤습니다</h3>
+    <p>"색 말고 <b>외곽선을 따서 내부를 채우면</b> 더 정확하지 않나?"는 자연스러운 의문입니다.
+    실제 상추 사진 한 장으로 네 방식을 돌린 결과입니다.</p>
+    <table>
+      <tr><th>방식</th><th>면적</th><th>기준 대비</th><th>추가된 영역의 정체</th></tr>
+      <tr><td><b>① ExG 초록픽셀</b> (현재)</td><td>32,000 px</td><td><b>기준</b></td><td>—</td></tr>
+      <tr><td>② 외곽선 내부 채움</td><td>32,209 px</td><td><b>+0.7%</b></td><td>거의 없음</td></tr>
+      <tr><td>③ 볼록껍질(convex hull)</td><td>36,516 px</td><td>+14.1%</td><td>평균 ExG <b>+0.03</b> = <b>흙</b></td></tr>
+      <tr><td>④ <b>Canny 엣지→채움</b></td><td>85,988 px</td><td><b>+169%</b></td><td>평균 ExG <b>−0.01</b>, 밝기 88 = <b>그림자</b></td></tr>
+    </table>
+    <p>참고로 같은 사진의 영역별 정규화 ExG는 <b>잎 +0.58 / 흙 0.00 / 붉은잎 −0.22</b>였습니다. 분리가 깨끗합니다.</p>
+
+    <div class="box ok">
+      <span class="lbl">★ 결론 — 내부 채움은 <b>이미 하고 있습니다</b></span>
+      ②가 <b>+0.7%</b>밖에 안 늘었다는 게 핵심입니다. 현재 파이프라인의 <b>형태학 CLOSE 연산이 내부 구멍을 이미 메우고</b> 있어
+      외곽선을 따로 채워도 더 채울 게 없습니다. <b>이미 "누끼 따서 내부 마스킹한" 상태</b>입니다.
+    </div>
+
+    <div class="box warn">
+      <span class="lbl">⚠️ 색을 안 쓰면 외곽선 찾기가 시작되지 않습니다</span>
+      ④가 결정적입니다. Canny는 <b>밝기 경계만</b> 보는데, 이 사진에서 가장 강한 경계는
+      <b>잎–흙 경계가 아니라 그림자 경계</b>였습니다. 그래서 <b>그림자를 식물로 삼켰습니다.</b><br><br>
+      <b>"외곽선을 딴다"는 건 이미 "무엇이 식물인지" 안다는 뜻</b>입니다. 그걸 알려주는 게 색입니다. <b>순서가 거꾸로</b>입니다.
+    </div>
+
+    <div class="box">
+      <span class="lbl">볼록껍질도 안 됩니다 — 흙을 세니까</span>
+      상추 잎은 프릴처럼 갈라져 <b>잎 사이 틈으로 흙이 보입니다.</b> 볼록껍질은 그걸 다 메워
+      <b>생물량이 아니라 점유 범위</b>를 재게 됩니다. 추가된 영역의 ExG가 <b>+0.03</b>(흙 수준)인 게 증거입니다.
+    </div>
+
+    <div class="box warn">
+      <span class="lbl">★ 그리고 이 실험 특유의 위험 — 채우기는 그룹 의존 편향을 만듭니다</span>
+      채우기 방식은 <b>잎의 틈 구조</b>에 의존하는데, 그 구조가:<br>
+      <b>· 생장하며 변합니다</b> — 어릴 땐 촘촘, 자라면 벌어짐 → <b>후반 면적이 부풀려짐</b><br>
+      <b>· 처짐 정도에 따라 그룹 간 다릅니다</b> — 널뜀군이 오후에 처지면 잎이 오므라들어 틈 구조가 달라짐<br><br>
+      즉 <b>생물량과 무관한 그룹 의존 편향</b>이 생깁니다. 초록 픽셀만 세는 ExG는 이 문제가 훨씬 작습니다.
+    </div>
+
+    <table>
+      <tr><th>ExG가 실패하는 경우</th><th>대책</th></tr>
+      <tr><td><b>보라색 재배등</b></td><td><b>흰색 등</b> 사용</td></tr>
+      <tr><td><b>적상추 품종</b></td><td>ExG 불가 → <b>녹색 품종만</b></td></tr>
+      <tr><td>잎이 노랗게 변함(노화·질소결핍)</td><td>ExG 하락 → 마스크 눈으로 확인</td></tr>
+      <tr><td>흙 표면 <b>녹조</b></td><td><b>펄라이트·자갈로 덮기</b> (아래 참조)</td></tr>
+    </table>
+    <p>이럴 때 대안은 엣지 검출이 아니라 <b>딥러닝 분할(SAM 등)</b>입니다. 다만 블랙박스라
+    <b>"왜 이 픽셀이 포함됐나"를 설명할 수 없습니다.</b> ExG는 숫자로 설명됩니다(잎 +0.58 / 흙 0.00).
+    <b>연구 보고서에는 감사 가능한 쪽이 낫습니다.</b></p>
+
+    <h3>6) ⚠️ 결과를 조작할 수 있는 두 가지 — 반드시 막으세요</h3>
+    <div class="box warn">
+      <span class="lbl">★ ① 촬영 시각 — 오후에 찍으면 가설이 자동으로 만들어집니다</span>
+      널뜀군은 밴드 바닥에서 <b>낮에 잎이 처집니다.</b> 하한을 "오후에 처지고 밤에 회복하는 지점"으로 잡았으니
+      <b>설계상 반드시 일어납니다.</b><br><br>
+      처진 잎은 위에서 보면 <b>투영면적이 작습니다.</b> 그런데 그건 <b>생장이 아니라 팽압</b>입니다.<br>
+      <b>오후에 찍으면 → 널뜀군 면적 작게 나옴 → H₁이 자동으로 "확인"됨.</b><br><br>
+      <b>대책: 새벽(또는 이른 아침) 고정 촬영.</b> 밤새 회복해 모든 화분이 팽압을 되찾은 상태에서.
+      <b>파일명에 시각을 박아</b> 나중에 감사할 수 있게 하세요.
+    </div>
+    <div class="box warn">
+      <span class="lbl">★ ② 녹조 — 꾸준군 면적을 부풀립니다</span>
+      젖은 흙 표면에는 <b>녹조가 낍니다.</b> ExG는 이걸 <b>초록 = 잎</b>으로 판정합니다.
+      <b>꾸준군은 항상 젖어 있으니 녹조가 더 많고</b> → 면적 과대 → <b>방향이 또 H₁과 같습니다.</b><br><br>
+      현재 코드의 <b>"최대 덩어리만 유지"</b>가 흩어진 녹조는 걸러내지만, 잎에 닿아 연결되면 뚫립니다.<br>
+      <b>대책: 흙 표면을 펄라이트·자갈로 덮으세요.</b> 증발 억제 효과는 <b>양쪽 그룹에 동일</b>하므로 통제를 깨지 않습니다.
+    </div>
+    <div class="box tip">
+      <span class="lbl">조명 — 직사광을 피하면 분리가 훨씬 깨끗해집니다</span>
+      위 실측에서 Canny가 실패한 근본 원인은 <b>강한 그림자</b>였습니다. 그림자가 진하면 어떤 방법도 흔들립니다.<br>
+      <b>확산 조명</b>을 쓰거나 <b>그늘막</b>으로 직사광을 피하세요. 6주간 <b>동일하게</b> 유지하는 것이 절대 조건입니다.
+    </div>
+
+    <h3>7) ★ 하루 2회 촬영 — 골칫거리가 측정값이 됩니다</h3>
+    <p>오후 처짐이 문제라면, <b>그것을 따로 재면 됩니다.</b> 새벽과 오후 두 번 찍으면 두 가지가 분리됩니다.</p>
+    <table>
+      <tr><th>계산</th><th>무엇을 재나</th></tr>
+      <tr><td><b>새벽 → 다음날 새벽</b></td><td><b>RGR (생장)</b> — 팽압이 회복된 상태끼리 비교</td></tr>
+      <tr><td><b>같은 날 새벽 − 오후</b></td><td><b>처짐 지수</b> — 생장이 아니라 <b>수분 스트레스</b></td></tr>
+    </table>
+    <p><code class="in">처짐% = (새벽면적 − 오후면적) / 새벽면적 × 100</code></p>
+    <div class="box ok">
+      <span class="lbl">왜 이게 값진가 — 통제 확인 항목이 하나 늘어납니다</span>
+      널뜀군이 밴드 바닥에 있을 때 처짐이 커야 합니다. 그렇게 나오면
+      <b>처리가 실제로 작동했다는 독립 증거</b>가 됩니다 — 토양수분 로그와 별개의 경로로요.<br>
+      비용은 없습니다. 6주 × 2회 = <b>84장</b>이라 저장도 사소합니다.
+    </div>
+    <div class="box warn">
+      <span class="lbl">⚠️ RGR은 반드시 <b>새벽 계열로만</b></span>
+      새벽과 오후를 섞어 RGR을 계산하면 <b>생장과 처짐이 뒤엉킵니다.</b>
+      오후 계열로도 RGR을 낼 수는 있지만 처짐 변동이 섞여 잡음이 큽니다. <b>주 분석은 새벽 계열.</b><br>
+      <b>처짐 &lt; 0</b>(오후가 더 큼)이 나오면 촬영 각도·조명이 바뀐 것이니 점검하세요.
+    </div>
+
+    <h3>8) 저장 구조 — 원본은 증거입니다</h3>
+    <table>
+      <tr><th>저장물</th><th>역할</th></tr>
+      <tr><td><b>raw/</b> 원본</td><td><b>증거.</b> 절대 수정하지 않음</td></tr>
+      <tr><td><b>mask/</b> 누끼</td><td><b>감사.</b> 숫자가 왜 그렇게 나왔는지</td></tr>
+      <tr><td><b>debug/</b> 윤곽선</td><td>눈으로 확인</td></tr>
+      <tr><td><code class="in">growth</code> 테이블</td><td>숫자만</td></tr>
+    </table>
+<pre>photos/
+├── raw/    2026-08-01_0600.jpg      원본 (수정 금지)
+├── mask/   2026-08-01_0600_p1.png   누끼 (이진 마스크)
+└── debug/  2026-08-01_0600_p1.jpg   윤곽선 오버레이</pre>
+    <div class="box tip">
+      <span class="lbl">원본을 남기는 이유 — 알고리즘은 바뀔 수 있습니다</span>
+      6주 뒤 "ExG 말고 다른 방법을 썼어야 했다"를 깨달아도, <b>원본이 있으면 전부 재처리</b>할 수 있습니다.
+      원본이 없으면 <b>실험을 다시 해야 합니다.</b><br>
+      파일명에 <b>날짜_시각</b>을 넣으면 "정말 매일 같은 시각에 찍었나"가 <b>파일 목록만 봐도 검증</b>됩니다.
+    </div>
+    <div class="box tip">
+      <span class="lbl">Colab 검증 노트북</span>
+      <span class="ftag">leaf_area_colab.ipynb</span>
+      ExG 3방식 비교 · ROI 값 확인(잎/흙/붉은잎) · 전체 파이프라인 · 검증 오버레이 ·
+      ArUco cm² 환산 · <b>새벽/오후 처짐 지수</b> · 일괄 처리 → <code class="in">growth.csv</code>.<br>
+      <b>리그 세팅 후 실제 사진으로 한 번 돌려보고 파라미터를 고정하세요.</b>
     </div>
     <div class="nav-btns"><button class="ghost">◀ 이전</button><button>다음 ▶</button></div>
   </section>
@@ -3119,7 +3241,8 @@ void loop() {}</pre>
       <tr><td>온·습도</td><td>5분</td><td>환경 노드 ×1</td><td rowspan="3"><code class="in">readings</code></td><td rowspan="3"><b>통제가 지켜졌음을 증명</b>하는 용도. 재배함 전체에 공통이라 1대면 충분</td></tr>
       <tr><td>조도</td><td>5분</td><td>환경 노드</td></tr>
       <tr><td>CO₂</td><td>5분</td><td>환경 노드</td></tr>
-      <tr><td><b>잎 면적</b></td><td><b>1일 1회</b><br>같은 시각</td><td>Pi + 카메라</td><td><code class="in">growth</code></td><td><b>종속변인.</b> 하루 성장이 측정 잡음보다 커야 하므로 그 이상 조밀할 필요 없음</td></tr>
+      <tr><td><b>잎 면적</b><br>(새벽)</td><td><b>1일 1회</b><br><b>새벽 고정</b></td><td>Pi + 카메라</td><td><code class="in">growth</code><br><code class="in">phase='dawn'</code></td><td><b>종속변인 — RGR은 이것으로만.</b> 팽압이 회복된 상태. 오후에 찍으면 처짐이 생장으로 오인됨</td></tr>
+      <tr><td><b>잎 면적</b><br>(오후)</td><td><b>1일 1회</b><br>오후 고정</td><td>Pi + 카메라</td><td><code class="in">growth</code><br><code class="in">phase='pm'</code></td><td><b>처짐 지수용.</b> 생장이 아니라 <b>수분 스트레스</b> 측정 → 처리 작동의 독립 증거</td></tr>
     </table>
     <div class="box warn">
       <span class="lbl">촬영은 반드시 같은 시각에</span>
@@ -3333,6 +3456,7 @@ GROUP BY treat;</pre>
       <tr><td><b>1. 통제 확인</b></td><td>온·습·조도·CO₂의 기간 평균과 변동</td></tr>
       <tr><td><b>2. 처리 확인 ★</b></td><td>그룹별 수분 <b>평균 · 표준편차 · 표본수</b></td></tr>
       <tr><td>3. 관수 기록</td><td>그룹별 총 급수량, 급수 주기의 변화 (관찰값)</td></tr>
+      <tr><td><b>3-b. 처짐 지수</b></td><td><b>(새벽−오후)/새벽</b>. 널뜀군이 크면 <b>처리가 작동한 독립 증거</b> — 토양수분 로그와 다른 경로</td></tr>
       <tr><td>4. 기준선</td><td>1주차 개체별 면적</td></tr>
       <tr><td><b>5. 결과</b></td><td>RGR 평균·표준편차·<b>Cohen's d</b></td></tr>
       <tr><td>6. 검증</td><td>투영 면적 ↔ 건중량 R²</td></tr>
