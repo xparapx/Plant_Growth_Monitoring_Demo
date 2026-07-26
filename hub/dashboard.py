@@ -174,13 +174,13 @@ def render_env(env):
                 gone.append(lbl)
                 st.metric(lbl, "—", "센서 없음", delta_color="off")
                 st.plotly_chart(spark(env[key].tail(288) * 0, MUT), use_container_width=True,
-                                config={"displayModeBar": False})
+                                config={"displayModeBar": False}, key=f"env_{key}")
             else:
                 st.metric(lbl, fmt.format(cur[key]),
                           fmt.format(cur[key] - day[key]) if key != "lux" else None,
                           delta_color="off")
                 st.plotly_chart(spark(env[key].tail(288), color), use_container_width=True,
-                                config={"displayModeBar": False})
+                                config={"displayModeBar": False}, key=f"env_{key}")
     if gone:
         st.markdown(
             f'<div class="alert">! &nbsp;<b>{", ".join(gone)}</b> 가 실측이 아닙니다 — '
@@ -425,7 +425,7 @@ with tab_ov:
             f.update_layout(height=110, margin=dict(l=6, r=6, t=22, b=4),
                             xaxis=dict(range=[mu.min() - 5, mu.max() + 5]),
                             yaxis=dict(visible=False, range=[-.5, .8]), **BLANK)
-            st.plotly_chart(f, use_container_width=True, config={"displayModeBar": False})
+            st.plotly_chart(f, use_container_width=True, config={"displayModeBar": False}, key="validity_mean")
         with v2:
             st.metric("Variance ratio  σf / σs", f"{ratio:.2f} ×",
                       "SEPARATED" if ratio >= 2 else "TOO CLOSE",
@@ -438,7 +438,7 @@ with tab_ov:
                                  textfont=dict(color=INK)))
             f.update_layout(height=110, margin=dict(l=6, r=40, t=8, b=4), showlegend=False,
                             xaxis=dict(visible=False), **BLANK)
-            st.plotly_chart(f, use_container_width=True, config={"displayModeBar": False})
+            st.plotly_chart(f, use_container_width=True, config={"displayModeBar": False}, key="validity_var")
 
     # ── 캐노피 오버레이 : 처리군당 한 줄 ──
     head("Canopy projected area — 3 d ago → now", "growth")
@@ -473,7 +473,8 @@ with tab_ov:
                                            font=dict(size=12, color=INK), x=0, y=.97),
                                 xaxis=dict(visible=False, range=[-lim, lim]),
                                 yaxis=dict(visible=False, range=[-lim, lim], scaleanchor="x"), **BLANK)
-                col.plotly_chart(f, use_container_width=True, config={"displayModeBar": False})
+                col.plotly_chart(f, use_container_width=True, config={"displayModeBar": False},
+                                 key=f"canopy_{treat}_{p}")
                 col.caption(f"{old.area_cm2:.1f} → {new.area_cm2:.1f} cm²")
 
     # ── 톱니 : 좌 STABLE / 우 FLUCTUATING ──
@@ -497,7 +498,7 @@ with tab_ov:
     f.update_layout(height=118 * nrow + 30, margin=dict(l=46, r=10, t=26, b=24), **BLANK)
     f.update_xaxes(gridcolor=RULE); f.update_yaxes(gridcolor=RULE)
     for a in f.layout.annotations: a.font.size = 11; a.font.color = INK
-    st.plotly_chart(f, use_container_width=True, config={"displayModeBar": False})
+    st.plotly_chart(f, use_container_width=True, config={"displayModeBar": False}, key="soil_saw")
 
     head("Recent irrigation", "pump")
     if not pump.empty:
@@ -533,7 +534,7 @@ with tab_tx:
                     legend=dict(orientation="h", y=1.12, font=dict(size=11, color=INK)),
                     xaxis_title="soil moisture w (%)", yaxis_title="ρ(w)", **BLANK)
     f.update_yaxes(gridcolor=RULE); f.update_xaxes(gridcolor=RULE)
-    st.plotly_chart(f, use_container_width=True, config={"displayModeBar": False})
+    st.plotly_chart(f, use_container_width=True, config={"displayModeBar": False}, key="dist")
     st.caption("Treatment check: same centre, different width. This is measured data.")
 
     # ── 해석 참조: 어느 쪽인지는 실험이 정합니다 (데이터 아님) ──
@@ -562,7 +563,7 @@ with tab_tx:
         cc.update_xaxes(title_text="w (%)", gridcolor=RULE)
         cc.update_yaxes(title_text="growth", gridcolor=RULE, row=1, col=1)
         for a in cc.layout.annotations: a.font.size = 11; a.font.color = INK
-        st.plotly_chart(cc, use_container_width=True, config={"displayModeBar": False})
+        st.plotly_chart(cc, use_container_width=True, config={"displayModeBar": False}, key="curves")
         st.caption("Both shapes are drawn on purpose. **Which one lettuce follows is unknown — "
                    "that is what this experiment measures.** Neither curve is fitted to your data; "
                    "the experiment returns the *sign* of the curvature, not the curve.")
@@ -580,7 +581,7 @@ with tab_tx:
         f.update_layout(height=210, margin=dict(l=40, r=10, t=6, b=28),
                         legend=dict(orientation="h", y=1.14, font=dict(size=10, color=INK)), **BLANK)
         f.update_yaxes(gridcolor=RULE); f.update_xaxes(gridcolor=RULE)
-        st.plotly_chart(f, use_container_width=True, config={"displayModeBar": False})
+        st.plotly_chart(f, use_container_width=True, config={"displayModeBar": False}, key="align_trend")
     with c2:
         head("Midday droop — (dawn − pm) / dawn", "growth")
         if "phase" in grow and {"dawn", "pm"} <= set(grow.phase.unique()):
@@ -588,7 +589,11 @@ with tab_tx:
             pv = g2.pivot_table(index=["day", "plant_id"], columns="phase", values="area_px").dropna()
             pv["droop"] = 100 * (pv.dawn - pv.pm) / pv.dawn
             last = pv.reset_index().groupby("plant_id").last().reset_index()
-            last = last.set_index("plant_id").loc[POTS].reset_index()      # 처리군 순서 유지
+            # 처짐은 같은 날 dawn·pm 이 <둘 다> 있어야 계산됩니다.
+            # 한쪽이 없거나 ok=0 이면 그 화분은 여기 없습니다 -> .loc 로 찍으면 KeyError.
+            have = [p for p in POTS if p in set(last.plant_id)]
+            last = last.set_index("plant_id").loc[have].reset_index()      # 처리군 순서 유지
+            missing = [p for p in POTS if p not in have]
             f = go.Figure(go.Bar(
                 x=last.plant_id.str.upper(), y=last.droop,
                 marker=dict(color=[CT[TREAT[p]] for p in last.plant_id],
@@ -598,7 +603,13 @@ with tab_tx:
             f.update_layout(height=210, margin=dict(l=40, r=10, t=6, b=28), showlegend=False,
                             yaxis_title="%", **BLANK)
             f.update_yaxes(gridcolor=RULE)
-            st.plotly_chart(f, use_container_width=True, config={"displayModeBar": False})
+            if len(last):
+                st.plotly_chart(f, use_container_width=True, config={"displayModeBar": False}, key="droop")
+            if missing:
+                st.caption(f"{', '.join(p.upper() for p in missing)} — 같은 날 dawn·pm 이 "
+                           f"모두 필요합니다 (한쪽이 없거나 ok=0)")
+            if not len(last):
+                st.caption("아직 dawn·pm 이 짝을 이룬 날이 없습니다.")
         else:
             st.caption("Needs both dawn and pm captures.")
 
@@ -619,7 +630,7 @@ with tab_gr:
         f.update_layout(height=330, margin=dict(l=46, r=14, t=8, b=30), yaxis_title="cm²",
                         legend=dict(orientation="h", y=1.1, font=dict(size=10, color=INK)), **BLANK)
         f.update_yaxes(gridcolor=RULE); f.update_xaxes(gridcolor=RULE)
-        st.plotly_chart(f, use_container_width=True, config={"displayModeBar": False})
+        st.plotly_chart(f, use_container_width=True, config={"displayModeBar": False}, key="canopy_series")
 
         head("Relative growth rate — log-slope over all dawn frames", "growth")
         rows = []
@@ -667,7 +678,7 @@ with tab_gr:
                             xaxis_title="RGR (/day)  — dotted line = group mean",
                             legend=dict(orientation="h", y=1.22, font=dict(size=10, color=INK)), **BLANK)
             f.update_xaxes(gridcolor=RULE); f.update_yaxes(gridcolor=RULE)
-            st.plotly_chart(f, use_container_width=True, config={"displayModeBar": False})
+            st.plotly_chart(f, use_container_width=True, config={"displayModeBar": False}, key="rgr_ci")
 
             worst = r.r2.min()
             st.caption(
