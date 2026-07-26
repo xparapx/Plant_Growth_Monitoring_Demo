@@ -155,7 +155,7 @@
     <div class="sec-head"><span class="sec-num">01</span><h2>프로젝트 요약</h2></div>
     <div class="summary">
       <p class="lead">"수분의 <strong>변동성</strong>이 식물 생장을 바꾸는가"를 <strong>센싱 → 폐루프 급수 → 카메라 계측 → 통계 검정</strong>으로 직접 구성하는 프로젝트입니다.</p>
-      <p>환경 노드(<strong>UNO R4 WiFi + BME688 + SCD41 + BH1750</strong>)가 온습도·기압·VPD·CO₂·조도를, 급수 노드(<strong>M5Stack Core S3 + Watering Unit</strong>)가 화분별 토양수분을 측정해 NTP 정각정렬로 <strong>5분 평균 1건</strong>을 MQTT로 발행합니다. 각 급수 노드는 <strong>브로커가 죽어도 급수를 계속</strong>하는 독립 상태기계(dose·soak·verify·일일상한·fail-safe)입니다. 허브(처음엔 <strong>PC</strong>, 이후 <strong>Raspberry Pi 5</strong>)의 hub.py가 메시지를 구독해 <strong>SQLite</strong>에 쌓고, Pi 카메라가 하루 1회 위에서 찍은 사진을 <strong>ExG + Otsu</strong>로 분할해 <strong>투영 캐노피 면적</strong>(cm²)으로 환산합니다. <strong>Streamlit 대시보드</strong>가 환경·급수·생장을 한 화면에서 보여주고, 처리군을 늘리면 칸이 자동으로 추가됩니다.</p>
+      <p>환경 노드(<strong>UNO R4 WiFi + BME688 + SCD41 + BH1750</strong>)가 온습도·기압·VPD·CO₂·조도를, 급수 노드(<strong>M5Stack Core S3 + Watering Unit</strong>)가 화분별 토양수분을 측정해 NTP 정각정렬로 <strong>5분 평균 1건</strong>을 MQTT로 발행합니다. 각 급수 노드는 <strong>브로커가 죽어도 급수를 계속</strong>하는 독립 상태기계(dose·soak·verify·일일상한·fail-safe)입니다. 허브(처음엔 <strong>PC</strong>, 이후 <strong>Raspberry Pi 5</strong>)의 run_collector.py가 메시지를 구독해 <strong>SQLite</strong>에 쌓고, Pi 카메라가 하루 2회(06:00·15:00) 위에서 찍은 사진을 <strong>ExG + Otsu</strong>로 분할해 <strong>투영 캐노피 면적</strong>(cm²)으로 환산합니다. <strong>Streamlit 대시보드</strong>가 환경·급수·생장을 한 화면에서 보여주고, 처리군을 늘리면 칸이 자동으로 추가됩니다.</p>
     </div>
   </div>
 </section>
@@ -184,10 +184,10 @@
         <div class="node n3">
           <div class="ic">📮</div>
           <div class="nt">수집·저장</div>
-          <div class="nd">hub.py가 구독해 DB에 1행씩</div>
+          <div class="nd">run_collector.py가 구독해 DB에 1행씩</div>
           <span class="tag">mosquitto · SQLite</span>
         </div>
-        <div class="arrow"><span class="lbl">1일 1회</span><span class="ln">→</span></div>
+        <div class="arrow"><span class="lbl">하루 2회</span><span class="ln">→</span></div>
         <div class="node n4">
           <div class="ic">📷</div>
           <div class="nt">계측</div>
@@ -281,17 +281,20 @@
 <span class="d">Plant_Growth_Monitoring_Demo/</span>
 ├─ <span class="d">firmware/</span>            <span class="c"># 노드 펌웨어 (.ino)</span>
 │  ├─ <span class="f">plant_env_r4wifi.ino</span>          <span class="c"># 환경 노드 · UNO R4 WiFi</span>
-│  ├─ <span class="f">plant_water_cores3.ino</span>        <span class="c"># 급수 노드 · M5 Core S3</span>
+│  ├─ <span class="f">water_node.ino</span>                <span class="c"># 급수 노드 · 폐루프만 (MQTT 없이)</span>
+│  ├─ <span class="f">plant_water_cores3.ino</span>        <span class="c"># 급수 노드 본 펌웨어 · M5 Core S3</span>
 │  └─ <span class="d">diagnostics/</span>                  <span class="c"># 하드웨어 검증·보정 스케치</span>
 │     ├─ <span class="f">i2c_scan.ino</span> · <span class="f">env_sensor_test.ino</span>
 │     ├─ <span class="f">pin_id.ino</span> · <span class="f">water_touch_test.ino</span> · <span class="f">pump_burst.ino</span>
 │     └─ <span class="f">calib_sat.ino</span>                <span class="c"># 포화점 자동 탐지</span>
 ├─ <span class="d">hub/</span>                 <span class="c"># 허브 파이썬 (PC → Pi)</span>
-│  ├─ <span class="f">hub.py</span>                        <span class="c"># MQTT 구독 → SQLite 저장</span>
+│  ├─ <span class="f">run_collector.py</span>              <span class="c"># MQTT 구독 → SQLite 저장 (자동)</span>
+│  ├─ <span class="f">run_capture.py</span>                <span class="c"># 촬영 → 측정 → 발행 (자동 · 하루 2회)</span>
 │  ├─ <span class="f">dashboard.py</span>                  <span class="c"># 게이지·차트 (Streamlit)</span>
-│  ├─ <span class="f">snap.py</span> · <span class="f">make_marker.py</span>        <span class="c"># 보정 촬영 · ArUco 마커</span>
-│  ├─ <span class="f">leafcv.py</span> · <span class="f">validate.py</span>          <span class="c"># 캐노피 면적 · 종이잎 검증</span>
-│  ├─ <span class="f">config.json</span>                   <span class="c"># ROI · 스케일 · 캡처 고정값</span>
+│  ├─ <span class="f">setup_camera.py</span>               <span class="c"># 노출·배율·ROI·기준사진 (설치 1회)</span>
+│  ├─ <span class="f">leaf_measure.py</span> · <span class="f">frame_align.py</span>  <span class="c"># 측정 엔진 · 카메라 밀림 보정</span>
+│  ├─ <span class="f">check_config.py</span> · <span class="f">check_accuracy.py</span> <span class="c"># 설정 점검 · 종이잎 검증</span>
+│  ├─ <span class="f">config.json</span>                   <span class="c"># 모든 설정 — 값을 고칠 곳은 여기 하나</span>
 │  └─ <span class="f">plant.conf</span>                    <span class="c"># mosquitto 브로커 설정</span>
 ├─ <span class="d">docs/</span>                <span class="c"># GitHub Pages (/docs)</span>
 │  ├─ <span class="f">index.html</span>                    <span class="c"># 이 개요 문서</span>

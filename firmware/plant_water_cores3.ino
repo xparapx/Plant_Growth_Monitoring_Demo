@@ -24,21 +24,22 @@ const char* BROKER    = "192.168.0.15";     // ★ PC의 IPv4
 const int   PORT      = 1883;
 
 const char* PLANT_ID  = "p1";               // ★ 화분 번호 (노드마다 다르게)
-const char* TREAT     = "A";                // ★ A=꾸준군 / B=널뜀군
+const char* TREAT     = "stable";           // ★ "stable" 또는 "fluct" — 다른 값은 대시보드가 거부
 
 // ★ 실측 확정: Core S3 Port B — PUMP=G9, SOIL=G8
 const int PIN_SOIL = 8;                     // 흰색 Analog Output (실측 확정)
 const int PIN_PUMP = 9;                     // 노랑 PUMP_EN   (실측 확정)
 
 // ★ 보정①의 결과로 교체 — 절대 그대로 쓰지 말 것
-const int SOIL_DRY = 3000;                  // 공기 중 ADC
-const int SOIL_WET = 1300;                  // 물속 ADC
+const int SOIL_DRY = 2133;                  // ★ 실측으로 교체 (공기 중 또는 마른 흙)
+const int SOIL_WET = 1750;                  // ★ 실측으로 교체 (충분 급수 + 5분 배수)
 
 // ★ 처리 밴드 — 6대의 코드는 전부 같고 이 두 줄만 다름 = 곧 실험의 처리 조건
 //   널뜀군 : ON_BELOW=시드는지점+여유  /  OFF_AT=포장용수량 바로 아래  (폭 최대)
 //   꾸준군 : 널뜀군의 '실측 평균'을 중심으로 폭 최소 (예: 33 / 36)
-float ON_BELOW = 25.0;                      // 여기 아래로 오면 채우기 시작
-float OFF_AT   = 55.0;                      // 여기 닿으면 멈추고 마르게 둠
+int RAW_ON  = 2020;                         // ★ raw 로 직접. 이보다 크면(=마르면) 시작
+int RAW_OFF = 1820;                         // ★ 이보다 작으면(=젖으면) 정지
+//   두 처리군의 <중심>이 같아야 합니다 — 폭만 다르게: (RAW_ON+RAW_OFF)/2 를 맞추세요
 const int MAX_DOSE_PER_FILL = 8;            // 한 번 채우는 데 최대 급수 횟수 (안전)
 
 const unsigned long DOSE_MS = 3000;         // ★ 보정②의 결과로 교체

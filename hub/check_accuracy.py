@@ -1,10 +1,10 @@
 """
 validate -- ground-truth check with paper leaves of KNOWN area.
-    uv run python validate.py truth.json calib.jpg
+    uv run python check_accuracy.py truth.json calib.jpg
 truth.json:  {"p1": 50.0}
 """
 import json, sys
-from leafcv import measure
+from leaf_measure import measure
 
 truth = json.load(open(sys.argv[1]))
 rows  = measure(sys.argv[2], debug_dir="debug")

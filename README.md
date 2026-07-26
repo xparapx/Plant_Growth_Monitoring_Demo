@@ -21,8 +21,10 @@
 
 | 처리군 | 밴드 | 의미 |
 |---|---|---|
-| **꾸준군 (A)** | 좁게 (예: 33 / 36%) | 낮은 변동성 — 평균 근처에서만 오르내림 |
-| **널뜀군 (B)** | 넓게 (시드는 지점 / 포장용수량) | 높은 변동성 — 크게 마르고 크게 채움 |
+| **꾸준군 (`stable`)** | 좁게 (raw 밴드 좁게, 예: 1940/1900) | 낮은 변동성 — 평균 근처에서만 오르내림 |
+| **널뜀군 (`fluct`)** | 넓게 (raw 밴드 넓게, 예: 2020/1820) | 높은 변동성 — 크게 마르고 크게 채움 |
+
+- 두 처리군의 밴드 **중심 `(RAW_ON+RAW_OFF)/2`는 같게** 맞춥니다 — 폭만 다르게.
 
 - 총 급수량은 **통제하지 않습니다** — 결과로 따라 나오는 값입니다.
 - 수분–생장 곡선이 휘어 있으면(**옌센 부등식**), 평균이 같아도 변동성이 생장의 평균을 바꿉니다: `E[f(수분)] ≠ f(E[수분])`. 곡률 `f″`의 부호가 방향을 정합니다.
@@ -34,15 +36,15 @@
 ## 프로젝트 개요
 
 - **프로젝트개요**(`docs/index.html`) — 요약·흐름도·핵심가설·준비물·기술스택을 한눈에.
-- **매뉴얼**(`docs/manual.html`) — 준비물·전체 구조·단계별 구축 가이드(브로커·hub.py·펌웨어·급수 보정·카메라 계측·대시보드·분석·트러블슈팅). 모든 코드가 본문에 포함되어 복사 버튼으로 바로 쓸 수 있습니다.
+- **매뉴얼**(`docs/manual.html`) — 준비물·전체 구조·단계별 구축 가이드(브로커·run_collector.py·펌웨어·급수 보정·Pi 이관·systemd·noVNC 원격 GUI·카메라 설치/운용·대시보드·분석·트러블슈팅). 모든 코드가 본문에 포함되어 복사 버튼으로 바로 쓸 수 있습니다.
 
 | 단계 | 내용 | 도구 |
 |---|---|---|
 | ① 측정 | 환경(온습도·VPD·CO₂·조도) + 화분별 토양수분 | BME688 · SCD41 · BH1750 · 수분센서 |
 | ② 급수 | 밴드 안에서 dose·soak·verify 폐루프 | Core S3 + Watering Unit |
 | ③ 발행 | NTP 정각정렬, 5분 평균 1건 MQTT 발행 | WiFi · MQTT |
-| ④ 수집 | 메시지를 받아 DB에 저장 | hub.py · SQLite |
-| ⑤ 계측 | 위에서 찍은 사진 → 투영 캐노피 면적 | Pi Camera · OpenCV (ExG+Otsu) |
+| ④ 수집 | 메시지를 받아 DB에 저장 | run_collector.py · SQLite |
+| ⑤ 계측 | 하루 2회(06:00·15:00) 위에서 찍은 사진 → 투영 캐노피 면적 | Pi Camera · OpenCV (ExG+Otsu) |
 | ⑥ 분석 | RGR·효과크기·사전등록 검정 | Streamlit · pandas |
 
 ---
@@ -51,16 +53,16 @@
 
 ```
 환경 노드                급수 노드 (화분별)          허브 (PC → Pi)
-UNO R4 WiFi          →   M5 Core S3            →   hub.py ─→ SQLite ─→ dashboard.py
-+ BME688/SCD41/BH1750    + Watering Unit           (수집·저장)        (웹 :8501)
+UNO R4 WiFi          →   M5 Core S3            →   run_collector.py ─→ SQLite ─→ dashboard.py
++ BME688/SCD41/BH1750    + Watering Unit           (수집·저장)              (웹 :8501)
 5분 평균 발행            폐루프 급수 + 5분 평균          ↑
        │                       │                mosquitto (1883)
        └──── WiFi · MQTT ──────┴──────────────────┘  ↑
-                                              Pi Camera → leafcv.py → plant/tray/growth
+                            Pi Camera → run_capture.py (leaf_measure) → plant/tray/growth
 ```
 
 - **노드 → 브로커**: WiFi 위 MQTT 발행(publish)
-- **hub.py → 브로커**: 토픽 구독(subscribe) 후 SQLite에 1행씩 저장
+- **run_collector.py → 브로커**: 토픽 구독(subscribe) 후 SQLite에 1행씩 저장
 - **dashboard.py**: 같은 SQLite를 읽기 전용으로 표시 (수집과 표시 분리)
 - **급수 노드는 독립적**: 브로커·WiFi가 죽어도 급수는 계속됩니다. 잃는 건 로그뿐.
 - 허브·브로커·대시보드는 **플랫폼 무관** — Pi 도착 전까지 전부 PC에서 돌리고, Pi에는 카메라만 추가하면 됩니다.
@@ -72,7 +74,7 @@ UNO R4 WiFi          →   M5 Core S3            →   hub.py ─→ SQLite ─�
 | `plant/<node>/env` | 환경 노드 | 5분 | `readings` |
 | `plant/<node>/soil` | 급수 노드 | 5분 | `soil` (화분별 1행) |
 | `plant/<node>/pump` | 급수 노드 | 이벤트 | `pump_log` |
-| `plant/tray/growth` | Pi (카메라) | 1일 | `growth` (화분별 1행) |
+| `plant/tray/growth` | Pi (카메라) | 하루 2회 (06:00·15:00) | `growth` (화분별 1행) |
 
 - 구독: `plant/+/env`, `plant/+/soil`, `plant/+/pump`, `plant/+/growth` (`+` = 모든 노드)
 - 시각(`t`)은 **UTC**로 저장하고, 표시·분석 시점에만 +9h(KST)를 적용합니다.
@@ -84,7 +86,7 @@ UNO R4 WiFi          →   M5 Core S3            →   hub.py ─→ SQLite ─�
 
 - **환경 노드**: Arduino **UNO R4 WiFi**(WiFi 필수, Minima 불가) + **Grove Base Shield V2**(I2C 4포트 → 허브 불필요) + **BME688**(0x76, 온습도·기압·VPD) + **SCD41**(0x62, CO₂ 전용) + **BH1750/DLight**(0x23, 조도) — 같은 I2C 버스 공유. (MLX90640 열화상은 2단계)
 - **급수 노드**: **M5Stack Core S3** + **Watering Unit (U101)** — Port B(G8=수분 Analog / G9=PUMP_EN, 실측 확정). 화분 1개당 노드 1개. 내장 배터리가 펌프 인러시 전류를 완충.
-- **허브**: 처음엔 **PC(Windows)**, 이후 **Raspberry Pi 5**(카메라 전용) — mosquitto·hub.py·대시보드 구동.
+- **허브**: 처음엔 **PC(Windows)**, 이후 **Raspberry Pi 5**(카메라 전용) — mosquitto·run_collector.py·대시보드 구동.
 - **카메라**: Raspberry Pi **Camera Module 3 — Standard(75°)** (⚠️ Wide·NoIR 아님).
 - 공통: 노드·허브 모두 **같은 WiFi**(2.4GHz).
 
@@ -106,7 +108,8 @@ docs/        프로젝트개요(index.html) · 구축 가이드(manual.html)
 | 파일 | 기종 | 역할 |
 |---|---|---|
 | `plant_env_r4wifi.ino` | UNO R4 WiFi | 환경 5종 측정 → `plant/<node>/env` 발행 |
-| `plant_water_cores3.ino` | M5 Core S3 | 폐루프 급수 + 토양수분 → `soil`·`pump` 발행 |
+| `water_node.ino` | M5 Core S3 | 급수 노드 **폐루프만** (WiFi·MQTT 없이) — 본 펌웨어 전 단계 |
+| `plant_water_cores3.ino` | M5 Core S3 | 본 펌웨어: 폐루프 급수 + 토양수분 → `soil`·`pump` 발행 |
 | `diagnostics/i2c_scan.ino` | UNO R4 | I2C 주소 스캔 (무엇이 붙어 있나) |
 | `diagnostics/env_sensor_test.ino` | UNO R4 | 센서값 확인 (통신 전 하드웨어 검증) |
 | `diagnostics/pin_id.ino` | Core S3 | 어느 핀이 아날로그인가 |
@@ -116,16 +119,20 @@ docs/        프로젝트개요(index.html) · 구축 가이드(manual.html)
 
 ### hub
 
-| 파일 | 역할 |
-|---|---|
-| `hub.py` | MQTT 구독 → SQLite 저장 (readings·soil·pump_log·growth 4테이블) |
-| `dashboard.py` | SQLite 읽어 환경·급수·생장 표시 (Streamlit) |
-| `snap.py` | 보정용 정지 1장 촬영 (초점·노출·WB 고정) |
-| `make_marker.py` | ArUco 마커(자·스케일) 인쇄용 이미지 생성 |
-| `leafcv.py` | ExG + Otsu → 투영 캐노피 면적(cm²) 환산 |
-| `validate.py` | 면적을 아는 종이 잎으로 정확도 검증 (PASS/FAIL) |
-| `config.json` | ROI·스케일·캡처 고정값 (마커 mm·렌즈·노출) |
-| `plant.conf` | mosquitto 브로커 설정 (listener 1883 · anonymous) |
+파일 이름의 **접두어가 실행 주체**입니다 — `setup_`(설치 시 1회) · `check_`(검증) · `run_`(6주간 자동).
+
+| 파일 | 실행 | 역할 |
+|---|---|---|
+| `run_collector.py` | systemd (`planthub.service`) | MQTT 구독 → SQLite 저장 (readings·soil·pump_log·growth 4테이블) |
+| `run_capture.py` | systemd (`plantsnap.timer` · 06:00/15:00) | 촬영 → 측정 → 발행 (`--replay`로 미발행분 재전송) |
+| `dashboard.py` | systemd (`plantdash.service`) | SQLite 읽어 환경·급수·생장 표시 (Streamlit) |
+| `setup_camera.py` | 사람 · 설치 1회 | 브라우저(:8000)에서 노출·배율·ROI·처리군·기준사진을 한 번에 |
+| `leaf_measure.py` | 라이브러리 | ExG + Otsu → 투영 캐노피 면적(cm²) 환산 (직접 실행 안 함) |
+| `frame_align.py` | 라이브러리 + 점검 도구 | calib.jpg 대비 카메라 밀림 감지 → ROI 보정 (마커 대체) |
+| `check_config.py` | 사람 · 시작 전 1회 | config.json을 펼쳐 보고 모순 검사 |
+| `check_accuracy.py` | 사람 · 운용 전 1회 | 면적을 아는 종이 잎으로 정확도 검증 (PASS/FAIL) |
+| `config.json` | — | **모든 설정** — 값을 고칠 곳은 여기 하나 (노출·배율·ROI·마커 mm) |
+| `plant.conf` | — | mosquitto 브로커 설정 (listener 1883 · anonymous) |
 
 ---
 
@@ -135,21 +142,26 @@ docs/        프로젝트개요(index.html) · 구축 가이드(manual.html)
 # 1) 파이썬 환경 (uv)
 mkdir plant && cd plant
 uv init --no-readme && rm -f main.py
-uv add paho-mqtt pandas plotly streamlit streamlit-autorefresh numpy opencv-python-headless
+# Pi에서는 venv를 먼저, 이 옵션과 함께 — picamera2는 시스템 것을 빌려 씁니다 (PC는 생략)
+uv venv --system-site-packages
+uv add paho-mqtt pandas plotly streamlit streamlit-autorefresh numpy
+# Pi(카메라)만 추가:
+uv add opencv-python-headless
 
 # 2) 로컬 브로커 (mosquitto)
 #    Windows: mosquitto.exe -c plant.conf -v
 #    Pi     : sudo cp plant.conf /etc/mosquitto/conf.d/ && sudo systemctl restart mosquitto
 
 # 3) 수집 + 대시보드 실행
-uv run python hub.py                          # MQTT 구독 → SQLite
+uv run python run_collector.py                # MQTT 구독 → SQLite
 uv run streamlit run dashboard.py --server.address 0.0.0.0 --server.port 8501
 ```
 
 대시보드: `http://<허브 IP>:8501`
 
+> ⚠️ `pyproject.toml`에 `[tool.uv] system-site-packages`를 쓰지 마세요 — uv가 인식하지 못하는 키입니다. 시스템 패키지 노출은 `.venv/pyvenv.cfg`가 정하며, venv를 만드는 순간 결정됩니다. 그래서 `uv venv --system-site-packages`가 `uv add`보다 먼저 와야 합니다.
 > ⚠️ `python dashboard.py`로는 실행되지 않습니다. 반드시 `streamlit run`(또는 `uv run streamlit run`)을 사용하세요.
-> **노드 없이 먼저 검증** — `mosquitto_pub`으로 가짜 env/soil/pump 메시지를 쏘아 hub.py가 4테이블에 잘 넣는지 확인한 뒤 노드를 만드세요. 이러면 나중에 노드가 안 될 때 hub.py는 용의선상에서 빠집니다.
+> **노드 없이 먼저 검증** — `mosquitto_pub`으로 가짜 env/soil/pump 메시지를 쏘아 run_collector.py가 4테이블에 잘 넣는지 확인한 뒤 노드를 만드세요. 이러면 나중에 노드가 안 될 때 run_collector.py는 용의선상에서 빠집니다.
 
 ---
 
@@ -159,10 +171,11 @@ uv run streamlit run dashboard.py --server.address 0.0.0.0 --server.port 8501
 2. 라이브러리: **PubSubClient**, **Sensirion I2C SCD4x**(신버전), **Adafruit BME680**(BME688 호환), **BH1750**, **M5Unified**
 3. 먼저 `diagnostics/`로 하드웨어를 검증(통신 전에 센서·펌프가 되는지)한 뒤, 본 펌웨어 상단 사용자 설정을 수정하고 업로드:
    - `WIFI_SSID` / `WIFI_PASS` — 현장 WiFi
-   - `BROKER` — PC의 IPv4(`ipconfig`), Pi 도착 후 Pi IP로 교체
-   - 급수 노드: `PLANT_ID`(화분 번호) / `TREAT`(A=꾸준군, B=널뜀군)
-   - `SOIL_DRY`·`SOIL_WET`·`DOSE_MS` — **보정 결과로 반드시 교체** (그대로 쓰지 말 것)
-   - `ON_BELOW`·`OFF_AT` — 처리 밴드. **이 두 줄이 곧 실험의 처리 조건**입니다.
+   - `BROKER` — 브로커 IP (Pi: `hostname -I` / PC: `ipconfig`)
+   - 급수 노드: `PLANT_ID`(화분 번호) / `TREAT`(`stable`=꾸준군, `fluct`=널뜀군 — 다른 값은 대시보드가 거부)
+   - `SOIL_DRY`·`SOIL_WET`·`DOSE_MS` — **실측·보정 결과로 반드시 교체** (그대로 쓰지 말 것)
+   - `RAW_ON`·`RAW_OFF` — 처리 밴드(raw). **이 두 줄이 곧 실험의 처리 조건**이며, 두 처리군의 중심 `(RAW_ON+RAW_OFF)/2`를 같게 맞춥니다.
+4. 본 펌웨어(`plant_water_cores3.ino`) 전에 `water_node.ino`(폐루프만, MQTT 없이)로 급수 고리를 먼저 검증하면 문제 범위가 좁아집니다.
 
 > `WiFiS3`(R4) / `WiFi`(Core S3)는 보드 패키지에 내장되어 별도 설치가 필요 없습니다.
 
@@ -171,7 +184,7 @@ uv run streamlit run dashboard.py --server.address 0.0.0.0 --server.port 8501
 ## 노드 추가 / 처리군 확장
 
 - 노드는 MAC 끝 3바이트로 ID를 자동 생성하므로, **펌웨어를 그대로 올리기만 하면** 대시보드에 칸이 자동 추가됩니다.
-- 데모의 노드 2대를 그대로 쓰고 급수 노드를 복제해 7노드로 확장 — `PLANT_ID`와 `TREAT`만 바꿔 업로드하며, **hub.py는 수정할 필요가 없습니다.**
+- 데모의 노드 2대를 그대로 쓰고 급수 노드를 복제해 7노드로 확장 — `PLANT_ID`와 `TREAT`만 바꿔 업로드하며, **run_collector.py는 수정할 필요가 없습니다.**
 
 ---
 
@@ -189,6 +202,7 @@ uv run streamlit run dashboard.py --server.address 0.0.0.0 --server.port 8501
 - **2026-07**: 카메라 계측 파이프라인 — ExG+Otsu 투영 캐노피 면적, ArUco 스케일, 종이잎 검증(`validate.py`)
 - **2026-07**: 수분 변동성 실험 설계 — 꾸준군/널뜀군 밴드, RGR·효과크기·사전등록 프로토콜 확정
 - **2026-07**: 허브 플랫폼 무관화 — mosquitto·hub.py·dashboard.py를 PC에서 완성, Pi는 카메라만 추가
+- **2026-07-26**: 매뉴얼 대규모 개정 반영 — 스크립트 체계 개편(`setup_`/`check_`/`run_` 접두어: hub.py→run_collector.py, snap.py→run_capture.py, leafcv.py→leaf_measure.py, validate.py→check_accuracy.py), 카메라 파이프라인 재구성(setup_camera.py 웹 세팅·frame_align.py 밀림 보정·check_config.py 설정 점검), `water_node.ino`(폐루프 전용) 추가, systemd 무인 운용(planthub·plantdash·plantsnap.timer)·noVNC 원격 GUI·`--replay` 재발행 문서화
 
 ---
 

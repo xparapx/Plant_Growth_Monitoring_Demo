@@ -65,9 +65,13 @@ CREATE TABLE IF NOT EXISTS growth(
   ts        TEXT DEFAULT CURRENT_TIMESTAMP,
   plant_id  TEXT,
   treat     TEXT,
+  phase     TEXT,     -- 'dawn' | 'pm'  <- RGR uses dawn ONLY; pm is for droop
   area_cm2  REAL,     -- projected canopy area (NOT leaf area -- see FAQ)
   area_px   INTEGER,
   px_per_cm REAL,     -- scale at capture (traceability + rig-moved alarm)
+  img_file  TEXT,     -- raw/<file> -- links this row to the evidence image
+  contour   TEXT,     -- JSON [[dx,dy],...] outline in px, centred on centroid
+                      --   -> dashboard draws old/new overlay directly from this
   ok        INTEGER
 )""")
 conn.commit()
@@ -114,7 +118,8 @@ def on_message(c, u, msg):
         for p in d.get("plants", []):
             p["t"] = d.get("t")
             ins("growth", p,
-                ["plant_id", "treat", "area_cm2", "area_px", "px_per_cm", "ok"])
+                ["plant_id", "treat", "phase", "area_cm2", "area_px", "px_per_cm",
+                 "img_file", "contour", "ok"])
         print(f"growth: {len(d.get('plants', []))} plants")
 
 def shutdown(signum, frame):

@@ -38,7 +38,7 @@ const uint8_t SCD41_ADDR = 0x62;
 // ══════════ 사용자 설정 ══════════
 const char* WIFI_SSID = "your-hotspot";
 const char* WIFI_PASS = "your-password";
-const char* BROKER    = "192.168.0.15";     // ★ PC의 IPv4 (ipconfig) → Pi 도착 후 교체
+const char* BROKER    = "192.168.0.15";     // ★ 브로커 IP (Pi: hostname -I / PC: ipconfig)
 const int   PORT      = 1883;
 
 const uint16_t ALTITUDE_M = 40;             // ★ 학교 해발고도(m) — SCD41 CO2 보정
