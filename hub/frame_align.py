@@ -26,13 +26,9 @@ import numpy as np
 CFG_PATH = "config.json"
 REF_PATH = "calib.jpg"          # 기준 사진 = 설치 때 찍은 그 한 장
 
-# 판정 기준 — <ROI 여유>에 비례해서 잡습니다.
-#   밀림 자체는 해롭지 않습니다. ROI 창이 밀려 <잎이 잘리기 시작할 때>부터 해롭습니다.
-#   그래서 고정 px 이 아니라 ROI 크기의 비율로 둡니다.
-DEF_WARN_FRAC = 0.02            # ROI 한 변의 2%
-DEF_FAIL_FRAC = 0.10            # ROI 한 변의 10%
-DEF_SHIFT_WARN = 20.0           # px — ROI 를 모를 때의 대비값
-DEF_SHIFT_FAIL = 150.0
+# 판정 기준 (config 의 qc 로 덮어쓸 수 있습니다)
+DEF_SHIFT_WARN = 8.0            # px — 이보다 크면 알림
+DEF_SHIFT_FAIL = 40.0           # px — 이보다 크면 보정해도 못 믿음
 DEF_RESP_MIN   = 0.05           # 신뢰도 하한
 
 
@@ -117,27 +113,17 @@ def align(cur_path, ref_path=REF_PATH, cfg=None):
         out["msg"] = f"해상도가 다름 {ref.shape[:2]} vs {cur.shape[:2]}"
         return out
 
-    # ROI 를 넉넉히 가리면 배경이 모자랄 수 있습니다(화분이 프레임을 꽉 채운 경우).
-    # 그때는 여유폭을 줄여 가며 배경을 확보합니다 — 포기하기 전에.
-    for grow in (1.25, 1.10, 1.00):
-        mask = _roi_mask(ref.shape, cfg.get("rois"), grow)
-        if mask.mean() >= 0.15:
-            break
-    else:
-        out["msg"] = (f"배경이 {mask.mean()*100:.0f}% 뿐입니다 — 맞출 단서가 부족합니다. "
-                      f"ROI 를 줄이거나 카메라를 조금 높여 여백을 만드세요")
+    mask = _roi_mask(ref.shape, cfg.get("rois"))
+    if mask.mean() < 0.15:
+        out["msg"] = "배경이 15% 미만 — 맞출 단서가 부족합니다"
         return out
-    if grow < 1.25:
-        out["margin"] = grow
 
     a, b = _prep(ref, mask), _prep(cur, mask)
     (dx, dy), resp = cv2.phaseCorrelate(a, b)
     deg, scale, resp2 = _rot_scale(ref, cur)
 
-    rois = cfg.get("rois") or []
-    side = min([min(r["w"], r["h"]) for r in rois], default=0)
-    warn = float(qc.get("drift_warn_px", side * DEF_WARN_FRAC if side else DEF_SHIFT_WARN))
-    fail = float(qc.get("drift_fail_px", side * DEF_FAIL_FRAC if side else DEF_SHIFT_FAIL))
+    warn = float(qc.get("drift_warn_px", DEF_SHIFT_WARN))
+    fail = float(qc.get("drift_fail_px", DEF_SHIFT_FAIL))
     rmin = float(qc.get("drift_resp_min", DEF_RESP_MIN))
     mag  = float(np.hypot(dx, dy))
 
@@ -155,8 +141,7 @@ def align(cur_path, ref_path=REF_PATH, cfg=None):
         out.update(ok=True, level="drift",
                    msg=f"{mag:.1f}px 밀림 감지 — ROI 를 그만큼 옮겨 보정합니다")
     else:
-        out.update(ok=True, level="ok",
-                   msg=f"{mag:.1f}px — 정상 범위 (기준 {warn:.0f}px)")
+        out.update(ok=True, level="ok", msg=f"{mag:.1f}px — 정상 범위")
 
     # 회전·배율이 변하면 ROI 를 옮기는 것만으로는 못 고칩니다 -> 재설치 판정
     if resp2 >= rmin and abs(deg) > 1.0:

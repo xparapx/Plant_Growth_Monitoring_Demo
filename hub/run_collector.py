@@ -41,8 +41,13 @@ CREATE TABLE IF NOT EXISTS soil(
   ts       TEXT DEFAULT CURRENT_TIMESTAMP,
   node     TEXT,
   plant_id TEXT,   -- p1..p6
-  treat    TEXT,   -- A (well-watered) | B (deficit)
-  pct      REAL,
+  treat    TEXT,   -- 'stable' | 'fluct'  <- witness only; config.json is the source
+  raw      REAL,   -- ★ ADC counts as the sensor reports them.  THE value to keep.
+                   --   pct below is derived on the node with RAW_DRY/RAW_WET that
+                   --   are per-node and re-calibrated over time -- so pct from two
+                   --   nodes, or from two dates, are NOT on the same scale.
+                   --   Analysis must recompute pct from raw with ONE constant.
+  pct      REAL,   -- convenience only.  do not compare across nodes/dates.
   n        INTEGER
 )""")
 
@@ -54,9 +59,12 @@ CREATE TABLE IF NOT EXISTS pump_log(
   plant_id    TEXT,
   treat       TEXT,
   dur_ms      INTEGER,
-  soil_before REAL,
+  soil_before REAL,   -- derived pct -- see the note on soil.raw
   soil_after  REAL,
-  reason      TEXT    -- filled | verify_fail | manual
+  raw_before  INTEGER,-- ★ the node already sends these; keep them
+  raw_after   INTEGER,
+  shots       INTEGER,-- doses used in this cycle (MAX_SHOTS => verify_fail)
+  reason      TEXT    -- filled | dosed | no rise | verify fail | manual
 )""")
 
 conn.execute("""
@@ -74,9 +82,39 @@ CREATE TABLE IF NOT EXISTS growth(
                       --   -> dashboard draws old/new overlay directly from this
   ok        INTEGER
 )""")
+
+# ── migration ────────────────────────────────────────────────────────────
+# CREATE TABLE IF NOT EXISTS does NOT add columns to a table that already
+# exists -- it just does nothing.  A DB created before these columns existed
+# stays silently short, and every incoming raw value is dropped without error.
+# So state the wanted columns explicitly and ALTER in whatever is missing.
+# ALTER TABLE ADD COLUMN never touches existing rows: old rows get NULL.
+WANT = {
+    "soil":     [("raw",        "REAL")],
+    "pump_log": [("raw_before", "INTEGER"),
+                 ("raw_after",  "INTEGER"),
+                 ("shots",      "INTEGER")],
+}
+for tbl, cols in WANT.items():
+    have = {r[1] for r in conn.execute(f"PRAGMA table_info({tbl})")}
+    for name, typ in cols:
+        if name not in have:
+            conn.execute(f"ALTER TABLE {tbl} ADD COLUMN {name} {typ}")
+            print(f"[migrate] {tbl}.{name} {typ} added")
 conn.commit()
 
+
 def ins(table, d, cols):
+    # Keys the node sends that we have nowhere to put.  Historically these
+    # vanished in silence -- raw was published for days and never stored.
+    # Say it once per key, then stay quiet.
+    extra = set(d) - set(cols) - {"t"}
+    for k in sorted(extra):
+        if (table, k) not in _warned:
+            _warned.add((table, k))
+            print(f"[DROP] {table}: '{k}' has no column -- value discarded. "
+                  f"add it to the CREATE TABLE and to WANT above.")
+
     vals = [d.get(c) for c in cols]
     t = d.get("t")
     ph = ",".join(["?"] * len(cols))
@@ -87,12 +125,25 @@ def ins(table, d, cols):
         conn.execute(f"INSERT INTO {table}({','.join(cols)}) VALUES({ph})", vals)
     conn.commit()
 
+
+_warned = set()
+
 def on_connect(c, u, f, rc, props):
     print(f"broker connect: {rc}")
     for t in ("plant/+/env", "plant/+/soil", "plant/+/pump", "plant/+/growth"):
         c.subscribe(t)
 
 def on_message(c, u, msg):
+    # paho swallows exceptions raised inside this callback: the collector keeps
+    # running and looks healthy while nothing is written.  Catch and print.
+    try:
+        _handle(msg)
+    except Exception as e:
+        print(f"[ERROR] {msg.topic}: {type(e).__name__}: {e}")
+        print(f"        payload: {msg.payload[:300]!r}")
+
+
+def _handle(msg):
     try:
         d = json.loads(msg.payload.decode())
     except Exception as e:
@@ -104,13 +155,17 @@ def on_message(c, u, msg):
         print(f"env  : {d}")
 
     elif msg.topic.endswith("/soil"):
-        ins("soil", d, ["node", "plant_id", "treat", "pct", "n"])
+        ins("soil", d, ["node", "plant_id", "treat", "raw", "pct", "n"])
         print(f"soil : {d}")
 
     elif msg.topic.endswith("/pump"):
         ins("pump_log", d, ["node", "plant_id", "treat", "dur_ms",
-                            "soil_before", "soil_after", "reason"])
-        flag = "  <<< CHECK TUBE/RESERVOIR" if d.get("reason") == "verify_fail" else ""
+                            "soil_before", "soil_after",
+                            "raw_before", "raw_after", "shots", "reason"])
+        # the node sends 'verify fail' (space); older docs said 'verify_fail'
+        flag = ("  <<< CHECK TUBE/RESERVOIR"
+                if str(d.get("reason", "")).replace("_", " ") in ("verify fail", "no rise")
+                else "")
         print(f"pump : {d}{flag}")
 
     elif msg.topic.endswith("/growth"):

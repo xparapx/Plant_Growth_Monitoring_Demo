@@ -30,7 +30,7 @@ PPC  = float(QC.get("px_per_cm_ref", 0) or 0)
 ROIS = CFG.get("rois", [])
 
 # ── 촬영 조건 ────────────────────────────────────────────────
-print("\n[촬영 조건]  — setup_camera / run_capture 가 공유합니다")
+print("\n[촬영 조건]  — setup_2_camera / run_capture 가 공유합니다")
 line("해상도", f"{W} x {H} px")
 line("lens_position", CAP.get("lens_position"), "디옵터 = 1/거리(m)")
 line("exposure_us", CAP.get("exposure_us"),
@@ -98,25 +98,6 @@ if len(counts) == 2 and len(set(counts.values())) > 1:
     WARN.append("두 처리군의 화분 수가 다릅니다 — 비교의 검정력이 떨어집니다")
 if len(ROIS) and len(counts) == 1:
     WARN.append("처리군이 한 종류뿐입니다 — [처리군 무작위 배정] 을 누르세요")
-
-# ── 배율 정합성: 프레임이 배치를 담을 수 있는가 ─────────────
-LAY0 = CFG.get("layout", {})
-if PPC > 0 and LAY0:
-    cols = int(LAY0.get("cols", 1)); rows = int(LAY0.get("rows", 1))
-    pot  = float(LAY0.get("pot_cm", 0) or 0)
-    gap  = float(LAY0.get("gap_cm", 0) or 0)
-    need_w = cols * pot + (cols - 1) * gap
-    frame_w = W / PPC
-    print("\n[정합성]")
-    line("프레임 폭", f"{frame_w:.1f} cm", "= 해상도 / 배율")
-    line("배치가 차지하는 폭", f"{need_w:.1f} cm", f"({cols}열 · 화분 {pot:.0f} · 틈 {gap:.0f})")
-    if need_w > frame_w:
-        BAD.append(f"화분 배치({need_w:.0f}cm)가 프레임({frame_w:.0f}cm)보다 넓습니다 — "
-                   "배율이나 layout 중 하나가 틀렸습니다.\n"
-                   "        두 점 클릭 때 <실제 길이> 입력칸과 실제로 찍은 두 점이 같은 대상인지 확인하세요")
-    elif need_w > 0 and frame_w > need_w * 3:
-        WARN.append(f"프레임({frame_w:.0f}cm)이 배치({need_w:.0f}cm)의 3배가 넘습니다 — "
-                    "배경만 넓게 찍혀 배율이 낭비됩니다")
 
 # ── 화분 크기 대비 ROI 여유 ─────────────────────────────────
 LAY = CFG.get("layout", {})

@@ -210,7 +210,17 @@ def q(sql):
     return df
 
 
-BAND = {"stable": (38, 46), "fluct": (22, 62)}      # 처리군별 급수 밴드
+# ★ firmware/water_node.ino 의 RAW_ON / RAW_OFF 와 반드시 같아야 합니다.
+BAND_RAW = {"stable": (1900, 1940), "fluct": (1820, 2020)}   # (젖음, 마름) raw
+CAL = {"_default": (2120, 1750)}          # plant_id -> (RAW_DRY, RAW_WET)
+
+
+def pct_of(raw, pid="_default"):
+    dry, wet = CAL.get(pid, CAL["_default"])
+    return 100.0 * (dry - raw) / float(dry - wet)
+
+
+BAND = {t: (pct_of(hi), pct_of(lo)) for t, (lo, hi) in BAND_RAW.items()}
 
 @st.cache_data(ttl=600)
 def synth(roster=None, days=7, step_min=30):
@@ -292,6 +302,22 @@ def roster_of(*dfs):
     fr = [d[["plant_id", "treat"]] for d in dfs if len(d) and "plant_id" in d.columns]
     return pd.concat(fr).dropna().groupby("plant_id").treat.last().to_dict() if fr else {}
 
+
+def treat_sources(soil_df, grow_df):
+    """화분별 처리군을 <출처를 구분해서> 모읍니다.
+       soil.treat  <- 급수 펌웨어가 보낸 값
+       growth.treat<- config.json 의 rois[].treat
+       roster_of() 는 둘을 합쳐 .last() 로 하나만 남깁니다. 다르면 경고 없이
+       뒤쪽(config.json)이 이깁니다 -> 첫 촬영 날 그룹이 조용히 뒤집힙니다."""
+    out = {}
+    for src, d in (("펌웨어(soil)", soil_df), ("config.json(growth)", grow_df)):
+        if len(d) and "plant_id" in d.columns:
+            last = d[["plant_id", "treat"]].dropna().groupby("plant_id").treat.last()
+            for pid, tr in last.items():
+                out.setdefault(pid, {})[src] = tr
+    return out
+
+
 # 실측으로 들어온 화분·노드를 먼저 기록해 둡니다 (데모로 채우기 전에).
 REAL_POTS = set(roster_of(soil, grow))
 REAL_ENV  = not env.empty
@@ -345,6 +371,31 @@ if UNKNOWN:
              f"({', '.join(repr(u) for u in UNKNOWN)});")
     TREAT = {k: v for k, v in TREAT.items() if v in ("stable", "fluct")}
     POTS  = sorted(TREAT)
+# ── ★ 처리군 출처 충돌 — 07-28 유형 사고를 화면에서 잡습니다 ────────────
+#   같은 화분인데 펌웨어가 말하는 처리군과 config.json 이 말하는 처리군이 다르면,
+#   둘 중 하나는 반드시 틀렸습니다. 어느 쪽이 틀렸는지는 데이터로 알 수 없으므로
+#   (물은 펌웨어대로 주고, 라벨은 config.json 대로 붙습니다) 화면이 판단하지 않고
+#   <그 화분을 그리지 않고> 사람에게 넘깁니다. 틀린 그룹으로 그린 그래프보다 낫습니다.
+SRC      = treat_sources(soil, grow)
+CONFLICT = {p: v for p, v in SRC.items() if len(set(v.values())) > 1}
+if CONFLICT:
+    rows = "".join(
+        f"<tr><td><b>{p}</b></td>"
+        + "".join(f"<td>{s} → <b>{t}</b></td>" for s, t in sorted(v.items()))
+        + "</tr>"
+        for p, v in sorted(CONFLICT.items()))
+    st.markdown(
+        '<div class="alert">! &nbsp;<b>처리군 불일치 — 이 화분들은 그리지 않습니다</b><br>'
+        '<table style="margin:6px 0">' + rows + '</table>'
+        '펌웨어와 <code>config.json</code> 이 서로 다른 처리군을 말하고 있습니다. '
+        '<b>펌프 호스가 실제로 꽂힌 화분</b>을 기준으로 어느 쪽이 맞는지 정한 뒤, '
+        '<code>water_node.ino</code> 의 <code>TREAT_FLUCT</code>·<code>PLANT_ID</code> 와 '
+        '<code>config.json</code> 의 <code>rois[].treat</code> 를 맞추세요.<br>'
+        '<b>과거 행을 지우기 전에 반드시 <code>plant.db</code> 를 백업하세요.</b>'
+        '</div>', unsafe_allow_html=True)
+    TREAT = {k: v for k, v in TREAT.items() if k not in CONFLICT}
+    POTS  = sorted(TREAT)
+
 GROUPS = {t: [p for p in POTS if TREAT.get(p) == t] for t in ("stable", "fluct")}
 GROUPS = {t: v for t, v in GROUPS.items() if v}
 NCOL   = max((len(v) for v in GROUPS.values()), default=1)
@@ -483,16 +534,26 @@ with tab_ov:
         st.info("No pots with a recognised treatment yet.")
         st.stop()
     nrow = max(len(v) for v in GROUPS.values())
+    # 예전 range=[15,68] 은 synth() 가짜데이터(22~62)용이라 실제 fluct(27~81)가 잘렸습니다.
+    lo = min([soil.pct.min()] + [b[0] for b in BAND.values()])
+    hi = max([soil.pct.max()] + [b[1] for b in BAND.values()])
+    if not np.isfinite(lo) or not np.isfinite(hi) or hi <= lo:
+        lo, hi = 20.0, 85.0
+    pad = max(2.0, (hi - lo) * .06)
+    YR = [max(0.0, lo - pad), min(100.0, hi + pad)]
     f = make_subplots(rows=nrow, cols=len(GROUPS), shared_xaxes=True, shared_yaxes=True,
                       vertical_spacing=.02, horizontal_spacing=.05,
                       subplot_titles=[NAME[t] for t in GROUPS] + [""] * (nrow - 1) * len(GROUPS))
     for ci, (treat, members) in enumerate(GROUPS.items(), 1):
+        blo, bhi = BAND[treat]
         for ri, p in enumerate(members, 1):
+            f.add_hrect(y0=blo, y1=bhi, row=ri, col=ci, layer="below",
+                        fillcolor=CD[treat], opacity=.10, line_width=0)
             s = soil[soil.plant_id == p]
             f.add_trace(go.Scatter(x=s.ts, y=s.pct, mode="lines",
                                    line=dict(color=CD[treat], width=LW["trace"]), showlegend=False,
                                    name=p.upper()), row=ri, col=ci)
-            f.update_yaxes(title_text=f"<b>{p.upper()}</b>", range=[15, 68],
+            f.update_yaxes(title_text=f"<b>{p.upper()}</b>", range=YR,
                            title_font=dict(size=10, color=CD[treat]),
                            showticklabels=(ci == 1), row=ri, col=ci)
     f.update_layout(height=118 * nrow + 30, margin=dict(l=46, r=10, t=26, b=24), **BLANK)

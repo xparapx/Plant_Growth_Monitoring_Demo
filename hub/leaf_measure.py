@@ -105,12 +105,20 @@ def measure(img_path, phase, debug_dir=None, mask_dir=None, C=None):
         mask, px, blobs, thr = leaf_mask(crop)
 
         # ── 품질 판정 ──
-        edge = bool(mask[0, :].any() or mask[-1, :].any() or
-                    mask[:, 0].any() or mask[:, -1].any())
+        # 테두리에 <닿았는지>가 아니라 <얼마나 걸쳐 있는지>로 봅니다.
+        # 한 픽셀 스친 것과 30%가 밖으로 나간 것은 다릅니다.
+        border = np.concatenate([mask[0, :], mask[-1, :], mask[:, 0], mask[:, -1]])
+        edge_px   = int((border > 0).sum())
+        edge_frac = edge_px / float(2 * (w + h))          # 테두리 길이 대비
+        tol  = float(C.get("qc", {}).get("edge_tol", 0.02))
+        edge = edge_frac > tol
         too_big = px > 0.9 * w * h
         ok = int(px > 0 and not edge and not too_big and ppc > 0 and not geom_bad)
         if edge:
-            print(f'[WARN] {roi["plant_id"]}: 잎이 ROI 테두리에 닿음 — 박스를 넓히세요')
+            print(f'[WARN] {roi["plant_id"]}: 잎이 ROI 테두리의 {edge_frac*100:.1f}%에 걸쳐 있습니다 '
+                  f'(허용 {tol*100:.0f}%) — 면적이 <실제보다 작습니다>. 박스를 넓히세요')
+        elif edge_px:
+            print(f'[INFO] {roi["plant_id"]}: 테두리 접촉 {edge_frac*100:.1f}% — 허용 범위')
         if too_big:
             print(f'[WARN] {roi["plant_id"]}: 마스크가 ROI 의 90%% 초과 — 배경을 잡았을 가능성')
 
@@ -132,6 +140,7 @@ def measure(img_path, phase, debug_dir=None, mask_dir=None, C=None):
                "area_cm2": round(px / ppc ** 2, 2) if ppc > 0 else None,
                "px_per_cm": round(ppc, 3) if ppc > 0 else None,
                "contour": outline(mask), "blobs": blobs, "ok": ok,
+               "edge_frac": round(edge_frac, 4),      # DB 컬럼 아님 — jsonl·콘솔 진단용
                "img_file": os.path.basename(img_path)}
         out.append(row)
 
@@ -168,5 +177,5 @@ if __name__ == "__main__":
   보는 법 — 터미널을 하나 더 열어서
       cd ~/plant
       python3 -m http.server 8080
-    브라우저에서  http://rasp:8080/photos/debug/   (확인 뒤 Ctrl+C 로 서버 종료)
+    브라우저에서  http://rsp:8080/photos/debug/   (확인 뒤 Ctrl+C 로 서버 종료)
 """)

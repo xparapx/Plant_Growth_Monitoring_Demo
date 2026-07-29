@@ -1,7 +1,7 @@
 """
 setup_camera.py — 카메라 세팅을 이 파일 하나로 끝낸다.
 
-  uv run python setup_camera.py            ->  http://rasp:8000  (폰으로 봐도 됩니다)
+  uv run python setup_camera.py            ->  http://rsp:8000  (폰으로 봐도 됩니다)
 
   ① 노출·초점 자동 측정 후 고정   ② 두 점 클릭으로 배율
   ③ 잎을 찾아 ROI 배치           ④ 처리군 무작위 배정
@@ -30,7 +30,7 @@ PREV     = (1280, 720)          # 미리보기 해상도 (화면용)
 
 lock   = threading.Lock()       # 카메라는 한 번에 하나만 건드립니다
 latest = None                   # 최신 JPEG 프레임
-state  = {"msg": "준비됨", "pts": [], "ppc_fixed": None, "cm": 0}
+state  = {"msg": "준비됨", "pts": [], "ppc_fixed": None, "cm": 0, "order": None}
 
 
 def load_cfg():
@@ -98,9 +98,12 @@ def draw(img):
     return img
 
 
+stop_flag = threading.Event()      # Ctrl+C 때 grab 스레드를 세우는 신호
+
+
 def grab():
     global latest
-    while True:
+    while not stop_flag.is_set():          # Ctrl+C 가 오면 조용히 빠져나갑니다
         with lock:
             frame = cam.capture_array()
         frame = draw(frame)
@@ -161,8 +164,26 @@ def act_shoot():
 
 
 def _pack(boxes):
-    """좌->우, 위->아래로 정렬해 p1..pN 이름을 붙이고 CFG 에 넣습니다."""
-    boxes.sort(key=lambda b: (b[1] // max(1, CAP_H // 8), b[0]))
+    """좌->우, 위->아래로 정렬해 p1..pN 이름을 붙이고 CFG 에 넣습니다.
+
+    ★ 줄을 <고정 밴드>로 나누면 안 됩니다.
+      한 줄로 놓은 화분도 세로로 조금 어긋나면 서로 다른 밴드에 떨어져
+      좌우 순서가 뒤집힙니다. 그러면 p1 이 <다른 화분>을 가리키게 되고,
+      과거 데이터의 p1 과 지금의 p1 이 달라집니다 — 조용히 실험을 망칩니다.
+      그래서 <상자 높이>를 기준으로 같은 줄인지 판단합니다.
+    """
+    if not boxes:
+        CFG["rois"] = []
+        return
+    hh  = sorted(b[3] for b in boxes)[len(boxes) // 2]     # 상자 높이의 중앙값
+    tol = hh * 0.5                                          # 이만큼 안 벌어지면 같은 줄
+    rows, cur = [], []
+    for b in sorted(boxes, key=lambda b: b[1] + b[3] / 2):  # 중심 y 로 정렬
+        if cur and (b[1] + b[3] / 2) - (cur[-1][1] + cur[-1][3] / 2) > tol:
+            rows.append(cur); cur = []
+        cur.append(b)
+    rows.append(cur)
+    boxes = [b for r in rows for b in sorted(r, key=lambda b: b[0])]  # 줄 안에서는 좌->우
     CFG["rois"] = [{"plant_id": f"p{i}", "treat": "",
                     "x": int(x), "y": int(y), "w": int(w), "h": int(h)}
                    for i, (x, y, w, h) in enumerate(boxes, 1)]
@@ -276,7 +297,58 @@ def act_auto():
             f"  —  [저장] 을 눌러야 config.json 에 기록됩니다{warn}")
 
 
+def act_rename():
+    """이름 다시 매기기 — 원하는 순서대로 화면의 박스를 클릭하게 합니다.
+    자동 정렬이 어떻게 하든, <사람이 정한 순서>가 이깁니다."""
+    n = len(CFG.get("rois", []))
+    if n == 0:
+        return "ROI 가 없습니다 — 먼저 배치하세요"
+    state["order"] = []
+    return f"이름을 붙일 순서대로 화면의 박스를 클릭하세요 (0/{n})"
+
+
+def act_pickroi(x, y):
+    """이름 매기기 중의 클릭 — 어느 박스를 골랐는지 찾아 순서에 담습니다."""
+    if state["order"] is None:
+        return "먼저 [이름 다시 매기기] 를 누르세요"
+    X, Y = x / SCALE, y / SCALE                       # 미리보기 -> 촬영 좌표
+    hit = [i for i, r in enumerate(CFG["rois"])
+           if r["x"] <= X <= r["x"] + r["w"] and r["y"] <= Y <= r["y"] + r["h"]]
+    if not hit:
+        return "박스 안을 클릭하세요"
+    i = hit[0]
+    if i in state["order"]:
+        return "이미 고른 박스입니다"
+    state["order"].append(i)
+
+    n = len(CFG["rois"])
+    if len(state["order"]) < n:
+        return f"{len(state['order'])}/{n} — 다음 박스를 클릭하세요"
+
+    # 다 골랐습니다. 고른 순서대로 이름을 새로 붙입니다 (처리군은 박스를 따라갑니다)
+    CFG["rois"] = [dict(CFG["rois"][i], plant_id=f"p{k}")
+                   for k, i in enumerate(state["order"], 1)]
+    state["order"] = None
+    return "이름 지정 완료 — " + " · ".join(
+        f"{r['plant_id']}(x={r['x']})" for r in CFG["rois"])
+
+
+def act_settreat(pid, treat):
+    """사람이 직접 지정. 이미 펌프를 꽂아둔 상황을 위한 길입니다.
+    ★ 무작위가 아니므로 <어떻게 정했는지>를 config 에 남깁니다 —
+      보고서에 '무작위 배정' 이라고 쓸 수 있는지가 여기서 갈립니다."""
+    if treat not in ("stable", "fluct"):
+        return f"알 수 없는 처리군: {treat}"
+    hit = [r for r in CFG.get("rois", []) if r["plant_id"] == pid]
+    if not hit:
+        return f"{pid} 를 찾을 수 없습니다"
+    hit[0]["treat"] = treat
+    CFG["treat_mode"] = "manual"
+    return f"{pid} → {treat} (직접 지정)"
+
+
 def act_shuffle():
+    CFG["treat_mode"] = "random"
     """제비뽑기. 위치와 무관하게 stable/fluct 를 섞습니다."""
     rois = CFG.get("rois", [])
     n = len(rois)
@@ -312,6 +384,10 @@ def step_done():
 def status():
     d = step_done()
     return {"msg": state["msg"], "done": d, "all": all(d.values()),
+            "mode": CFG.get("treat_mode", ""),
+            "naming": state["order"] is not None,
+            "pots": [{"id": r["plant_id"], "treat": r.get("treat", "")}
+                     for r in CFG.get("rois", [])],
             "ppc": round(state["ppc_fixed"] or 0, 1),
             "nroi": len(CFG.get("rois", [])),
             "cm": float(state.get("cm") or 0)}
@@ -328,6 +404,9 @@ ACTIONS = {
     "auto":    lambda p: act_auto(),
     "point":   lambda p: act_point(float(p["x"]), float(p["y"]), float(p.get("cm", 10))),
     "shuffle": lambda p: act_shuffle(),
+    "settreat":lambda p: act_settreat(p["pid"], p["treat"]),
+    "rename":  lambda p: act_rename(),
+    "pickroi": lambda p: act_pickroi(float(p["x"]), float(p["y"])),
     "save":    lambda p: act_save(),
 }
 
@@ -364,6 +443,10 @@ PAGE = """<!doctype html><meta charset="utf-8">
  input{width:56px;padding:5px 6px;border-radius:5px;border:1px solid var(--line);
         background:#0d1116;color:var(--ink);font:var(--fs) inherit;text-align:center}
  .echo{font-size:var(--fs);color:var(--dim);margin-top:4px}
+ .pot{display:flex;align-items:center;gap:5px;margin:5px 0;font-size:var(--fs)}
+ .pot b{flex:0 0 30px}
+ .pot button{flex:1;margin:0;padding:5px 0;font-size:12px;background:#39424e}
+ .pot button.on{background:var(--c)}
  .echo b{color:var(--ink)}
 
  /* 오른쪽 — 영상 + 설명 */
@@ -399,11 +482,15 @@ PAGE = """<!doctype html><meta charset="utf-8">
     <button onclick="go('findleaf')">잎 찾아 배치</button>
     <div class="row">열 <input id="c" value="2"> 행 <input id="r" value="1"></div>
     <button class="sub" onclick="go('autoroi',{cols:c.value,rows:r.value})">격자로 나누기</button>
+    <button class="sub" id="rnBtn" onclick="go('rename')">이름 다시 매기기</button>
+    <div class="echo" id="rnEcho"></div>
   </div>
 
   <div class="step" id="k-treat" style="--c:var(--s4)">
     <div class="hd"><span class="no"><span>4</span></span>처리군</div>
     <button onclick="go('shuffle')">무작위 배정</button>
+    <div id="pots"></div>
+    <div class="echo" id="modeEcho"></div>
   </div>
 
   <div class="step" id="k-shot" style="--c:var(--s5)">
@@ -442,6 +529,23 @@ function echo(){
 function paint(st){
   for (const [k, v] of Object.entries(st.done))
     document.getElementById('k-' + k).classList.toggle('done', v);
+
+  document.getElementById('pots').innerHTML = (st.pots || []).map(p =>
+    `<div class="pot"><b>${p.id}</b>` +
+    `<button class="${p.treat === 'stable' ? 'on' : ''}" ` +
+    `onclick="go('settreat',{pid:'${p.id}',treat:'stable'})">꾸준</button>` +
+    `<button class="${p.treat === 'fluct' ? 'on' : ''}" ` +
+    `onclick="go('settreat',{pid:'${p.id}',treat:'fluct'})">널뜀</button></div>`).join('');
+  naming = !!st.naming;
+  document.getElementById('rnBtn').textContent =
+    naming ? '고르는 중 — 새로고침하면 취소' : '이름 다시 매기기';
+  document.getElementById('rnEcho').innerHTML = naming
+    ? '<b style="color:#8E6FBF">원하는 순서대로 화면의 박스를 클릭하세요</b>'
+    : '자동 순서가 마음에 안 들면 직접 지정하세요';
+
+  const MODE = {random: '무작위로 배정됨 — 보고서에 &ldquo;무작위 배정&rdquo; 이라 쓸 수 있습니다',
+                manual: '<b style="color:#D2694F">직접 지정됨 — 무작위가 아닙니다</b>'};
+  document.getElementById('modeEcho').innerHTML = MODE[st.mode] || '아직 배정하지 않았습니다';
   const m = document.getElementById('msg');
   m.textContent = st.msg + (st.all ? '   ✓ 모든 단계 완료' : '');
   m.className = st.all ? 'good' : (/⚠|실패|주의/.test(st.msg) ? 'warn' : '');
@@ -453,11 +557,13 @@ async function go(a, p={}){
   const res = await fetch('/do/' + a + (q ? '?' + q : ''), {method:'POST'});
   paint(await res.json());
 }
+let naming = false;
 document.getElementById('im').addEventListener('click', e => {
   const r = e.target.getBoundingClientRect();
-  go('point', { x:(e.clientX-r.left)/r.width*1280,
-                y:(e.clientY-r.top)/r.height*720,
-                cm: document.getElementById('cm').value });
+  const x = (e.clientX-r.left)/r.width*1280, y = (e.clientY-r.top)/r.height*720;
+  // 이름 매기는 중에는 <배율 클릭>이 아니라 <박스 고르기>가 됩니다
+  if (naming) go('pickroi', { x, y });
+  else        go('point',   { x, y, cm: document.getElementById('cm').value });
 });
 echo();
 fetch('/status').then(r => r.json()).then(paint);
@@ -528,10 +634,20 @@ class S(socketserver.ThreadingMixIn, server.HTTPServer):
 
 if __name__ == "__main__":
     threading.Thread(target=grab, daemon=True).start()
-    print(f"http://<pi-ip>:{PORT}   또는   http://rasp:{PORT}")
+    print(f"http://<pi-ip>:{PORT}   또는   http://rsp:{PORT}")
     print("끝나면 Ctrl+C — 켜둔 채로 두면 run_capture.py 가 카메라를 못 잡습니다.")
     try:
         S(("", PORT), H).serve_forever()
+    except KeyboardInterrupt:
+        print("\n종료합니다 —", end=" ", flush=True)
     finally:
-        cam.stop()
-        cam.close()
+        # ★ grab 스레드를 먼저 세운 뒤 카메라를 놓습니다.
+        #   순서가 반대면 스레드가 닫힌 카메라를 건드려 오류가 납니다.
+        stop_flag.set()
+        time.sleep(0.2)
+        try:
+            cam.stop(); cam.close()
+            print("카메라를 놓았습니다. 이제 run_capture.py 가 쓸 수 있습니다.")
+        except Exception as e:
+            print(f"카메라 정리 중 문제: {e}")
+            print("  확인:  pgrep -af setup_camera.py ; sudo fuser -v /dev/media0")

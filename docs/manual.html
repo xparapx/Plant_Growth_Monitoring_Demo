@@ -153,7 +153,7 @@
 <body>
 <div class="stage">
   <aside class="sidebar">
-    <div class="brand"><b>식물 생장 모니터링 — 데모</b><span>환경노드 R4 WiFi + 급수노드 Core S3 + Raspberry Pi 5 + noVNC · rev. 2026-07</span></div>
+    <div class="brand"><b>식물 생장 모니터링 — 데모</b><span>환경노드 R4 WiFi + 급수노드 Core S3 + Raspberry Pi 5 + noVNC · rev. 2026-07</span><span style="display:block;margin-top:4px;color:#5d6c7d">빌드 2026-07-29 09:38 · MANIFEST c686722e17c4</span></div>
 
     <div class="nav-group">시작하기</div>
     <div class="nav-item" data-target="s0"><span class="n">0</span>개요 &amp; 준비물</div>
@@ -666,7 +666,7 @@ hostname -I          # ← 이 IP가 새 BROKER 주소</pre>
           <span class="ftag">Pi</span>
 <pre>sudo apt install -y mosquitto mosquitto-clients
 
-sudo tee /etc/mosquitto/conf.d/plant.conf > /dev/null << 'EOF'
+sudo tee /etc/mosquitto/conf.d/plant.conf > /dev/null &lt;&lt; 'EOF'
 listener 1883 0.0.0.0
 allow_anonymous true
 EOF
@@ -819,10 +819,10 @@ grep include-system-site .venv/pyvenv.cfg     <span class="c"># true 가 아니�
 <pre>"""
 Plant Hub -- MQTT subscriber + SQLite writer   (runs on PC or Pi, unchanged)
 
-subscribe : plant/+/env    -> readings   (5-min bucket, ONE env node = the box)
-            plant/+/soil   -> soil       (5-min bucket, one row PER PLANT)
-            plant/+/pump   -> pump_log   (event: irrigation record)
-            plant/+/growth -> growth     (daily, one row PER PLANT)
+subscribe : plant/+/env    -&gt; readings   (5-min bucket, ONE env node = the box)
+            plant/+/soil   -&gt; soil       (5-min bucket, one row PER PLANT)
+            plant/+/pump   -&gt; pump_log   (event: irrigation record)
+            plant/+/growth -&gt; growth     (daily, one row PER PLANT)
 store     : SQLite (plant.db) -- single source of truth
 time      : ts is UTC.  +9h KST applied only at display/analysis time.
 """
@@ -846,7 +846,7 @@ CREATE TABLE IF NOT EXISTS readings(
   temp  REAL,     -- C    (BME688 = representative)
   hum   REAL,     -- %    (BME688)
   press REAL,     -- hPa  (BME688)
-  vpd   REAL,     -- kPa  <- drives transpiration => drying rate => cycle period
+  vpd   REAL,     -- kPa  &lt;- drives transpiration =&gt; drying rate =&gt; cycle period
   lux   REAL,     -- lx   (proxy only, NOT PAR -- see FAQ)
   co2   REAL,     -- ppm  (SCD41)
   n     INTEGER   -- samples in bucket (quality indicator)
@@ -859,8 +859,13 @@ CREATE TABLE IF NOT EXISTS soil(
   ts       TEXT DEFAULT CURRENT_TIMESTAMP,
   node     TEXT,
   plant_id TEXT,   -- p1..p6
-  treat    TEXT,   -- A (well-watered) | B (deficit)
-  pct      REAL,
+  treat    TEXT,   -- 'stable' | 'fluct'  &lt;- witness only; config.json is the source
+  raw      REAL,   -- ★ ADC counts as the sensor reports them.  THE value to keep.
+                   --   pct below is derived on the node with RAW_DRY/RAW_WET that
+                   --   are per-node and re-calibrated over time -- so pct from two
+                   --   nodes, or from two dates, are NOT on the same scale.
+                   --   Analysis must recompute pct from raw with ONE constant.
+  pct      REAL,   -- convenience only.  do not compare across nodes/dates.
   n        INTEGER
 )""")
 
@@ -872,9 +877,12 @@ CREATE TABLE IF NOT EXISTS pump_log(
   plant_id    TEXT,
   treat       TEXT,
   dur_ms      INTEGER,
-  soil_before REAL,
+  soil_before REAL,   -- derived pct -- see the note on soil.raw
   soil_after  REAL,
-  reason      TEXT    -- filled | verify_fail | manual
+  raw_before  INTEGER,-- ★ the node already sends these; keep them
+  raw_after   INTEGER,
+  shots       INTEGER,-- doses used in this cycle (MAX_SHOTS =&gt; verify_fail)
+  reason      TEXT    -- filled | dosed | no rise | verify fail | manual
 )""")
 
 conn.execute("""
@@ -883,18 +891,48 @@ CREATE TABLE IF NOT EXISTS growth(
   ts        TEXT DEFAULT CURRENT_TIMESTAMP,
   plant_id  TEXT,
   treat     TEXT,
-  phase     TEXT,     -- 'dawn' | 'pm'  <- RGR uses dawn ONLY; pm is for droop
+  phase     TEXT,     -- 'dawn' | 'pm'  &lt;- RGR uses dawn ONLY; pm is for droop
   area_cm2  REAL,     -- projected canopy area (NOT leaf area -- see FAQ)
   area_px   INTEGER,
   px_per_cm REAL,     -- scale at capture (traceability + rig-moved alarm)
   img_file  TEXT,     -- raw/&lt;file&gt; -- links this row to the evidence image
   contour   TEXT,     -- JSON [[dx,dy],...] outline in px, centred on centroid
-                      --   -> dashboard draws old/new overlay directly from this
+                      --   -&gt; dashboard draws old/new overlay directly from this
   ok        INTEGER
 )""")
+
+# ── migration ────────────────────────────────────────────────────────────
+# CREATE TABLE IF NOT EXISTS does NOT add columns to a table that already
+# exists -- it just does nothing.  A DB created before these columns existed
+# stays silently short, and every incoming raw value is dropped without error.
+# So state the wanted columns explicitly and ALTER in whatever is missing.
+# ALTER TABLE ADD COLUMN never touches existing rows: old rows get NULL.
+WANT = {
+    "soil":     [("raw",        "REAL")],
+    "pump_log": [("raw_before", "INTEGER"),
+                 ("raw_after",  "INTEGER"),
+                 ("shots",      "INTEGER")],
+}
+for tbl, cols in WANT.items():
+    have = {r[1] for r in conn.execute(f"PRAGMA table_info({tbl})")}
+    for name, typ in cols:
+        if name not in have:
+            conn.execute(f"ALTER TABLE {tbl} ADD COLUMN {name} {typ}")
+            print(f"[migrate] {tbl}.{name} {typ} added")
 conn.commit()
 
+
 def ins(table, d, cols):
+    # Keys the node sends that we have nowhere to put.  Historically these
+    # vanished in silence -- raw was published for days and never stored.
+    # Say it once per key, then stay quiet.
+    extra = set(d) - set(cols) - {"t"}
+    for k in sorted(extra):
+        if (table, k) not in _warned:
+            _warned.add((table, k))
+            print(f"[DROP] {table}: '{k}' has no column -- value discarded. "
+                  f"add it to the CREATE TABLE and to WANT above.")
+
     vals = [d.get(c) for c in cols]
     t = d.get("t")
     ph = ",".join(["?"] * len(cols))
@@ -905,12 +943,25 @@ def ins(table, d, cols):
         conn.execute(f"INSERT INTO {table}({','.join(cols)}) VALUES({ph})", vals)
     conn.commit()
 
+
+_warned = set()
+
 def on_connect(c, u, f, rc, props):
     print(f"broker connect: {rc}")
     for t in ("plant/+/env", "plant/+/soil", "plant/+/pump", "plant/+/growth"):
         c.subscribe(t)
 
 def on_message(c, u, msg):
+    # paho swallows exceptions raised inside this callback: the collector keeps
+    # running and looks healthy while nothing is written.  Catch and print.
+    try:
+        _handle(msg)
+    except Exception as e:
+        print(f"[ERROR] {msg.topic}: {type(e).__name__}: {e}")
+        print(f"        payload: {msg.payload[:300]!r}")
+
+
+def _handle(msg):
     try:
         d = json.loads(msg.payload.decode())
     except Exception as e:
@@ -922,17 +973,21 @@ def on_message(c, u, msg):
         print(f"env  : {d}")
 
     elif msg.topic.endswith("/soil"):
-        ins("soil", d, ["node", "plant_id", "treat", "pct", "n"])
+        ins("soil", d, ["node", "plant_id", "treat", "raw", "pct", "n"])
         print(f"soil : {d}")
 
     elif msg.topic.endswith("/pump"):
         ins("pump_log", d, ["node", "plant_id", "treat", "dur_ms",
-                            "soil_before", "soil_after", "reason"])
-        flag = "  <<< CHECK TUBE/RESERVOIR" if d.get("reason") == "verify_fail" else ""
+                            "soil_before", "soil_after",
+                            "raw_before", "raw_after", "shots", "reason"])
+        # the node sends 'verify fail' (space); older docs said 'verify_fail'
+        flag = ("  &lt;&lt;&lt; CHECK TUBE/RESERVOIR"
+                if str(d.get("reason", "")).replace("_", " ") in ("verify fail", "no rise")
+                else "")
         print(f"pump : {d}{flag}")
 
     elif msg.topic.endswith("/growth"):
-        # one photo -> many plants: expand list into one row per plant
+        # one photo -&gt; many plants: expand list into one row per plant
         for p in d.get("plants", []):
             p["t"] = d.get("t")
             ins("growth", p,
@@ -1390,7 +1445,7 @@ void syncTime() {
     RTCTime now((time_t)epoch);
     RTC.setTime(now);
     timeOK = true;  Serial.println(" OK");
-  } else { timeOK = false; Serial.println(" FAIL -> 정각정렬 없이 동작"); }
+  } else { timeOK = false; Serial.println(" FAIL -&gt; 정각정렬 없이 동작"); }
 }
 
 long nowEpoch() {
@@ -1437,15 +1492,15 @@ void recoverI2C() {
   Wire.begin();                                 // R4 : 핀 지정 없음
   initSensors();
   failStreak = 0;
-  if (!bmeOK &amp;&amp; !scdOK &amp;&amp; !luxOK) { Serial.println("[RECOVER] 실패 -> 리셋"); NVIC_SystemReset(); }
+  if (!bmeOK &amp;&amp; !scdOK &amp;&amp; !luxOK) { Serial.println("[RECOVER] 실패 -&gt; 리셋"); NVIC_SystemReset(); }
 }
 
 void takeSample() {
   bool any = false;
 
-  // ── BME688 : 대표 온습도 + 기압 -> VPD ──
+  // ── BME688 : 대표 온습도 + 기압 -&gt; VPD ──
   if (bmeOK &amp;&amp; bme.performReading()) {
-    float t = bme.temperature, hm = bme.humidity, pr = bme.pressure / 100.0f;  // Pa -> hPa
+    float t = bme.temperature, hm = bme.humidity, pr = bme.pressure / 100.0f;  // Pa -&gt; hPa
     if (plausibleTH(t, hm)) { sT += t; sH += hm; sP += pr; sV += vpdOf(t, hm); nB++; any = true; }
   }
 
@@ -1904,13 +1959,33 @@ FROM pump_log WHERE reason='filled' ORDER BY ts;</pre>
 */
 #include &lt;M5Unified.h&gt;
 
+// ══════════════ 네트워크 (0 이면 완전 오프라인) ══════════════
+// ★ 급수 판단은 이 보드 안에서 끝납니다. WiFi 가 죽어도 물은 계속 줍니다.
+//   MQTT 는 &lt;보고&gt; 통로일 뿐이라, 끊기면 잃는 것은 로그뿐입니다.
+#define USE_MQTT   1
+
+#if USE_MQTT
+  #include &lt;WiFi.h&gt;
+  #include &lt;PubSubClient.h&gt;
+  #include &lt;string.h&gt;
+  const char* WIFI_SSID = "your-hotspot";
+  const char* WIFI_PASS = "your-password";
+  const char* BROKER    = "192.168.1.33";
+  const int   BROKER_PORT = 1883;
+  const char* NODE_ID   = "w2";             // 급수 노드 이름 (노드마다 다르게)
+
+  const unsigned long SOIL_PUB_MS  = 300000UL;   // 5분마다 토양수분 보고
+  const unsigned long RETRY_MS     = 10000UL;    // 재접속 시도 간격
+  const int  QUEUE_MAX = 12;                     // 끊겼을 때 담아두는 이벤트 수
+#endif
+
 // ══════════════ 노드 설정 — 여기만 고칩니다 ══════════════
-#define TREAT_FLUCT   0                 // 0 = 꾸준군(stable) · 1 = 널뜀군(fluct)
-const char* PLANT_ID = "p1";            // 화분 이름 (p1, p2, ...)
+#define TREAT_FLUCT   1                 // 0 = 꾸준군(stable) · 1 = 널뜀군(fluct)
+const char* PLANT_ID = "p2";            // 화분 이름 (p1, p2, ...)
 
 // 센서 보정 — 2026-07 실측 (공기 2133 / 포장용수량 1750)
 //   ★ raw 는 젖으면 내려갑니다.  마른 흙으로 DRY 를 다시 잡으면 이 두 줄만 고치세요.
-const int RAW_DRY = 2133;
+const int RAW_DRY = 2120;
 const int RAW_WET = 1750;
 
 // ══════════════ 처리군별 상수 ══════════════
@@ -1927,19 +2002,45 @@ const int RAW_WET = 1750;
   const char* TREAT   = "fluct";
   const int   RAW_ON  = 2020;           // 이보다 크면(=마르면) 급수 시작
   const int   RAW_OFF = 1820;           // 이보다 작으면(=젖으면) 정지
-  const int   DOSE_MS = 2000;           // 폭이 커서 편류가 쉬움 -&gt; 잘게 여러 번
+  const int   DOSE_SEED = 600;          // 첫 도즈 6mL — 이후에는 학습값으로 조절
 #else
   const char* TREAT   = "stable";
   const int   RAW_ON  = 1940;
   const int   RAW_OFF = 1900;
-  const int   DOSE_MS = 1200;           // 밴드가 좁아 한 번에 넘기기 쉬움
+  const int   DOSE_SEED = 300;          // 첫 도즈 3mL — 이후에는 학습값으로 조절
 #endif
 const int BAND_CENTER = (RAW_ON + RAW_OFF) / 2;   // 두 노드가 같은지 부팅 로그로 확인
 
 // ══════════════ 안전·타이밍 ══════════════
-const unsigned long SETTLE_MS    = 180000UL;   // 3분  — 물이 센서까지 퍼지는 시간
+// ── 적응 급수 ──────────────────────────────────────────
+// 한 번 물을 주면 raw 가 몇 counts 내려가는지를 &lt;스스로 배웁니다&gt;.
+// 그 값으로 다음 도즈 길이를 정하므로, 펌프 유량이나 흙 상태가 달라져도 따라갑니다.
+//   · 목표까지 남은 양의 APPROACH 만큼만 채웁니다 -&gt; 넘치지 않게 접근
+//   · 배운 값이 없으면 DOSE_SEED 로 시작합니다
+const float APPROACH   = 1.00f;     // 남은 양만큼 채우기 (배운 값이 맞으면 한 번에 도달)
+const float LEARN_RATE = 0.35f;     // 학습 반영률 (EMA)
+const int   DOSE_MIN   = 300;       // 너무 짧으면 펌프가 물을 못 밀어냅니다
+const int   DOSE_MAX   = 2000;      // 20mL — 700mL 화분에 한 번에 줄 수 있는 상한
+
+// 실측 유량 (PRIME 10초에 100mL) — 화면에 mL 로 보여 주기 위한 값입니다.
+// 제어에는 쓰지 않습니다. 펌프나 튜브를 바꾸면 다시 재서 고치세요.
+const float ML_PER_SEC = 10.0f;
+
+// ── 침투 시간 측정 모드 ────────────────────────────────
+// 1 로 두고 한 사이클만 돌리면, 도즈 뒤 raw 가 &lt;언제 평탄해지는지&gt; 알 수 있습니다.
+// 그 시각이 SETTLE_MS 의 근거입니다. 튜브·센서 배치를 바꿀 때마다 다시 재세요.
+//   측정이 끝나면 반드시 0 으로 되돌리세요.
+#define SOAK_TEST  0
+
+#if SOAK_TEST
+  const unsigned long SETTLE_MS  = 1800000UL;  // 30분 — 끝까지 지켜봅니다
+  const unsigned long SOAK_LOG_MS = 10000UL;   // 10초마다 raw 출력
+#else
+  const unsigned long SETTLE_MS  = 180000UL;   // 3분 — 물이 센서까지 퍼지는 시간
+#endif
 const int            MAX_SHOTS   = 6;          // 한 사이클 도즈 상한 -&gt; 넘으면 이상
 const int            MIN_DROP    = 3;          // 1도즈당 최소 raw 하강(카운트)
+const int            NO_RISE_MAX = 2;          // 연속 몇 번 안 오르면 고장으로 볼 것인가
 const unsigned long PUMP_HARD_MS = 5000UL;     // 어떤 경우에도 연속 ON 금지 한계
 const unsigned long COOLDOWN_MS  = 600000UL;   // 이상 판정 후 재시도 금지(10분)
 const int            PIN_PUMP    = 9;
@@ -1949,10 +2050,13 @@ const int            PIN_SOIL    = 8;
 enum State { S_SAFE, S_IDLE, S_DOSING, S_SETTLE, S_FAULT };
 State st = S_SAFE;                      // 부팅 직후엔 절대 급수하지 않습니다
 
-int  rawSoil = 0, rawBefore = 0, rawCycleStart = 0;
-int  shots = 0;
+int   rawSoil = 0, rawBefore = 0, rawCycleStart = 0;
+int   shots = 0;
+int   doseMs = 0;                   // 이번에 실제로 튼 시간
+int   noRise = 0;                   // 연속으로 "안 올랐다" 가 나온 횟수
+float kPerMs = 0.0f;                // 학습값: 1ms 당 내려가는 counts
 bool pumpOn = false;
-unsigned long tPump = 0, tSettle = 0, tFault = 0, tDraw = 0;
+unsigned long tPump = 0, tSettle = 0, tSoakLog = 0, tFault = 0, tDraw = 0;
 const char* faultMsg = "";
 bool primeLatch = false;
 
@@ -1980,12 +2084,110 @@ int readSoil(){
 }
 
 // ══════════════ 펌프 ══════════════
+int planDose(int raw){
+  int need = raw - RAW_OFF;                       // 목표까지 남은 counts
+  if (need &lt;= 0) return 0;
+  if (kPerMs &lt;= 0.0f) return DOSE_SEED;           // 아직 배운 게 없으면 씨앗값
+
+  long ms = (long)(need * APPROACH / kPerMs);
+  // ★ 남은 양이 &lt;최소 도즈보다 작으면&gt; 주지 않고 멈춥니다.
+  //   조금 마른 채로 두는 것이, 넘겨서 젖히는 것보다 낫습니다 —
+  //   초과는 평균을 올려 두 처리군의 &lt;평균 일치&gt;를 깨뜨립니다.
+  if (ms &lt; DOSE_MIN) return 0;
+  if (ms &gt; DOSE_MAX) ms = DOSE_MAX;
+  return (int)ms;
+}
+
+void learn(int drop, int ms){
+  if (drop &lt;= 0 || ms &lt;= 0) return;               // 안 내려갔으면 배우지 않습니다
+  float k = (float)drop / (float)ms;
+  kPerMs = (kPerMs &lt;= 0.0f) ? k : (1 - LEARN_RATE) * kPerMs + LEARN_RATE * k;
+}
+
 void setPump(bool on){
   if (on == pumpOn) return;
   pumpOn = on;
   digitalWrite(PIN_PUMP, on ? HIGH : LOW);
   if (on) tPump = millis();
 }
+
+#if USE_MQTT
+WiFiClient   wifiCli;
+PubSubClient mqtt(wifiCli);
+unsigned long tSoilPub = 0, tRetry = 0;
+
+struct Ev { char reason[14]; int before, after, dur, shots; };
+Ev  evq[QUEUE_MAX];
+int evHead = 0, evCount = 0;
+
+void enqueue(const char* reason, int before, int after, int dur){
+  int i = (evHead + evCount) % QUEUE_MAX;
+  if (evCount == QUEUE_MAX){ evHead = (evHead + 1) % QUEUE_MAX; evCount--; }  // 오래된 것부터 버림
+  strncpy(evq[i].reason, reason, sizeof(evq[i].reason) - 1);
+  evq[i].reason[sizeof(evq[i].reason) - 1] = 0;
+  evq[i].before = before; evq[i].after = after; evq[i].dur = dur; evq[i].shots = shots;
+  evCount++;
+}
+
+bool netReady(){
+  if (WiFi.status() != WL_CONNECTED) return false;
+  if (mqtt.connected()) return true;
+  unsigned long now = millis();
+  if (now - tRetry &lt; RETRY_MS) return false;      // ★ 절대 기다리지 않습니다
+  tRetry = now;
+  char cid[32]; snprintf(cid, sizeof(cid), "water-%s", NODE_ID);
+  return mqtt.connect(cid);
+}
+
+void pubSoil(){
+  char t[48], m[160];
+  snprintf(t, sizeof(t), "plant/%s/soil", NODE_ID);
+  snprintf(m, sizeof(m),
+           "{\"node\":\"%s\",\"plant_id\":\"%s\",\"treat\":\"%s\","
+           "\"pct\":%.1f,\"raw\":%d,\"n\":1}",
+           NODE_ID, PLANT_ID, TREAT, pctOf(rawSoil), rawSoil);
+  mqtt.publish(t, m);
+}
+
+void flushEvents(){
+  while (evCount &gt; 0){
+    Ev&amp; e = evq[evHead];
+    char t[48], m[240];
+    snprintf(t, sizeof(t), "plant/%s/pump", NODE_ID);
+    snprintf(m, sizeof(m),
+             "{\"node\":\"%s\",\"plant_id\":\"%s\",\"treat\":\"%s\",\"dur_ms\":%d,"
+             "\"soil_before\":%.1f,\"soil_after\":%.1f,"
+             "\"raw_before\":%d,\"raw_after\":%d,\"shots\":%d,\"reason\":\"%s\"}",
+             NODE_ID, PLANT_ID, TREAT, e.dur, pctOf(e.before), pctOf(e.after),
+             e.before, e.after, e.shots, e.reason);
+    if (!mqtt.publish(t, m)) return;              // 실패하면 다음 기회에 다시
+    evHead = (evHead + 1) % QUEUE_MAX; evCount--;
+  }
+}
+
+void netLoop(){
+  // 연결 상태가 &lt;바뀔 때만&gt; 한 줄 찍습니다. 붙었는지 안 붙었는지 알 수 있어야 합니다.
+  static bool wasWifi = false, wasMqtt = false;
+  bool nowWifi = (WiFi.status() == WL_CONNECTED);
+  if (nowWifi != wasWifi){
+    wasWifi = nowWifi;
+    if (nowWifi) Serial.printf("[WIFI] 연결됨  %s\n", WiFi.localIP().toString().c_str());
+    else         Serial.println("[WIFI] 끊김 — 급수는 계속됩니다");
+  }
+  bool nowMqtt = mqtt.connected();
+  if (nowMqtt != wasMqtt){
+    wasMqtt = nowMqtt;
+    Serial.printf("[MQTT] %s  %s:%d\n", nowMqtt ? "연결됨" : "끊김", BROKER, BROKER_PORT);
+  }
+
+  if (!netReady()) return;
+  mqtt.loop();
+  flushEvents();                                  // 밀린 이벤트부터
+  unsigned long now = millis();
+  if (now - tSoilPub &gt;= SOIL_PUB_MS){ tSoilPub = now; pubSoil(); }
+}
+#endif
+
 
 void logEvent(const char* reason, int before, int after, int dur){
   // 필드 이름을 MQTT payload 와 같게 맞춰 둡니다 — 나중에 그대로 발행하면 됩니다.
@@ -1994,6 +2196,9 @@ void logEvent(const char* reason, int before, int after, int dur){
                 "\"raw_before\":%d,\"raw_after\":%d,\"shots\":%d,\"reason\":\"%s\"}\n",
                 PLANT_ID, TREAT, dur, pctOf(before), pctOf(after),
                 before, after, shots, reason);
+#if USE_MQTT
+  enqueue(reason, before, after, dur);      // ★ 먼저 담고, 발행은 되는 대로
+#endif
 }
 
 void toFault(const char* msg){
@@ -2043,7 +2248,8 @@ void drawUI(){
     if (left &lt; 0) left = 0;
     M5.Display.printf("cooldown %3lds     ", left);
   } else {
-    M5.Display.printf("shot %d/%d          ", shots, MAX_SHOTS);
+    M5.Display.printf("shot %d/%d  %dms=%.1fmL  k%.2f",
+                      shots, MAX_SHOTS, doseMs, doseMs / 1000.0f * ML_PER_SEC, kPerMs);
   }
 
   M5.Display.fillRoundRect(AX, AY, AW, AH, 8, st == S_SAFE ? NAVY : DARKGREEN);
@@ -2056,6 +2262,15 @@ void drawUI(){
 
 // ══════════════ setup ══════════════
 void setup(){
+#if USE_MQTT
+  WiFi.mode(WIFI_STA);
+  Serial.printf("[WIFI] ssid=[%s] pass_len=%d  broker=%s:%d\n",
+                WIFI_SSID, (int)strlen(WIFI_PASS), BROKER, BROKER_PORT);
+  WiFi.begin(WIFI_SSID, WIFI_PASS);         // ★ 연결될 때까지 기다리지 않습니다.
+  WiFi.setAutoReconnect(true);              //   물 주는 일이 네트워크를 기다리면 안 됩니다.
+  mqtt.setServer(BROKER, BROKER_PORT);
+  mqtt.setKeepAlive(60);
+#endif
   auto cfg = M5.config(); M5.begin(cfg);
   Serial.begin(115200);
   pinMode(PIN_PUMP, OUTPUT); digitalWrite(PIN_PUMP, LOW);   // 반드시 LOW 부터
@@ -2069,8 +2284,9 @@ void setup(){
                 PLANT_ID, TREAT, RAW_ON, RAW_OFF, RAW_ON - RAW_OFF,
                 BAND_CENTER, pctOf(BAND_CENTER));
   Serial.printf("[BOOT] 지금 흙: raw %d = %.1f%%\n", rawSoil, pctOf(rawSoil));
-  Serial.printf("[BOOT] dose %d ms · settle %lu s · max %d shots\n",
-                DOSE_MS, SETTLE_MS / 1000, MAX_SHOTS);
+  Serial.printf("[BOOT] 첫 도즈 %d ms (%.1f mL) · 대기 %lu s · 최대 %d회 · 도즈 %d~%d ms\n",
+                DOSE_SEED, DOSE_SEED / 1000.0f * ML_PER_SEC,
+                SETTLE_MS / 1000, MAX_SHOTS, DOSE_MIN, DOSE_MAX);
   if (RAW_ON - RAW_OFF &lt; 20)
     Serial.println("[WARN] 밴드가 raw 20카운트 미만입니다 — 노이즈와 구분이 어렵습니다");
   Serial.println("[BOOT] SAFE 상태. 초기 젖음을 끝낸 뒤 ARM 을 누르세요.");
@@ -2079,6 +2295,9 @@ void setup(){
 
 // ══════════════ loop ══════════════
 void loop(){
+#if USE_MQTT
+  netLoop();                                // 연결·발행 — 어떤 경우에도 블로킹하지 않습니다
+#endif
   M5.update();
   unsigned long now = millis();
 
@@ -2086,7 +2305,7 @@ void loop(){
   if (pumpOn &amp;&amp; now - tPump &gt; PUMP_HARD_MS){
     setPump(false); primeLatch = true;
     Serial.println("[SAFETY] hard limit");
-    if (st == S_DOSING){ st = S_SETTLE; tSettle = now; }
+    if (st == S_DOSING){ st = S_SETTLE; tSettle = now; tSoakLog = now; }
   }
 
   // ── 터치 ──
@@ -2112,39 +2331,59 @@ void loop(){
       rawSoil = readSoil();
       if (rawSoil &gt;= RAW_ON){                 // raw 가 크다 = 말랐다
         rawCycleStart = rawSoil; shots = 0;
-        rawBefore = rawSoil; setPump(true); st = S_DOSING;
+        rawBefore = rawSoil; doseMs = planDose(rawSoil);
+        if (doseMs &gt; 0){ setPump(true); st = S_DOSING; }
       }
       break;
 
     case S_DOSING:
-      if (now - tPump &gt;= (unsigned long)DOSE_MS){
+      if (now - tPump &gt;= (unsigned long)doseMs){
         setPump(false); shots++;
-        st = S_SETTLE; tSettle = now;
+        st = S_SETTLE; tSettle = now; tSoakLog = now;
       }
       break;
 
     case S_SETTLE:
+#if SOAK_TEST
+      if (now - tSoakLog &gt;= SOAK_LOG_MS){       // 침투 곡선을 그대로 찍습니다
+        tSoakLog = now;
+        Serial.printf("[SOAK] %5lus  raw %4d  (도즈 후 하강 %d)\n",
+                      (now - tSettle) / 1000, rawSoil, rawBefore - rawSoil);
+      }
+#endif
       if (now - tSettle &gt;= SETTLE_MS){
         rawSoil = readSoil();
         int drop = rawBefore - rawSoil;        // 젖으면 raw 가 내려갑니다
-        logEvent("dosed", rawBefore, rawSoil, DOSE_MS);
+        learn(drop, doseMs);                   // ★ 다음 도즈 길이에 반영
+        logEvent("dosed", rawBefore, rawSoil, doseMs);
+
+        if (drop &gt;= MIN_DROP) noRise = 0;      // 한 번이라도 올랐으면 초기화
 
         if (rawSoil &lt;= RAW_OFF){               // 목표 도달
-          logEvent("filled", rawCycleStart, rawSoil, DOSE_MS * shots);
-          shots = 0; st = S_IDLE;
-        } else if (drop &lt; MIN_DROP){           // 물이 안 들어온다
+          logEvent("filled", rawCycleStart, rawSoil, doseMs);
+          shots = 0; noRise = 0; st = S_IDLE;
+        } else if (drop &lt; MIN_DROP &amp;&amp; ++noRise &gt;= NO_RISE_MAX){
+          // ★ 한 번으로 단정하지 않습니다.
+          //   마른 흙은 첫 도즈가 통째로 빠져나가 센서까지 안 옵니다 —
+          //   진짜 고장(튜브 빠짐·물통 빔)이면 &lt;연속으로&gt; 안 오릅니다.
           toFault("no rise");                  // 물통·튜브 확인
         } else if (shots &gt;= MAX_SHOTS){        // 너무 여러 번
           toFault("verify fail");
         } else {
-          rawBefore = rawSoil; setPump(true); st = S_DOSING;
+          rawBefore = rawSoil; doseMs = planDose(rawSoil);
+          if (doseMs &gt; 0){ setPump(true); st = S_DOSING; }
+          else {                                 // 한 방울이면 넘칩니다 — 여기서 끝
+            logEvent("filled", rawCycleStart, rawSoil, 0);
+            shots = 0; st = S_IDLE;
+          }
         }
       }
       break;
 
     case S_FAULT:
       if (now - tFault &gt;= COOLDOWN_MS){        // 쿨다운 뒤 한 번 더 기회
-        shots = 0; st = S_IDLE; Serial.println("[FAULT] cooldown 종료 — 재시도");
+        shots = 0; noRise = 0; st = S_IDLE;
+        Serial.println("[FAULT] cooldown 종료 — 재시도");
       }
       break;
 
@@ -2175,7 +2414,7 @@ void loop(){
  *  식물 생장 모니터링 — 급수 노드 (M5Stack Core S3 + Unit Watering U101)
  *
  *  이 노드는 화분 하나를 담당하고, 그 안에서 제어가 완결됩니다.
- *  -> WiFi/브로커가 죽어도 급수는 계속됩니다. 잃는 건 로그뿐.
+ *  -&gt; WiFi/브로커가 죽어도 급수는 계속됩니다. 잃는 건 로그뿐.
  *
  *  Port B (Core S3, G8/G9) : G8=흰색 Analog(토양수분) / G9=노랑 PUMP_EN  [실측 확정]
  *  발행   : plant/&lt;nodeId&gt;/soil  (5분 평균)
@@ -2211,7 +2450,7 @@ const int SOIL_WET = 1750;                  // ★ 실측으로 교체 (충분 �
 //   꾸준군 : 널뜀군의 '실측 평균'을 중심으로 폭 최소 (예: 33 / 36)
 int RAW_ON  = 2020;                         // ★ raw 로 직접. 이보다 크면(=마르면) 시작
 int RAW_OFF = 1820;                         // ★ 이보다 작으면(=젖으면) 정지
-//   두 처리군의 <중심>이 같아야 합니다 — 폭만 다르게: (RAW_ON+RAW_OFF)/2 를 맞추세요
+//   두 처리군의 &lt;중심&gt;이 같아야 합니다 — 폭만 다르게: (RAW_ON+RAW_OFF)/2 를 맞추세요
 const int MAX_DOSE_PER_FILL = 8;            // 한 번 채우는 데 최대 급수 횟수 (안전)
 
 const unsigned long DOSE_MS = 3000;         // ★ 보정②의 결과로 교체
@@ -2254,12 +2493,12 @@ void connectWiFi() {
   if (WiFi.status() == WL_CONNECTED) return;
   WiFi.begin(WIFI_SSID, WIFI_PASS);
   unsigned long t0 = millis();
-  while (WiFi.status() != WL_CONNECTED && millis() - t0 &lt; 15000) delay(500);
+  while (WiFi.status() != WL_CONNECTED &amp;&amp; millis() - t0 &lt; 15000) delay(500);
 }
 
 void connectBroker() {
   int tries = 0;
-  while (!client.connected() && tries++ &lt; 3) {     // 3회만 — 급수를 막지 않도록
+  while (!client.connected() &amp;&amp; tries++ &lt; 3) {     // 3회만 — 급수를 막지 않도록
     connectWiFi();
     String cid = nodeId + "-" + String(random(0xffff), HEX);
     if (client.connect(cid.c_str())) { Serial.println("MQTT OK"); return; }
@@ -2272,20 +2511,20 @@ void syncTime() {
   configTime(0, 0, "pool.ntp.org", "time.google.com");
   struct tm ti;
   unsigned long t0 = millis();
-  while (!getLocalTime(&ti, 500) && millis() - t0 &lt; 10000) delay(100);
-  timeOK = getLocalTime(&ti, 500);
+  while (!getLocalTime(&amp;ti, 500) &amp;&amp; millis() - t0 &lt; 10000) delay(100);
+  timeOK = getLocalTime(&amp;ti, 500);
   Serial.println(timeOK ? "NTP OK" : "NTP FAIL");
 }
 
-long nowEpoch() { time_t t; time(&t); return (long)t; }
+long nowEpoch() { time_t t; time(&amp;t); return (long)t; }
 
 String epochToStr(long e) {
-  time_t t = (time_t)e; struct tm ti; gmtime_r(&t, &ti);
-  char b[32]; strftime(b, sizeof(b), "%Y-%m-%d %H:%M:%S", &ti);
+  time_t t = (time_t)e; struct tm ti; gmtime_r(&amp;t, &amp;ti);
+  char b[32]; strftime(b, sizeof(b), "%Y-%m-%d %H:%M:%S", &amp;ti);
   return String(b);
 }
 
-// 정전용량식: 젖을수록 ADC가 낮아짐 -> 반전 매핑
+// 정전용량식: 젖을수록 ADC가 낮아짐 -&gt; 반전 매핑
 float soilPct(int raw) {
   float p = (float)(SOIL_DRY - raw) * 100.0f / (float)(SOIL_DRY - SOIL_WET);
   if (p &lt; 0) p = 0;
@@ -2410,7 +2649,7 @@ void setup() {
 
 void loop() {
   M5.update();
-  // 브로커가 없어도 급수는 계속되어야 함 -> 재연결이 루프를 막지 않게
+  // 브로커가 없어도 급수는 계속되어야 함 -&gt; 재연결이 루프를 막지 않게
   if (!client.connected()) {
     static unsigned long lastTry = 0;
     if (millis() - lastTry &gt; 30000) { lastTry = millis(); connectBroker(); }
@@ -3198,7 +3437,7 @@ rm -rf ~/.vnc ~/.config/tigervnc</pre>
 <pre>"""
 setup_camera.py — 카메라 세팅을 이 파일 하나로 끝낸다.
 
-  uv run python setup_camera.py            -&gt;  http://rasp:8000  (폰으로 봐도 됩니다)
+  uv run python setup_camera.py            -&gt;  http://rsp:8000  (폰으로 봐도 됩니다)
 
   ① 노출·초점 자동 측정 후 고정   ② 두 점 클릭으로 배율
   ③ 잎을 찾아 ROI 배치           ④ 처리군 무작위 배정
@@ -3227,7 +3466,7 @@ PREV     = (1280, 720)          # 미리보기 해상도 (화면용)
 
 lock   = threading.Lock()       # 카메라는 한 번에 하나만 건드립니다
 latest = None                   # 최신 JPEG 프레임
-state  = {"msg": "준비됨", "pts": [], "ppc_fixed": None, "cm": 0}
+state  = {"msg": "준비됨", "pts": [], "ppc_fixed": None, "cm": 0, "order": None}
 
 
 def load_cfg():
@@ -3295,9 +3534,12 @@ def draw(img):
     return img
 
 
+stop_flag = threading.Event()      # Ctrl+C 때 grab 스레드를 세우는 신호
+
+
 def grab():
     global latest
-    while True:
+    while not stop_flag.is_set():          # Ctrl+C 가 오면 조용히 빠져나갑니다
         with lock:
             frame = cam.capture_array()
         frame = draw(frame)
@@ -3358,8 +3600,26 @@ def act_shoot():
 
 
 def _pack(boxes):
-    """좌-&gt;우, 위-&gt;아래로 정렬해 p1..pN 이름을 붙이고 CFG 에 넣습니다."""
-    boxes.sort(key=lambda b: (b[1] // max(1, CAP_H // 8), b[0]))
+    """좌-&gt;우, 위-&gt;아래로 정렬해 p1..pN 이름을 붙이고 CFG 에 넣습니다.
+
+    ★ 줄을 &lt;고정 밴드&gt;로 나누면 안 됩니다.
+      한 줄로 놓은 화분도 세로로 조금 어긋나면 서로 다른 밴드에 떨어져
+      좌우 순서가 뒤집힙니다. 그러면 p1 이 &lt;다른 화분&gt;을 가리키게 되고,
+      과거 데이터의 p1 과 지금의 p1 이 달라집니다 — 조용히 실험을 망칩니다.
+      그래서 &lt;상자 높이&gt;를 기준으로 같은 줄인지 판단합니다.
+    """
+    if not boxes:
+        CFG["rois"] = []
+        return
+    hh  = sorted(b[3] for b in boxes)[len(boxes) // 2]     # 상자 높이의 중앙값
+    tol = hh * 0.5                                          # 이만큼 안 벌어지면 같은 줄
+    rows, cur = [], []
+    for b in sorted(boxes, key=lambda b: b[1] + b[3] / 2):  # 중심 y 로 정렬
+        if cur and (b[1] + b[3] / 2) - (cur[-1][1] + cur[-1][3] / 2) &gt; tol:
+            rows.append(cur); cur = []
+        cur.append(b)
+    rows.append(cur)
+    boxes = [b for r in rows for b in sorted(r, key=lambda b: b[0])]  # 줄 안에서는 좌-&gt;우
     CFG["rois"] = [{"plant_id": f"p{i}", "treat": "",
                     "x": int(x), "y": int(y), "w": int(w), "h": int(h)}
                    for i, (x, y, w, h) in enumerate(boxes, 1)]
@@ -3473,7 +3733,58 @@ def act_auto():
             f"  —  [저장] 을 눌러야 config.json 에 기록됩니다{warn}")
 
 
+def act_rename():
+    """이름 다시 매기기 — 원하는 순서대로 화면의 박스를 클릭하게 합니다.
+    자동 정렬이 어떻게 하든, &lt;사람이 정한 순서&gt;가 이깁니다."""
+    n = len(CFG.get("rois", []))
+    if n == 0:
+        return "ROI 가 없습니다 — 먼저 배치하세요"
+    state["order"] = []
+    return f"이름을 붙일 순서대로 화면의 박스를 클릭하세요 (0/{n})"
+
+
+def act_pickroi(x, y):
+    """이름 매기기 중의 클릭 — 어느 박스를 골랐는지 찾아 순서에 담습니다."""
+    if state["order"] is None:
+        return "먼저 [이름 다시 매기기] 를 누르세요"
+    X, Y = x / SCALE, y / SCALE                       # 미리보기 -&gt; 촬영 좌표
+    hit = [i for i, r in enumerate(CFG["rois"])
+           if r["x"] &lt;= X &lt;= r["x"] + r["w"] and r["y"] &lt;= Y &lt;= r["y"] + r["h"]]
+    if not hit:
+        return "박스 안을 클릭하세요"
+    i = hit[0]
+    if i in state["order"]:
+        return "이미 고른 박스입니다"
+    state["order"].append(i)
+
+    n = len(CFG["rois"])
+    if len(state["order"]) &lt; n:
+        return f"{len(state['order'])}/{n} — 다음 박스를 클릭하세요"
+
+    # 다 골랐습니다. 고른 순서대로 이름을 새로 붙입니다 (처리군은 박스를 따라갑니다)
+    CFG["rois"] = [dict(CFG["rois"][i], plant_id=f"p{k}")
+                   for k, i in enumerate(state["order"], 1)]
+    state["order"] = None
+    return "이름 지정 완료 — " + " · ".join(
+        f"{r['plant_id']}(x={r['x']})" for r in CFG["rois"])
+
+
+def act_settreat(pid, treat):
+    """사람이 직접 지정. 이미 펌프를 꽂아둔 상황을 위한 길입니다.
+    ★ 무작위가 아니므로 &lt;어떻게 정했는지&gt;를 config 에 남깁니다 —
+      보고서에 '무작위 배정' 이라고 쓸 수 있는지가 여기서 갈립니다."""
+    if treat not in ("stable", "fluct"):
+        return f"알 수 없는 처리군: {treat}"
+    hit = [r for r in CFG.get("rois", []) if r["plant_id"] == pid]
+    if not hit:
+        return f"{pid} 를 찾을 수 없습니다"
+    hit[0]["treat"] = treat
+    CFG["treat_mode"] = "manual"
+    return f"{pid} → {treat} (직접 지정)"
+
+
 def act_shuffle():
+    CFG["treat_mode"] = "random"
     """제비뽑기. 위치와 무관하게 stable/fluct 를 섞습니다."""
     rois = CFG.get("rois", [])
     n = len(rois)
@@ -3509,6 +3820,10 @@ def step_done():
 def status():
     d = step_done()
     return {"msg": state["msg"], "done": d, "all": all(d.values()),
+            "mode": CFG.get("treat_mode", ""),
+            "naming": state["order"] is not None,
+            "pots": [{"id": r["plant_id"], "treat": r.get("treat", "")}
+                     for r in CFG.get("rois", [])],
             "ppc": round(state["ppc_fixed"] or 0, 1),
             "nroi": len(CFG.get("rois", [])),
             "cm": float(state.get("cm") or 0)}
@@ -3525,6 +3840,9 @@ ACTIONS = {
     "auto":    lambda p: act_auto(),
     "point":   lambda p: act_point(float(p["x"]), float(p["y"]), float(p.get("cm", 10))),
     "shuffle": lambda p: act_shuffle(),
+    "settreat":lambda p: act_settreat(p["pid"], p["treat"]),
+    "rename":  lambda p: act_rename(),
+    "pickroi": lambda p: act_pickroi(float(p["x"]), float(p["y"])),
     "save":    lambda p: act_save(),
 }
 
@@ -3561,6 +3879,10 @@ PAGE = """&lt;!doctype html&gt;&lt;meta charset="utf-8"&gt;
  input{width:56px;padding:5px 6px;border-radius:5px;border:1px solid var(--line);
         background:#0d1116;color:var(--ink);font:var(--fs) inherit;text-align:center}
  .echo{font-size:var(--fs);color:var(--dim);margin-top:4px}
+ .pot{display:flex;align-items:center;gap:5px;margin:5px 0;font-size:var(--fs)}
+ .pot b{flex:0 0 30px}
+ .pot button{flex:1;margin:0;padding:5px 0;font-size:12px;background:#39424e}
+ .pot button.on{background:var(--c)}
  .echo b{color:var(--ink)}
 
  /* 오른쪽 — 영상 + 설명 */
@@ -3596,11 +3918,15 @@ PAGE = """&lt;!doctype html&gt;&lt;meta charset="utf-8"&gt;
     &lt;button onclick="go('findleaf')"&gt;잎 찾아 배치&lt;/button&gt;
     &lt;div class="row"&gt;열 &lt;input id="c" value="2"&gt; 행 &lt;input id="r" value="1"&gt;&lt;/div&gt;
     &lt;button class="sub" onclick="go('autoroi',{cols:c.value,rows:r.value})"&gt;격자로 나누기&lt;/button&gt;
+    &lt;button class="sub" id="rnBtn" onclick="go('rename')"&gt;이름 다시 매기기&lt;/button&gt;
+    &lt;div class="echo" id="rnEcho"&gt;&lt;/div&gt;
   &lt;/div&gt;
 
   &lt;div class="step" id="k-treat" style="--c:var(--s4)"&gt;
     &lt;div class="hd"&gt;&lt;span class="no"&gt;&lt;span&gt;4&lt;/span&gt;&lt;/span&gt;처리군&lt;/div&gt;
     &lt;button onclick="go('shuffle')"&gt;무작위 배정&lt;/button&gt;
+    &lt;div id="pots"&gt;&lt;/div&gt;
+    &lt;div class="echo" id="modeEcho"&gt;&lt;/div&gt;
   &lt;/div&gt;
 
   &lt;div class="step" id="k-shot" style="--c:var(--s5)"&gt;
@@ -3639,6 +3965,23 @@ function echo(){
 function paint(st){
   for (const [k, v] of Object.entries(st.done))
     document.getElementById('k-' + k).classList.toggle('done', v);
+
+  document.getElementById('pots').innerHTML = (st.pots || []).map(p =&gt;
+    `&lt;div class="pot"&gt;&lt;b&gt;${p.id}&lt;/b&gt;` +
+    `&lt;button class="${p.treat === 'stable' ? 'on' : ''}" ` +
+    `onclick="go('settreat',{pid:'${p.id}',treat:'stable'})"&gt;꾸준&lt;/button&gt;` +
+    `&lt;button class="${p.treat === 'fluct' ? 'on' : ''}" ` +
+    `onclick="go('settreat',{pid:'${p.id}',treat:'fluct'})"&gt;널뜀&lt;/button&gt;&lt;/div&gt;`).join('');
+  naming = !!st.naming;
+  document.getElementById('rnBtn').textContent =
+    naming ? '고르는 중 — 새로고침하면 취소' : '이름 다시 매기기';
+  document.getElementById('rnEcho').innerHTML = naming
+    ? '&lt;b style="color:#8E6FBF"&gt;원하는 순서대로 화면의 박스를 클릭하세요&lt;/b&gt;'
+    : '자동 순서가 마음에 안 들면 직접 지정하세요';
+
+  const MODE = {random: '무작위로 배정됨 — 보고서에 &amp;ldquo;무작위 배정&amp;rdquo; 이라 쓸 수 있습니다',
+                manual: '&lt;b style="color:#D2694F"&gt;직접 지정됨 — 무작위가 아닙니다&lt;/b&gt;'};
+  document.getElementById('modeEcho').innerHTML = MODE[st.mode] || '아직 배정하지 않았습니다';
   const m = document.getElementById('msg');
   m.textContent = st.msg + (st.all ? '   ✓ 모든 단계 완료' : '');
   m.className = st.all ? 'good' : (/⚠|실패|주의/.test(st.msg) ? 'warn' : '');
@@ -3650,11 +3993,13 @@ async function go(a, p={}){
   const res = await fetch('/do/' + a + (q ? '?' + q : ''), {method:'POST'});
   paint(await res.json());
 }
+let naming = false;
 document.getElementById('im').addEventListener('click', e =&gt; {
   const r = e.target.getBoundingClientRect();
-  go('point', { x:(e.clientX-r.left)/r.width*1280,
-                y:(e.clientY-r.top)/r.height*720,
-                cm: document.getElementById('cm').value });
+  const x = (e.clientX-r.left)/r.width*1280, y = (e.clientY-r.top)/r.height*720;
+  // 이름 매기는 중에는 &lt;배율 클릭&gt;이 아니라 &lt;박스 고르기&gt;가 됩니다
+  if (naming) go('pickroi', { x, y });
+  else        go('point',   { x, y, cm: document.getElementById('cm').value });
 });
 echo();
 fetch('/status').then(r =&gt; r.json()).then(paint);
@@ -3725,13 +4070,23 @@ class S(socketserver.ThreadingMixIn, server.HTTPServer):
 
 if __name__ == "__main__":
     threading.Thread(target=grab, daemon=True).start()
-    print(f"http://&lt;pi-ip&gt;:{PORT}   또는   http://rasp:{PORT}")
+    print(f"http://&lt;pi-ip&gt;:{PORT}   또는   http://rsp:{PORT}")
     print("끝나면 Ctrl+C — 켜둔 채로 두면 run_capture.py 가 카메라를 못 잡습니다.")
     try:
         S(("", PORT), H).serve_forever()
+    except KeyboardInterrupt:
+        print("\n종료합니다 —", end=" ", flush=True)
     finally:
-        cam.stop()
-        cam.close()</pre>
+        # ★ grab 스레드를 먼저 세운 뒤 카메라를 놓습니다.
+        #   순서가 반대면 스레드가 닫힌 카메라를 건드려 오류가 납니다.
+        stop_flag.set()
+        time.sleep(0.2)
+        try:
+            cam.stop(); cam.close()
+            print("카메라를 놓았습니다. 이제 run_capture.py 가 쓸 수 있습니다.")
+        except Exception as e:
+            print(f"카메라 정리 중 문제: {e}")
+            print("  확인:  pgrep -af setup_camera.py ; sudo fuser -v /dev/media0")</pre>
     <span class="ftag">실행</span>
 <pre>uv run python setup_camera.py
 <span class="c"># http://rasp:8000   (안 되면 http://&lt;IP&gt;:8000 · 밖에서는 Tailscale 주소)</span></pre>
@@ -3865,7 +4220,7 @@ PPC  = float(QC.get("px_per_cm_ref", 0) or 0)
 ROIS = CFG.get("rois", [])
 
 # ── 촬영 조건 ────────────────────────────────────────────────
-print("\n[촬영 조건]  — setup_camera / run_capture 가 공유합니다")
+print("\n[촬영 조건]  — setup_2_camera / run_capture 가 공유합니다")
 line("해상도", f"{W} x {H} px")
 line("lens_position", CAP.get("lens_position"), "디옵터 = 1/거리(m)")
 line("exposure_us", CAP.get("exposure_us"),
@@ -3933,25 +4288,6 @@ if len(counts) == 2 and len(set(counts.values())) &gt; 1:
     WARN.append("두 처리군의 화분 수가 다릅니다 — 비교의 검정력이 떨어집니다")
 if len(ROIS) and len(counts) == 1:
     WARN.append("처리군이 한 종류뿐입니다 — [처리군 무작위 배정] 을 누르세요")
-
-# ── 배율 정합성: 프레임이 배치를 담을 수 있는가 ─────────────
-LAY0 = CFG.get("layout", {})
-if PPC &gt; 0 and LAY0:
-    cols = int(LAY0.get("cols", 1)); rows = int(LAY0.get("rows", 1))
-    pot  = float(LAY0.get("pot_cm", 0) or 0)
-    gap  = float(LAY0.get("gap_cm", 0) or 0)
-    need_w = cols * pot + (cols - 1) * gap
-    frame_w = W / PPC
-    print("\n[정합성]")
-    line("프레임 폭", f"{frame_w:.1f} cm", "= 해상도 / 배율")
-    line("배치가 차지하는 폭", f"{need_w:.1f} cm", f"({cols}열 · 화분 {pot:.0f} · 틈 {gap:.0f})")
-    if need_w &gt; frame_w:
-        BAD.append(f"화분 배치({need_w:.0f}cm)가 프레임({frame_w:.0f}cm)보다 넓습니다 — "
-                   "배율이나 layout 중 하나가 틀렸습니다.\n"
-                   "        두 점 클릭 때 &lt;실제 길이&gt; 입력칸과 실제로 찍은 두 점이 같은 대상인지 확인하세요")
-    elif need_w &gt; 0 and frame_w &gt; need_w * 3:
-        WARN.append(f"프레임({frame_w:.0f}cm)이 배치({need_w:.0f}cm)의 3배가 넘습니다 — "
-                    "배경만 넓게 찍혀 배율이 낭비됩니다")
 
 # ── 화분 크기 대비 ROI 여유 ─────────────────────────────────
 LAY = CFG.get("layout", {})
@@ -4163,12 +4499,20 @@ def measure(img_path, phase, debug_dir=None, mask_dir=None, C=None):
         mask, px, blobs, thr = leaf_mask(crop)
 
         # ── 품질 판정 ──
-        edge = bool(mask[0, :].any() or mask[-1, :].any() or
-                    mask[:, 0].any() or mask[:, -1].any())
+        # 테두리에 &lt;닿았는지&gt;가 아니라 &lt;얼마나 걸쳐 있는지&gt;로 봅니다.
+        # 한 픽셀 스친 것과 30%가 밖으로 나간 것은 다릅니다.
+        border = np.concatenate([mask[0, :], mask[-1, :], mask[:, 0], mask[:, -1]])
+        edge_px   = int((border &gt; 0).sum())
+        edge_frac = edge_px / float(2 * (w + h))          # 테두리 길이 대비
+        tol  = float(C.get("qc", {}).get("edge_tol", 0.02))
+        edge = edge_frac &gt; tol
         too_big = px &gt; 0.9 * w * h
         ok = int(px &gt; 0 and not edge and not too_big and ppc &gt; 0 and not geom_bad)
         if edge:
-            print(f'[WARN] {roi["plant_id"]}: 잎이 ROI 테두리에 닿음 — 박스를 넓히세요')
+            print(f'[WARN] {roi["plant_id"]}: 잎이 ROI 테두리의 {edge_frac*100:.1f}%에 걸쳐 있습니다 '
+                  f'(허용 {tol*100:.0f}%) — 면적이 &lt;실제보다 작습니다&gt;. 박스를 넓히세요')
+        elif edge_px:
+            print(f'[INFO] {roi["plant_id"]}: 테두리 접촉 {edge_frac*100:.1f}% — 허용 범위')
         if too_big:
             print(f'[WARN] {roi["plant_id"]}: 마스크가 ROI 의 90%% 초과 — 배경을 잡았을 가능성')
 
@@ -4190,6 +4534,7 @@ def measure(img_path, phase, debug_dir=None, mask_dir=None, C=None):
                "area_cm2": round(px / ppc ** 2, 2) if ppc &gt; 0 else None,
                "px_per_cm": round(ppc, 3) if ppc &gt; 0 else None,
                "contour": outline(mask), "blobs": blobs, "ok": ok,
+               "edge_frac": round(edge_frac, 4),      # DB 컬럼 아님 — jsonl·콘솔 진단용
                "img_file": os.path.basename(img_path)}
         out.append(row)
 
@@ -4226,7 +4571,7 @@ if __name__ == "__main__":
   보는 법 — 터미널을 하나 더 열어서
       cd ~/plant
       python3 -m http.server 8080
-    브라우저에서  http://rasp:8080/photos/debug/   (확인 뒤 Ctrl+C 로 서버 종료)
+    브라우저에서  http://rsp:8080/photos/debug/   (확인 뒤 Ctrl+C 로 서버 종료)
 """)</pre>
     <div class="box tip">
       <span class="lbl">contour가 대시보드의 캐노피 오버레이를 만듭니다</span>
@@ -4405,13 +4750,9 @@ import numpy as np
 CFG_PATH = "config.json"
 REF_PATH = "calib.jpg"          # 기준 사진 = 설치 때 찍은 그 한 장
 
-# 판정 기준 — &lt;ROI 여유&gt;에 비례해서 잡습니다.
-#   밀림 자체는 해롭지 않습니다. ROI 창이 밀려 &lt;잎이 잘리기 시작할 때&gt;부터 해롭습니다.
-#   그래서 고정 px 이 아니라 ROI 크기의 비율로 둡니다.
-DEF_WARN_FRAC = 0.02            # ROI 한 변의 2%
-DEF_FAIL_FRAC = 0.10            # ROI 한 변의 10%
-DEF_SHIFT_WARN = 20.0           # px — ROI 를 모를 때의 대비값
-DEF_SHIFT_FAIL = 150.0
+# 판정 기준 (config 의 qc 로 덮어쓸 수 있습니다)
+DEF_SHIFT_WARN = 8.0            # px — 이보다 크면 알림
+DEF_SHIFT_FAIL = 40.0           # px — 이보다 크면 보정해도 못 믿음
 DEF_RESP_MIN   = 0.05           # 신뢰도 하한
 
 
@@ -4496,27 +4837,17 @@ def align(cur_path, ref_path=REF_PATH, cfg=None):
         out["msg"] = f"해상도가 다름 {ref.shape[:2]} vs {cur.shape[:2]}"
         return out
 
-    # ROI 를 넉넉히 가리면 배경이 모자랄 수 있습니다(화분이 프레임을 꽉 채운 경우).
-    # 그때는 여유폭을 줄여 가며 배경을 확보합니다 — 포기하기 전에.
-    for grow in (1.25, 1.10, 1.00):
-        mask = _roi_mask(ref.shape, cfg.get("rois"), grow)
-        if mask.mean() &gt;= 0.15:
-            break
-    else:
-        out["msg"] = (f"배경이 {mask.mean()*100:.0f}% 뿐입니다 — 맞출 단서가 부족합니다. "
-                      f"ROI 를 줄이거나 카메라를 조금 높여 여백을 만드세요")
+    mask = _roi_mask(ref.shape, cfg.get("rois"))
+    if mask.mean() &lt; 0.15:
+        out["msg"] = "배경이 15% 미만 — 맞출 단서가 부족합니다"
         return out
-    if grow &lt; 1.25:
-        out["margin"] = grow
 
     a, b = _prep(ref, mask), _prep(cur, mask)
     (dx, dy), resp = cv2.phaseCorrelate(a, b)
     deg, scale, resp2 = _rot_scale(ref, cur)
 
-    rois = cfg.get("rois") or []
-    side = min([min(r["w"], r["h"]) for r in rois], default=0)
-    warn = float(qc.get("drift_warn_px", side * DEF_WARN_FRAC if side else DEF_SHIFT_WARN))
-    fail = float(qc.get("drift_fail_px", side * DEF_FAIL_FRAC if side else DEF_SHIFT_FAIL))
+    warn = float(qc.get("drift_warn_px", DEF_SHIFT_WARN))
+    fail = float(qc.get("drift_fail_px", DEF_SHIFT_FAIL))
     rmin = float(qc.get("drift_resp_min", DEF_RESP_MIN))
     mag  = float(np.hypot(dx, dy))
 
@@ -4534,8 +4865,7 @@ def align(cur_path, ref_path=REF_PATH, cfg=None):
         out.update(ok=True, level="drift",
                    msg=f"{mag:.1f}px 밀림 감지 — ROI 를 그만큼 옮겨 보정합니다")
     else:
-        out.update(ok=True, level="ok",
-                   msg=f"{mag:.1f}px — 정상 범위 (기준 {warn:.0f}px)")
+        out.update(ok=True, level="ok", msg=f"{mag:.1f}px — 정상 범위")
 
     # 회전·배율이 변하면 ROI 를 옮기는 것만으로는 못 고칩니다 -&gt; 재설치 판정
     if resp2 &gt;= rmin and abs(deg) &gt; 1.0:
@@ -4665,7 +4995,7 @@ if errs:
     bias = sum(errs) / len(errs)
     print("-" * 50)
     print(f"mean |err| = {mae:5.2f} %     bias = {bias:+5.2f} %")
-    print("PASS" if mae < 5.0 else "FAIL")</pre>
+    print("PASS" if mae &lt; 5.0 else "FAIL")</pre>
 
     <div class="box warn">
       <span class="lbl">불합격일 때 — 원인 순서</span>
@@ -5001,7 +5331,7 @@ PYEOF</pre>
 <pre>    try:
         ins("growth", p, [...])
     except Exception as e:
-        print(f"INSERT FAILED growth: {e}  <- {p}")</pre>
+        print(f"INSERT FAILED growth: {e}  &lt;- {p}")</pre>
       한 줄이면 <code class="in">journalctl -u planthub</code> 에 이유가 남습니다.
     </div>
 
@@ -5441,7 +5771,17 @@ def q(sql):
     return df
 
 
-BAND = {"stable": (38, 46), "fluct": (22, 62)}      # 처리군별 급수 밴드
+# ★ firmware/water_node.ino 의 RAW_ON / RAW_OFF 와 반드시 같아야 합니다.
+BAND_RAW = {"stable": (1900, 1940), "fluct": (1820, 2020)}   # (젖음, 마름) raw
+CAL = {"_default": (2120, 1750)}          # plant_id -&gt; (RAW_DRY, RAW_WET)
+
+
+def pct_of(raw, pid="_default"):
+    dry, wet = CAL.get(pid, CAL["_default"])
+    return 100.0 * (dry - raw) / float(dry - wet)
+
+
+BAND = {t: (pct_of(hi), pct_of(lo)) for t, (lo, hi) in BAND_RAW.items()}
 
 @st.cache_data(ttl=600)
 def synth(roster=None, days=7, step_min=30):
@@ -5523,6 +5863,22 @@ def roster_of(*dfs):
     fr = [d[["plant_id", "treat"]] for d in dfs if len(d) and "plant_id" in d.columns]
     return pd.concat(fr).dropna().groupby("plant_id").treat.last().to_dict() if fr else {}
 
+
+def treat_sources(soil_df, grow_df):
+    """화분별 처리군을 &lt;출처를 구분해서&gt; 모읍니다.
+       soil.treat  &lt;- 급수 펌웨어가 보낸 값
+       growth.treat&lt;- config.json 의 rois[].treat
+       roster_of() 는 둘을 합쳐 .last() 로 하나만 남깁니다. 다르면 경고 없이
+       뒤쪽(config.json)이 이깁니다 -&gt; 첫 촬영 날 그룹이 조용히 뒤집힙니다."""
+    out = {}
+    for src, d in (("펌웨어(soil)", soil_df), ("config.json(growth)", grow_df)):
+        if len(d) and "plant_id" in d.columns:
+            last = d[["plant_id", "treat"]].dropna().groupby("plant_id").treat.last()
+            for pid, tr in last.items():
+                out.setdefault(pid, {})[src] = tr
+    return out
+
+
 # 실측으로 들어온 화분·노드를 먼저 기록해 둡니다 (데모로 채우기 전에).
 REAL_POTS = set(roster_of(soil, grow))
 REAL_ENV  = not env.empty
@@ -5576,6 +5932,31 @@ if UNKNOWN:
              f"({', '.join(repr(u) for u in UNKNOWN)});")
     TREAT = {k: v for k, v in TREAT.items() if v in ("stable", "fluct")}
     POTS  = sorted(TREAT)
+# ── ★ 처리군 출처 충돌 — 07-28 유형 사고를 화면에서 잡습니다 ────────────
+#   같은 화분인데 펌웨어가 말하는 처리군과 config.json 이 말하는 처리군이 다르면,
+#   둘 중 하나는 반드시 틀렸습니다. 어느 쪽이 틀렸는지는 데이터로 알 수 없으므로
+#   (물은 펌웨어대로 주고, 라벨은 config.json 대로 붙습니다) 화면이 판단하지 않고
+#   &lt;그 화분을 그리지 않고&gt; 사람에게 넘깁니다. 틀린 그룹으로 그린 그래프보다 낫습니다.
+SRC      = treat_sources(soil, grow)
+CONFLICT = {p: v for p, v in SRC.items() if len(set(v.values())) &gt; 1}
+if CONFLICT:
+    rows = "".join(
+        f"&lt;tr&gt;&lt;td&gt;&lt;b&gt;{p}&lt;/b&gt;&lt;/td&gt;"
+        + "".join(f"&lt;td&gt;{s} → &lt;b&gt;{t}&lt;/b&gt;&lt;/td&gt;" for s, t in sorted(v.items()))
+        + "&lt;/tr&gt;"
+        for p, v in sorted(CONFLICT.items()))
+    st.markdown(
+        '&lt;div class="alert"&gt;! &amp;nbsp;&lt;b&gt;처리군 불일치 — 이 화분들은 그리지 않습니다&lt;/b&gt;&lt;br&gt;'
+        '&lt;table style="margin:6px 0"&gt;' + rows + '&lt;/table&gt;'
+        '펌웨어와 &lt;code&gt;config.json&lt;/code&gt; 이 서로 다른 처리군을 말하고 있습니다. '
+        '&lt;b&gt;펌프 호스가 실제로 꽂힌 화분&lt;/b&gt;을 기준으로 어느 쪽이 맞는지 정한 뒤, '
+        '&lt;code&gt;water_node.ino&lt;/code&gt; 의 &lt;code&gt;TREAT_FLUCT&lt;/code&gt;·&lt;code&gt;PLANT_ID&lt;/code&gt; 와 '
+        '&lt;code&gt;config.json&lt;/code&gt; 의 &lt;code&gt;rois[].treat&lt;/code&gt; 를 맞추세요.&lt;br&gt;'
+        '&lt;b&gt;과거 행을 지우기 전에 반드시 &lt;code&gt;plant.db&lt;/code&gt; 를 백업하세요.&lt;/b&gt;'
+        '&lt;/div&gt;', unsafe_allow_html=True)
+    TREAT = {k: v for k, v in TREAT.items() if k not in CONFLICT}
+    POTS  = sorted(TREAT)
+
 GROUPS = {t: [p for p in POTS if TREAT.get(p) == t] for t in ("stable", "fluct")}
 GROUPS = {t: v for t, v in GROUPS.items() if v}
 NCOL   = max((len(v) for v in GROUPS.values()), default=1)
@@ -5714,16 +6095,26 @@ with tab_ov:
         st.info("No pots with a recognised treatment yet.")
         st.stop()
     nrow = max(len(v) for v in GROUPS.values())
+    # 예전 range=[15,68] 은 synth() 가짜데이터(22~62)용이라 실제 fluct(27~81)가 잘렸습니다.
+    lo = min([soil.pct.min()] + [b[0] for b in BAND.values()])
+    hi = max([soil.pct.max()] + [b[1] for b in BAND.values()])
+    if not np.isfinite(lo) or not np.isfinite(hi) or hi &lt;= lo:
+        lo, hi = 20.0, 85.0
+    pad = max(2.0, (hi - lo) * .06)
+    YR = [max(0.0, lo - pad), min(100.0, hi + pad)]
     f = make_subplots(rows=nrow, cols=len(GROUPS), shared_xaxes=True, shared_yaxes=True,
                       vertical_spacing=.02, horizontal_spacing=.05,
                       subplot_titles=[NAME[t] for t in GROUPS] + [""] * (nrow - 1) * len(GROUPS))
     for ci, (treat, members) in enumerate(GROUPS.items(), 1):
+        blo, bhi = BAND[treat]
         for ri, p in enumerate(members, 1):
+            f.add_hrect(y0=blo, y1=bhi, row=ri, col=ci, layer="below",
+                        fillcolor=CD[treat], opacity=.10, line_width=0)
             s = soil[soil.plant_id == p]
             f.add_trace(go.Scatter(x=s.ts, y=s.pct, mode="lines",
                                    line=dict(color=CD[treat], width=LW["trace"]), showlegend=False,
                                    name=p.upper()), row=ri, col=ci)
-            f.update_yaxes(title_text=f"&lt;b&gt;{p.upper()}&lt;/b&gt;", range=[15, 68],
+            f.update_yaxes(title_text=f"&lt;b&gt;{p.upper()}&lt;/b&gt;", range=YR,
                            title_font=dict(size=10, color=CD[treat]),
                            showticklabels=(ci == 1), row=ri, col=ci)
     f.update_layout(height=118 * nrow + 30, margin=dict(l=46, r=10, t=26, b=24), **BLANK)
