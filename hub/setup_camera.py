@@ -50,9 +50,31 @@ SCALE = PREV[0] / CAP_W         # 촬영 좌표 -> 미리보기 좌표
 
 # ══════════════ 카메라 ══════════════
 cam = Picamera2()
-video_cfg = cam.create_video_configuration(main={"size": PREV, "format": "RGB888"})
-still_cfg = cam.create_still_configuration(main={"size": (CAP_W, CAP_H)})
-cam.configure(video_cfg)
+
+# ★ 미리보기와 촬영을 <하나의 설정>에서 뽑습니다.
+#   예전에는 video_configuration(1280x720) 으로 보고 still_configuration(4608x2592)
+#   으로 찍었는데, 두 설정은 센서 모드·ScalerCrop 이 달라 <화각이 어긋날 수 있습니다>.
+#   그러면 SCALE = PREV[0]/CAP_W 라는 단순 비례가 깨지고, 화면에서 딱 맞게 그린
+#   박스가 사진에서는 밀립니다. 실제로 그 일이 있었습니다.
+#   lores 는 main 과 같은 ISP 출력에서 나오므로 화각이 같습니다 — 비례만 하면 됩니다.
+#   모드 전환도 사라져서 '전환 직후 검은 띠' 문제도 없어집니다.
+#   대가: 센서를 전체해상도로 계속 돌리므로 미리보기가 느립니다(수 fps).
+#         설치용 도구라 감수할 만합니다.
+try:
+    still_cfg = cam.create_still_configuration(
+        main={"size": (CAP_W, CAP_H)},
+        lores={"size": PREV, "format": "RGB888"},
+        buffer_count=2)
+    cam.configure(still_cfg)
+    PREV_STREAM = "lores"
+except Exception as e:                    # 구버전 picamera2 는 lores 가 YUV420 만 됨
+    print(f"[INFO] RGB888 lores 실패 ({e}) — YUV420 으로 재시도")
+    still_cfg = cam.create_still_configuration(
+        main={"size": (CAP_W, CAP_H)},
+        lores={"size": PREV, "format": "YUV420"},
+        buffer_count=2)
+    cam.configure(still_cfg)
+    PREV_STREAM = "lores_yuv"
 cam.start()
 cam.set_controls({                                   # 촬영과 동일한 고정 설정
     "AfMode": controls.AfModeEnum.Manual, "LensPosition": CAP["lens_position"],
@@ -101,11 +123,20 @@ def draw(img):
 stop_flag = threading.Event()      # Ctrl+C 때 grab 스레드를 세우는 신호
 
 
+def preview_frame():
+    """미리보기 한 장. lores 는 main 과 화각이 같으므로 SCALE 비례가 성립합니다.
+    ★ lock 을 잡은 채로 부를 것 — 카메라는 한 번에 하나만 건드립니다."""
+    if PREV_STREAM == "lores":
+        return cam.capture_array("lores")
+    a = cam.capture_array("lores")                       # YUV420
+    return cv2.cvtColor(a, cv2.COLOR_YUV420p2BGR)
+
+
 def grab():
     global latest
     while not stop_flag.is_set():          # Ctrl+C 가 오면 조용히 빠져나갑니다
         with lock:
-            frame = cam.capture_array()
+            frame = preview_frame()
         frame = draw(frame)
         ok, buf = cv2.imencode(".jpg", frame, [cv2.IMWRITE_JPEG_QUALITY, 80])
         if ok:
@@ -147,19 +178,32 @@ def act_point(x, y, cm):
             f"  · 프레임 폭 {frame_cm:.0f}cm{warn}")
 
 
+def act_setpot(cm):
+    """화분 지름(cm)을 기록합니다. <자로 잰 값>입니다 — 이미지에서 유도하지 않습니다.
+
+    배율(px/cm)은 두 점 클릭으로 정합니다. pot_cm 은 배율을 재는 값이 아니라,
+    <잰 배율이 맞는지 검산하는 잣대>입니다. 그래서 측정과 독립이어야 합니다.
+      · leaf_measure : 잎 면적이 화분 넓이의 절반도 안 되면 배율을 의심하라고 경고
+      · check_config : ROI 가 화분의 1.5배 이상인지
+      · 아래 act_point: 프레임 폭이 배치를 담을 만한지
+    이미지에서 유도하면 위 검산에서 ppc 가 약분되어 배율이 틀려도 경고가 안 뜹니다.
+    """
+    if cm <= 0:
+        return "0보다 큰 값을 넣으세요"
+    CFG.setdefault("layout", {})["pot_cm"] = cm
+    return f"화분 지름 {cm:g} cm 기록 — 배율 검산에 쓰입니다"
+
+
 def act_shoot():
     """전체 해상도로 1장. 카메라를 놓지 않고 모드만 잠깐 바꿉니다.
 
     ★ 모드 전환 직후 바로 찍으면 센서가 프레임을 다 읽기 전이라
       사진 위쪽에 검은 띠가 남습니다. 전환 -> 대기 -> 버리는 컷 -> 촬영 순서로 갑니다.
     """
+    # 모드 전환이 없어졌습니다 — main 스트림이 이미 전체해상도입니다.
+    # 그래서 '전환 직후 검은 띠' 를 피하려던 대기·버리는 컷도 필요 없습니다.
     with lock:
-        cam.switch_mode(still_cfg)
-        time.sleep(0.7)                       # 센서·ISP 안정화
-        cam.capture_array()                   # 첫 컷은 버립니다
-        cam.capture_file("calib.jpg")
-        cam.switch_mode(video_cfg)
-        time.sleep(0.3)
+        cam.capture_file("calib.jpg", name="main")
     return f"calib.jpg 저장 ({CAP_W}x{CAP_H})"
 
 
@@ -189,11 +233,52 @@ def _pack(boxes):
                    for i, (x, y, w, h) in enumerate(boxes, 1)]
 
 
+def _common_side():
+    """지금 ROI 들이 <모두 같은 정사각형>이면 그 한 변을 돌려준다. 아니면 None."""
+    rois = CFG.get("rois", [])
+    if not rois:
+        return None
+    sides = {(int(r["w"]), int(r["h"])) for r in rois}
+    if len(sides) != 1:
+        return None
+    w, h = sides.pop()
+    return w if w == h else None
+
+
+def _restore_treat(before):
+    """자리만 옮긴 것이라면 처리군 배정을 되살린다.
+
+    ★ 되살려도 되는 조건: 개수가 같고, <새 중심이 옛 박스 안>에 있을 것.
+      화분이 옆자리로 넘어갔는데 배정을 그대로 두면 p1 이 다른 화분을 가리킨다 —
+      데이터로는 구분되지 않고 실험이 조용히 뒤집힌다. 그럴 땐 비운다.
+    """
+    after = CFG.get("rois", [])
+    if len(before) != len(after):
+        return False
+    for old, new_ in zip(before, after):
+        cx, cy = new_["x"] + new_["w"] / 2, new_["y"] + new_["h"] / 2
+        if not (old["x"] <= cx <= old["x"] + old["w"] and
+                old["y"] <= cy <= old["y"] + old["h"]):
+            return False
+    for old, new_ in zip(before, after):
+        new_["treat"] = old.get("treat", "")
+    return True
+
+
 def act_findleaf(expand=1.8):
-    """★ 진짜 자동 — 잎을 찾아 그 자리에 박스를 놓습니다.
-    측정에 쓰는 것과 <같은 ExG> 로 초록을 찾으므로, 여기서 잡히면 측정도 잡힙니다."""
+    """★ 잎을 찾아 박스의 <중심만> 옮깁니다. 크기는 바꾸지 않습니다.
+
+    예전에는 side = max(잎 가로, 잎 세로) * expand 로 <잎 크기에 비례해> 박스를
+    만들었습니다. 그러면 잎이 작은 화분이 영구히 작은 박스를 갖고, 그 화분은
+    어느 한 처리군에 속하므로 <잘림이 처리군과 정렬>됩니다. 캐노피가 박스를
+    넘으면 작은 쪽이 먼저 잘리고, 잘린 면적과 실제로 작은 면적은 데이터상
+    구분되지 않습니다. 그래서 크기는 건드리지 않습니다.
+
+    이미 ROI 가 있으면 그 크기를 그대로 쓰고, 없으면 잎 중 가장 큰 것에 맞춰
+    <모두 같은 크기>로 만듭니다.
+    """
     with lock:
-        frame = cam.capture_array()
+        frame = preview_frame()
     b, g, r = cv2.split(frame.astype(np.float32))       # BGR 배열
     ssum = b + g + r + 1e-6
     exg = 2 * (g / ssum) - (r / ssum) - (b / ssum)
@@ -206,38 +291,53 @@ def act_findleaf(expand=1.8):
 
     n, lab, st, cen = cv2.connectedComponentsWithStats(m, 8)
     ph, pw = m.shape
-    blobs = [i for i in range(1, n) if st[i, cv2.CC_STAT_AREA] > 0.005 * pw * ph]
+    # ★ 크기뿐 아니라 <실제로 초록인지>도 봅니다.
+    #   NORM_MINMAX + Otsu 는 무엇이 들어오든 반드시 둘로 가르므로, 잎이 없어도
+    #   '가장 초록스러운 쪽'을 만들어냅니다. 어두운 구석의 잡음이 그렇게 잡혔습니다.
+    #   중성 회색의 정규화 ExG 는 0, 초록 잎은 0.2~0.4 입니다.
+    blobs = [i for i in range(1, n)
+             if st[i, cv2.CC_STAT_AREA] > 0.005 * pw * ph
+             and float(exg[lab == i].mean()) > 0.06]
     if not blobs:
         return "초록 덩어리를 못 찾았습니다 — 조명·초점을 먼저 맞추세요"
 
-    boxes = []
-    for i in blobs:
-        cx, cy = cen[i]
-        side = max(st[i, cv2.CC_STAT_WIDTH], st[i, cv2.CC_STAT_HEIGHT]) * expand
-        boxes.append([cx - side / 2, cy - side / 2, side, side])
+    keep = _common_side()                      # 촬영 좌표계의 한 변
+    if keep:
+        side = keep * SCALE                    # 미리보기 좌표로
+        how = f"기존 크기 {keep}px 유지"
+    else:
+        side = max(max(st[i, cv2.CC_STAT_WIDTH], st[i, cv2.CC_STAT_HEIGHT])
+                   for i in blobs) * expand    # 가장 큰 잎 기준 — 전부 같은 크기
+        how = "새 크기(가장 큰 잎 기준) · 전부 동일"
 
-    for _ in range(12):                                  # 겹치면 조금씩 줄입니다
-        over = False
-        for i in range(len(boxes)):
-            for j in range(i + 1, len(boxes)):
-                a, c = boxes[i], boxes[j]
-                if (min(a[0]+a[2], c[0]+c[2]) - max(a[0], c[0]) > 0 and
-                    min(a[1]+a[3], c[1]+c[3]) - max(a[1], c[1]) > 0):
-                    over = True
+    boxes = [[cen[i][0] - side / 2, cen[i][1] - side / 2, side, side] for i in blobs]
+
+    for _ in range(12):                        # 겹치면 <다같이> 줄입니다 — 크기는 계속 같습니다
+        over = any(
+            min(a[0]+a[2], c[0]+c[2]) - max(a[0], c[0]) > 0 and
+            min(a[1]+a[3], c[1]+c[3]) - max(a[1], c[1]) > 0
+            for i, a in enumerate(boxes) for c in boxes[i+1:])
         if not over:
             break
-        for bx in boxes:
-            bx[0] += bx[2] * 0.05; bx[1] += bx[3] * 0.05
-            bx[2] *= 0.90; bx[3] *= 0.90
+        side *= 0.90
+        boxes = [[cen[i][0] - side / 2, cen[i][1] - side / 2, side, side] for i in blobs]
+        how += " (겹쳐서 축소)"
 
     out = []
-    for x, y, w, h in boxes:                             # 미리보기 -> 촬영 좌표 + 프레임 안으로
+    for x, y, w, h in boxes:                   # 미리보기 -> 촬영 좌표 + 프레임 안으로
         X, Y, W_, H_ = x / SCALE, y / SCALE, w / SCALE, h / SCALE
-        X = max(0, min(X, CAP_W - W_)); Y = max(0, min(Y, CAP_H - H_))
         W_ = min(W_, CAP_W); H_ = min(H_, CAP_H)
+        X = max(0, min(X, CAP_W - W_)); Y = max(0, min(Y, CAP_H - H_))
         out.append((X, Y, W_, H_))
+
+    before = [dict(r) for r in CFG.get("rois", [])]
     _pack(out)
-    return f"잎 덩어리 {len(out)}개를 찾아 ROI 를 배치했습니다 — 화면에서 확인하세요"
+    kept = _restore_treat(before)
+
+    sides = {r["w"] for r in CFG["rois"]}
+    same = "모두 같음" if len(sides) == 1 else f"★ 다름 {sides}"
+    tail = "처리군 유지됨" if kept else "처리군이 비었습니다 — 다시 배정하세요"
+    return (f"잎 {len(out)}개 — 중심만 이동 · {how} · 크기 {same} · {tail}")
 
 
 def act_autoroi(cols, rows, margin=0.04):
@@ -403,6 +503,7 @@ ACTIONS = {
     "findleaf":lambda p: act_findleaf(),
     "auto":    lambda p: act_auto(),
     "point":   lambda p: act_point(float(p["x"]), float(p["y"]), float(p.get("cm", 10))),
+    "setpot":  lambda p: act_setpot(float(p.get("pot_cm", 10))),
     "shuffle": lambda p: act_shuffle(),
     "settreat":lambda p: act_settreat(p["pid"], p["treat"]),
     "rename":  lambda p: act_rename(),
@@ -475,6 +576,9 @@ PAGE = """<!doctype html><meta charset="utf-8">
     <div class="hd"><span class="no"><span>2</span></span>배율</div>
     <div class="row">길이 <input id="cm" value="5" oninput="echo()"> cm</div>
     <div class="echo" id="cmEcho"></div>
+    <div class="row" style="margin-top:8px">화분 지름 <input id="potcm" value="10"> cm
+      <button class="sub" onclick="go('setpot',{pot_cm:potcm.value})">기록</button></div>
+    <div class="echo">자로 잰 값 — 배율을 <b>검산</b>하는 데 씁니다</div>
   </div>
 
   <div class="step" id="k-roi" style="--c:var(--s3)">
