@@ -51,8 +51,13 @@ def exg_of(bgr):
 
 
 def find_leaf(img, cx, cy, w, h):
-    """(cx, cy) 둘레에서 잎 덩어리를 찾아 그 무게중심을 돌려준다.
-    못 찾으면 None — 억지로 아무 데나 잡지 않는다."""
+    """(cx, cy) 둘레에서 잎 덩어리를 찾아 그 <면적 무게중심>을 돌려준다.
+    못 찾으면 None — 억지로 아무 데나 잡지 않는다.
+
+    ★ 무게중심이지 기하학적 중심이 아니다. 잎이 한쪽으로 치우쳐 자라면 중심도
+      그쪽으로 끌리고, ROI 가 따라 밀려 반대쪽이 잘릴 수 있다. 그래서 촬영이
+      시작된 뒤에는 --yes 를 쓰지 않는다 — ROI 가 바뀌면 그 전후 면적을
+      비교할 수 없다."""
     H, W = img.shape[:2]
     sw, sh = int(w * SEARCH), int(h * SEARCH)
     x0, y0 = max(0, cx - sw // 2), max(0, cy - sh // 2)
@@ -102,7 +107,8 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("image", nargs="?", help="기본: calib.jpg, 없으면 photos/raw 의 최신")
     ap.add_argument("--yes", action="store_true", help="config.json 에 실제로 반영")
-    ap.add_argument("-o", "--out", default="roi_check.jpg", help="확인용 겹친 이미지")
+    ap.add_argument("-o", "--out", default="roi_offset.jpg",
+                    help="확인용 — ROI 와 잎이 얼마나 어긋났는지 겹쳐 그린다")
     a = ap.parse_args()
 
     src = a.image
@@ -135,7 +141,9 @@ def main():
 
     sizes = {(r["w"], r["h"]) for r in rois}
     print(f"ROI    {len(rois)}개 · 크기 {'모두 같음' if len(sizes) == 1 else '★ 다름 ' + str(sizes)}")
-    print(f"\n{'화분':6} {'현재 중심':>14} {'잎 중심':>14} {'이동':>12}   초록도  넓이")
+    # ROI 는 사각형 박스(config.json 의 x,y,w,h)이고, 잎 중심은 마스크 픽셀의
+    # 무게중심이다. 둘 다 '중심'이라 부르면 무엇의 중심인지 알 수 없다.
+    print(f"\n{'화분':6} {'ROI 중심':>14} {'잎 무게중심':>14} {'보정량':>12}   초록도  넓이")
     print("-" * 72)
 
     vis = img.copy()
@@ -170,7 +178,8 @@ def main():
         r["_new"] = (nx, ny)
 
     cv2.imwrite(a.out, vis)
-    print(f"\n확인용 이미지: {a.out}   (회색=현재 · 노랑=제안 · 빨강점=잎 중심)")
+    print(f"\n확인용 이미지: {a.out}"
+          f"   (회색=지금 ROI · 노랑=제안 ROI · 빨강점=잎 무게중심)")
 
     if not a.yes:
         print("\n  실제로 반영하려면:  uv run python center_roi.py --yes\n")

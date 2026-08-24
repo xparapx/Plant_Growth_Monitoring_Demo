@@ -538,6 +538,8 @@
         <td>—</td>
         <td>나머지</td>
         <td><code class="in">leaf_measure.py</code> 측정 엔진(라이브러리)<br>
+            <code class="in">frame_align.py</code> 카메라 밀림 감지(라이브러리)<br>
+            <code class="in">center_roi.py</code> ROI 재중심 — <b>촬영 시작 전에만</b><br>
             <code class="in">dashboard.py</code> 화면<br>
             <code class="in">config.json</code> <b>모든 설정</b><br>
             <code class="in">plant.db</code> 데이터</td>
@@ -2964,7 +2966,7 @@ tailscale status             # 연결된 기기 목록</pre>
       <span class="lbl">먼저 — 이게 꼭 필요한가?</span>
       <b>필수는 아닙니다.</b> run_collector.py · 대시보드 · 자동 촬영은 전부 SSH만으로 돕니다.<br>
       그래도 권하는 이유는 <b>사진을 눈으로 봐야 하는 작업</b>이 반복되기 때문입니다 —
-      <code class="in">calib.jpg</code>의 초점, <code class="in">roi_check.jpg</code>의 박스 위치,
+      <code class="in">calib.jpg</code>의 초점, <code class="in">roi_offset.jpg</code>의 박스 위치,
       마스크가 흙을 잎으로 잡았는지. SSH만 쓰면 그때마다 PC로 내려받아야 합니다.<br>
       <b>SSH를 대체하는 것이 아닙니다.</b> VNC가 죽으면 SSH로 들어가 고쳐야 합니다 —
       <b>SSH는 비상구, noVNC는 정문</b>입니다. 비상구를 없애지 마세요.
@@ -3423,7 +3425,8 @@ rm -rf ~/.vnc ~/.config/tigervnc</pre>
         <tr><td><b>1</b> 노출·초점</td><td>자동 측정 → 고정</td><td rowspan="5">끝난 단계는 번호가
             <b>✓</b> 로 바뀌고 테두리가 초록이 됩니다.<br>
             위에서 아래로 초록이 채워지면 완료입니다</td></tr>
-        <tr><td><b>2</b> 배율</td><td>길이 입력 → 화면에서 두 점 클릭</td></tr>
+        <tr><td><b>2</b> 배율</td><td>길이 입력 → 화면에서 두 점 클릭<br>
+            <span style="font-size:11px;color:#5f6f7e">+ <b>화분 지름</b>(자로 잰 값) 기록 — 배율 <b>검산</b>용</span></td></tr>
         <tr><td><b>3</b> ROI</td><td>잎 찾아 배치 / 격자로 나누기</td></tr>
         <tr><td><b>4</b> 처리군</td><td>무작위 배정</td></tr>
         <tr><td><b>5</b> 기준 사진</td><td>촬영 — calib.jpg</td></tr>
@@ -3431,6 +3434,27 @@ rm -rf ~/.vnc ~/.config/tigervnc</pre>
       길이 입력칸 아래에 <b>&ldquo;두 점 사이를 5 cm 로 계산합니다&rdquo;</b> 가 실시간으로 표시됩니다 —
       클릭 전에 값이 반영됐는지 눈으로 확인하라는 장치입니다.
       비워두면 붉은 글씨로 경고합니다.
+    </div>
+
+    <div class="box tip">
+      <span class="lbl">미리보기와 촬영이 <b>같은 화각</b>입니다 — 화면에서 맞춘 박스가 사진에서도 맞습니다</span>
+      예전에는 <b>보는 설정과 찍는 설정이 달랐습니다</b> — 미리보기는 video(1280&times;720),
+      촬영은 still(4608&times;2592). 두 설정은 센서 모드와 <code class="in">ScalerCrop</code> 이 달라
+      <b>화각이 어긋날 수 있고</b>, 그러면 <code class="in">SCALE = 미리보기폭 / 촬영폭</code> 이라는
+      단순 비례가 깨집니다. <b>화면에서 딱 맞게 그린 ROI 가 사진에서는 밀려 있었습니다.</b><br><br>
+      지금은 <b>하나의 still 설정에서 <code class="in">main</code>(촬영)과 <code class="in">lores</code>(미리보기)를
+      함께 뽑습니다.</b> 둘 다 같은 ISP 출력이라 화각이 같고, 비례만 하면 됩니다.
+      모드 전환이 사라져 <b>&ldquo;전환 직후 검은 띠&rdquo;</b> 문제도 없어졌습니다.
+      <table>
+        <tr><th></th><th>얻은 것</th><th>대가</th></tr>
+        <tr><td>lores 미리보기</td>
+            <td>화각 일치 · 모드 전환 없음</td>
+            <td>센서를 <b>계속 전체해상도로</b> 돌리므로 미리보기가 <b>수 fps</b>로 느립니다</td></tr>
+      </table>
+      설치할 때만 쓰는 도구라 느린 것은 감수할 만합니다. <b>화면과 사진이 어긋나는 편이 훨씬 비쌉니다.</b><br><br>
+      <b>ROI 크기도 고정</b>됩니다 — 이미 놓인 박스들이 모두 같은 정사각형이면
+      새로 배치할 때 그 한 변을 그대로 씁니다. 화분마다 박스 크기가 다르면
+      <b>면적을 서로 비교할 수 없기 때문</b>입니다.
     </div>
 
         <span class="ftag">setup_camera.py &middot; <b>손으로, 세팅하는 동안</b> &middot; 브라우저 :8000 &rarr; calib.jpg + config.json</span>
@@ -3486,9 +3510,31 @@ SCALE = PREV[0] / CAP_W         # 촬영 좌표 -&gt; 미리보기 좌표
 
 # ══════════════ 카메라 ══════════════
 cam = Picamera2()
-video_cfg = cam.create_video_configuration(main={"size": PREV, "format": "RGB888"})
-still_cfg = cam.create_still_configuration(main={"size": (CAP_W, CAP_H)})
-cam.configure(video_cfg)
+
+# ★ 미리보기와 촬영을 &lt;하나의 설정&gt;에서 뽑습니다.
+#   예전에는 video_configuration(1280x720) 으로 보고 still_configuration(4608x2592)
+#   으로 찍었는데, 두 설정은 센서 모드·ScalerCrop 이 달라 &lt;화각이 어긋날 수 있습니다&gt;.
+#   그러면 SCALE = PREV[0]/CAP_W 라는 단순 비례가 깨지고, 화면에서 딱 맞게 그린
+#   박스가 사진에서는 밀립니다. 실제로 그 일이 있었습니다.
+#   lores 는 main 과 같은 ISP 출력에서 나오므로 화각이 같습니다 — 비례만 하면 됩니다.
+#   모드 전환도 사라져서 '전환 직후 검은 띠' 문제도 없어집니다.
+#   대가: 센서를 전체해상도로 계속 돌리므로 미리보기가 느립니다(수 fps).
+#         설치용 도구라 감수할 만합니다.
+try:
+    still_cfg = cam.create_still_configuration(
+        main={"size": (CAP_W, CAP_H)},
+        lores={"size": PREV, "format": "RGB888"},
+        buffer_count=2)
+    cam.configure(still_cfg)
+    PREV_STREAM = "lores"
+except Exception as e:                    # 구버전 picamera2 는 lores 가 YUV420 만 됨
+    print(f"[INFO] RGB888 lores 실패 ({e}) — YUV420 으로 재시도")
+    still_cfg = cam.create_still_configuration(
+        main={"size": (CAP_W, CAP_H)},
+        lores={"size": PREV, "format": "YUV420"},
+        buffer_count=2)
+    cam.configure(still_cfg)
+    PREV_STREAM = "lores_yuv"
 cam.start()
 cam.set_controls({                                   # 촬영과 동일한 고정 설정
     "AfMode": controls.AfModeEnum.Manual, "LensPosition": CAP["lens_position"],
@@ -3537,11 +3583,20 @@ def draw(img):
 stop_flag = threading.Event()      # Ctrl+C 때 grab 스레드를 세우는 신호
 
 
+def preview_frame():
+    """미리보기 한 장. lores 는 main 과 화각이 같으므로 SCALE 비례가 성립합니다.
+    ★ lock 을 잡은 채로 부를 것 — 카메라는 한 번에 하나만 건드립니다."""
+    if PREV_STREAM == "lores":
+        return cam.capture_array("lores")
+    a = cam.capture_array("lores")                       # YUV420
+    return cv2.cvtColor(a, cv2.COLOR_YUV420p2BGR)
+
+
 def grab():
     global latest
     while not stop_flag.is_set():          # Ctrl+C 가 오면 조용히 빠져나갑니다
         with lock:
-            frame = cam.capture_array()
+            frame = preview_frame()
         frame = draw(frame)
         ok, buf = cv2.imencode(".jpg", frame, [cv2.IMWRITE_JPEG_QUALITY, 80])
         if ok:
@@ -3583,19 +3638,32 @@ def act_point(x, y, cm):
             f"  · 프레임 폭 {frame_cm:.0f}cm{warn}")
 
 
+def act_setpot(cm):
+    """화분 지름(cm)을 기록합니다. &lt;자로 잰 값&gt;입니다 — 이미지에서 유도하지 않습니다.
+
+    배율(px/cm)은 두 점 클릭으로 정합니다. pot_cm 은 배율을 재는 값이 아니라,
+    &lt;잰 배율이 맞는지 검산하는 잣대&gt;입니다. 그래서 측정과 독립이어야 합니다.
+      · leaf_measure : 잎 면적이 화분 넓이의 절반도 안 되면 배율을 의심하라고 경고
+      · check_config : ROI 가 화분의 1.5배 이상인지
+      · 아래 act_point: 프레임 폭이 배치를 담을 만한지
+    이미지에서 유도하면 위 검산에서 ppc 가 약분되어 배율이 틀려도 경고가 안 뜹니다.
+    """
+    if cm &lt;= 0:
+        return "0보다 큰 값을 넣으세요"
+    CFG.setdefault("layout", {})["pot_cm"] = cm
+    return f"화분 지름 {cm:g} cm 기록 — 배율 검산에 쓰입니다"
+
+
 def act_shoot():
     """전체 해상도로 1장. 카메라를 놓지 않고 모드만 잠깐 바꿉니다.
 
     ★ 모드 전환 직후 바로 찍으면 센서가 프레임을 다 읽기 전이라
       사진 위쪽에 검은 띠가 남습니다. 전환 -&gt; 대기 -&gt; 버리는 컷 -&gt; 촬영 순서로 갑니다.
     """
+    # 모드 전환이 없어졌습니다 — main 스트림이 이미 전체해상도입니다.
+    # 그래서 '전환 직후 검은 띠' 를 피하려던 대기·버리는 컷도 필요 없습니다.
     with lock:
-        cam.switch_mode(still_cfg)
-        time.sleep(0.7)                       # 센서·ISP 안정화
-        cam.capture_array()                   # 첫 컷은 버립니다
-        cam.capture_file("calib.jpg")
-        cam.switch_mode(video_cfg)
-        time.sleep(0.3)
+        cam.capture_file("calib.jpg", name="main")
     return f"calib.jpg 저장 ({CAP_W}x{CAP_H})"
 
 
@@ -3625,11 +3693,52 @@ def _pack(boxes):
                    for i, (x, y, w, h) in enumerate(boxes, 1)]
 
 
+def _common_side():
+    """지금 ROI 들이 &lt;모두 같은 정사각형&gt;이면 그 한 변을 돌려준다. 아니면 None."""
+    rois = CFG.get("rois", [])
+    if not rois:
+        return None
+    sides = {(int(r["w"]), int(r["h"])) for r in rois}
+    if len(sides) != 1:
+        return None
+    w, h = sides.pop()
+    return w if w == h else None
+
+
+def _restore_treat(before):
+    """자리만 옮긴 것이라면 처리군 배정을 되살린다.
+
+    ★ 되살려도 되는 조건: 개수가 같고, &lt;새 중심이 옛 박스 안&gt;에 있을 것.
+      화분이 옆자리로 넘어갔는데 배정을 그대로 두면 p1 이 다른 화분을 가리킨다 —
+      데이터로는 구분되지 않고 실험이 조용히 뒤집힌다. 그럴 땐 비운다.
+    """
+    after = CFG.get("rois", [])
+    if len(before) != len(after):
+        return False
+    for old, new_ in zip(before, after):
+        cx, cy = new_["x"] + new_["w"] / 2, new_["y"] + new_["h"] / 2
+        if not (old["x"] &lt;= cx &lt;= old["x"] + old["w"] and
+                old["y"] &lt;= cy &lt;= old["y"] + old["h"]):
+            return False
+    for old, new_ in zip(before, after):
+        new_["treat"] = old.get("treat", "")
+    return True
+
+
 def act_findleaf(expand=1.8):
-    """★ 진짜 자동 — 잎을 찾아 그 자리에 박스를 놓습니다.
-    측정에 쓰는 것과 &lt;같은 ExG&gt; 로 초록을 찾으므로, 여기서 잡히면 측정도 잡힙니다."""
+    """★ 잎을 찾아 박스의 &lt;중심만&gt; 옮깁니다. 크기는 바꾸지 않습니다.
+
+    예전에는 side = max(잎 가로, 잎 세로) * expand 로 &lt;잎 크기에 비례해&gt; 박스를
+    만들었습니다. 그러면 잎이 작은 화분이 영구히 작은 박스를 갖고, 그 화분은
+    어느 한 처리군에 속하므로 &lt;잘림이 처리군과 정렬&gt;됩니다. 캐노피가 박스를
+    넘으면 작은 쪽이 먼저 잘리고, 잘린 면적과 실제로 작은 면적은 데이터상
+    구분되지 않습니다. 그래서 크기는 건드리지 않습니다.
+
+    이미 ROI 가 있으면 그 크기를 그대로 쓰고, 없으면 잎 중 가장 큰 것에 맞춰
+    &lt;모두 같은 크기&gt;로 만듭니다.
+    """
     with lock:
-        frame = cam.capture_array()
+        frame = preview_frame()
     b, g, r = cv2.split(frame.astype(np.float32))       # BGR 배열
     ssum = b + g + r + 1e-6
     exg = 2 * (g / ssum) - (r / ssum) - (b / ssum)
@@ -3642,38 +3751,53 @@ def act_findleaf(expand=1.8):
 
     n, lab, st, cen = cv2.connectedComponentsWithStats(m, 8)
     ph, pw = m.shape
-    blobs = [i for i in range(1, n) if st[i, cv2.CC_STAT_AREA] &gt; 0.005 * pw * ph]
+    # ★ 크기뿐 아니라 &lt;실제로 초록인지&gt;도 봅니다.
+    #   NORM_MINMAX + Otsu 는 무엇이 들어오든 반드시 둘로 가르므로, 잎이 없어도
+    #   '가장 초록스러운 쪽'을 만들어냅니다. 어두운 구석의 잡음이 그렇게 잡혔습니다.
+    #   중성 회색의 정규화 ExG 는 0, 초록 잎은 0.2~0.4 입니다.
+    blobs = [i for i in range(1, n)
+             if st[i, cv2.CC_STAT_AREA] &gt; 0.005 * pw * ph
+             and float(exg[lab == i].mean()) &gt; 0.06]
     if not blobs:
         return "초록 덩어리를 못 찾았습니다 — 조명·초점을 먼저 맞추세요"
 
-    boxes = []
-    for i in blobs:
-        cx, cy = cen[i]
-        side = max(st[i, cv2.CC_STAT_WIDTH], st[i, cv2.CC_STAT_HEIGHT]) * expand
-        boxes.append([cx - side / 2, cy - side / 2, side, side])
+    keep = _common_side()                      # 촬영 좌표계의 한 변
+    if keep:
+        side = keep * SCALE                    # 미리보기 좌표로
+        how = f"기존 크기 {keep}px 유지"
+    else:
+        side = max(max(st[i, cv2.CC_STAT_WIDTH], st[i, cv2.CC_STAT_HEIGHT])
+                   for i in blobs) * expand    # 가장 큰 잎 기준 — 전부 같은 크기
+        how = "새 크기(가장 큰 잎 기준) · 전부 동일"
 
-    for _ in range(12):                                  # 겹치면 조금씩 줄입니다
-        over = False
-        for i in range(len(boxes)):
-            for j in range(i + 1, len(boxes)):
-                a, c = boxes[i], boxes[j]
-                if (min(a[0]+a[2], c[0]+c[2]) - max(a[0], c[0]) &gt; 0 and
-                    min(a[1]+a[3], c[1]+c[3]) - max(a[1], c[1]) &gt; 0):
-                    over = True
+    boxes = [[cen[i][0] - side / 2, cen[i][1] - side / 2, side, side] for i in blobs]
+
+    for _ in range(12):                        # 겹치면 &lt;다같이&gt; 줄입니다 — 크기는 계속 같습니다
+        over = any(
+            min(a[0]+a[2], c[0]+c[2]) - max(a[0], c[0]) &gt; 0 and
+            min(a[1]+a[3], c[1]+c[3]) - max(a[1], c[1]) &gt; 0
+            for i, a in enumerate(boxes) for c in boxes[i+1:])
         if not over:
             break
-        for bx in boxes:
-            bx[0] += bx[2] * 0.05; bx[1] += bx[3] * 0.05
-            bx[2] *= 0.90; bx[3] *= 0.90
+        side *= 0.90
+        boxes = [[cen[i][0] - side / 2, cen[i][1] - side / 2, side, side] for i in blobs]
+        how += " (겹쳐서 축소)"
 
     out = []
-    for x, y, w, h in boxes:                             # 미리보기 -&gt; 촬영 좌표 + 프레임 안으로
+    for x, y, w, h in boxes:                   # 미리보기 -&gt; 촬영 좌표 + 프레임 안으로
         X, Y, W_, H_ = x / SCALE, y / SCALE, w / SCALE, h / SCALE
-        X = max(0, min(X, CAP_W - W_)); Y = max(0, min(Y, CAP_H - H_))
         W_ = min(W_, CAP_W); H_ = min(H_, CAP_H)
+        X = max(0, min(X, CAP_W - W_)); Y = max(0, min(Y, CAP_H - H_))
         out.append((X, Y, W_, H_))
+
+    before = [dict(r) for r in CFG.get("rois", [])]
     _pack(out)
-    return f"잎 덩어리 {len(out)}개를 찾아 ROI 를 배치했습니다 — 화면에서 확인하세요"
+    kept = _restore_treat(before)
+
+    sides = {r["w"] for r in CFG["rois"]}
+    same = "모두 같음" if len(sides) == 1 else f"★ 다름 {sides}"
+    tail = "처리군 유지됨" if kept else "처리군이 비었습니다 — 다시 배정하세요"
+    return (f"잎 {len(out)}개 — 중심만 이동 · {how} · 크기 {same} · {tail}")
 
 
 def act_autoroi(cols, rows, margin=0.04):
@@ -3839,6 +3963,7 @@ ACTIONS = {
     "findleaf":lambda p: act_findleaf(),
     "auto":    lambda p: act_auto(),
     "point":   lambda p: act_point(float(p["x"]), float(p["y"]), float(p.get("cm", 10))),
+    "setpot":  lambda p: act_setpot(float(p.get("pot_cm", 10))),
     "shuffle": lambda p: act_shuffle(),
     "settreat":lambda p: act_settreat(p["pid"], p["treat"]),
     "rename":  lambda p: act_rename(),
@@ -3911,6 +4036,9 @@ PAGE = """&lt;!doctype html&gt;&lt;meta charset="utf-8"&gt;
     &lt;div class="hd"&gt;&lt;span class="no"&gt;&lt;span&gt;2&lt;/span&gt;&lt;/span&gt;배율&lt;/div&gt;
     &lt;div class="row"&gt;길이 &lt;input id="cm" value="5" oninput="echo()"&gt; cm&lt;/div&gt;
     &lt;div class="echo" id="cmEcho"&gt;&lt;/div&gt;
+    &lt;div class="row" style="margin-top:8px"&gt;화분 지름 &lt;input id="potcm" value="10"&gt; cm
+      &lt;button class="sub" onclick="go('setpot',{pot_cm:potcm.value})"&gt;기록&lt;/button&gt;&lt;/div&gt;
+    &lt;div class="echo"&gt;자로 잰 값 — 배율을 &lt;b&gt;검산&lt;/b&gt;하는 데 씁니다&lt;/div&gt;
   &lt;/div&gt;
 
   &lt;div class="step" id="k-roi" style="--c:var(--s3)"&gt;
@@ -4339,6 +4467,251 @@ import json
 for r in json.load(open('config.json'))['rois']: print(r['plant_id'], r['treat'])"</pre>
     </div>
 
+    <h3>5) ROI 재중심 — center_roi.py</h3>
+    <div class="box">
+      <span class="lbl">무엇을 하나</span>
+      <code class="in">setup_camera.py</code> 로 잡은 ROI 박스는 <b>격자 계산으로 놓인 자리</b>입니다.
+      실제 모종은 화분 한가운데에 정확히 심기지 않으므로, 박스와 잎이 조금씩 어긋나 있는 것이 보통입니다.
+      이 스크립트는 각 ROI 둘레에서 <b>잎 덩어리를 찾아</b> 박스를 그쪽으로 옮겨 줍니다.
+      <b>크기는 건드리지 않고 위치만</b> 옮깁니다 — 크기가 달라지면 화분끼리 비교할 수 없기 때문입니다.
+    </div>
+
+    <span class="ftag">center_roi.py &middot; <b>손으로 &middot; 촬영 시작 전에만</b> &middot; calib.jpg &rarr; ROI 보정 제안 + roi_offset.jpg</span>
+<pre>"""
+center_roi.py — ROI 크기는 그대로 두고 &lt;중심만&gt; 잎에 맞춘다.
+
+  uv run python center_roi.py                 보기만 함 (기본)
+  uv run python center_roi.py --yes           config.json 에 반영
+  uv run python center_roi.py photos/raw/xxx.jpg --yes
+
+왜 이게 필요한가
+  setup_camera.py 의 미리보기(video_configuration 1280x720)와 실제 촬영
+  (still_configuration 4608x2592)은 &lt;화각이 다를 수 있다&gt;. 미리보기에서 딱 맞게
+  그린 박스가 사진에서는 밀린다. SCALE = PREV[0]/CAP_W 는 두 화각이 같다고
+  전제하지만 그 전제가 항상 참은 아니다.
+  그래서 이 스크립트는 &lt;촬영한 사진 위에서&gt; 좌표를 정한다. 미리보기를 거치지
+  않으므로 화각 차이와 무관하다.
+
+왜 크기를 안 바꾸는가
+  setup_camera.py 의 [잎 찾아 배치]는 side = max(잎 가로, 잎 세로) * 1.8 로
+  &lt;잎 크기에 비례해&gt; 박스를 만든다. 잎이 작은 화분은 작은 박스를 갖게 되고,
+  그 화분이 어느 한 처리군에 속하므로 &lt;잘림이 처리군과 정렬&gt;된다.
+  캐노피가 박스를 넘으면 작은 쪽이 먼저 잘리고, 잘린 면적과 실제로 작은 면적은
+  데이터상 구분되지 않는다. 그래서 크기는 건드리지 않는다.
+
+주의
+  이걸 돌린 뒤 setup_camera.py 를 열어 [저장]하면 미리보기 기준 좌표로 덮어쓴다.
+  맞춘 다음에는 열지 말 것.
+"""
+import argparse, glob, json, os, sys, tempfile
+
+import cv2
+import numpy as np
+
+CFG_PATH = "config.json"
+
+# 잎으로 인정할 최소 초록도(정규화 ExG). 중성 회색 = 0, 초록 잎 = 0.2~0.4.
+# 이 문턱이 없으면 어두운 영역의 잡음 덩어리를 잎으로 착각한다 —
+# leaf_mask() 의 NORM_MINMAX + Otsu 는 &lt;무엇이 들어오든 반드시 둘로 가르기&gt; 때문.
+# 잎으로 인정할 최소 초록도(정규화 ExG). 중성 회색 = 0.
+#   초록 잎은 0.25~0.45. 도트 보드·벽 같은 밝은 회색은 0.00~0.05 인데,
+#   JPEG 잡음이 몇 픽셀을 0.06 위로 밀어 올리고 그게 뭉치면 잎보다 큰 덩어리가 된다.
+#   실제로 선풍기·벽에 중심이 잡혔다. 0.06 은 너무 헐거웠다.
+EXG_MIN  = 0.18
+SEARCH   = 1.2          # ROI 를 이만큼만 넓혀 찾는다 (넓힐수록 엉뚱한 것이 들어온다)
+AREA_MIN = 0.004        # 탐색창 넓이 대비 최소 크기 — 먼지·잡음 제거
+
+
+def exg_of(bgr):
+    """정규화 ExG. 밝기에 영향을 덜 받아 그림자에 강하다."""
+    b, g, r = cv2.split(bgr.astype(np.float32))
+    s = b + g + r + 1e-6
+    return 2 * (g / s) - (r / s) - (b / s)
+
+
+def find_leaf(img, cx, cy, w, h):
+    """(cx, cy) 둘레에서 잎 덩어리를 찾아 그 &lt;면적 무게중심&gt;을 돌려준다.
+    못 찾으면 None — 억지로 아무 데나 잡지 않는다.
+
+    ★ 무게중심이지 기하학적 중심이 아니다. 잎이 한쪽으로 치우쳐 자라면 중심도
+      그쪽으로 끌리고, ROI 가 따라 밀려 반대쪽이 잘릴 수 있다. 그래서 촬영이
+      시작된 뒤에는 --yes 를 쓰지 않는다 — ROI 가 바뀌면 그 전후 면적을
+      비교할 수 없다."""
+    H, W = img.shape[:2]
+    sw, sh = int(w * SEARCH), int(h * SEARCH)
+    x0, y0 = max(0, cx - sw // 2), max(0, cy - sh // 2)
+    x1, y1 = min(W, x0 + sw), min(H, y0 + sh)
+    crop = img[y0:y1, x0:x1]
+    if crop.size == 0:
+        return None
+
+    e = exg_of(crop)
+    m = (e &gt; EXG_MIN).astype(np.uint8) * 255
+    k = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (9, 9))
+    # ★ OPEN 을 먼저. 흩어진 잡음을 지운 &lt;뒤에&gt; 이어붙인다.
+    #   순서가 반대면 잡음이 먼저 뭉쳐 커다란 가짜 덩어리가 되고, 그게 잎을 이긴다.
+    m = cv2.morphologyEx(m, cv2.MORPH_OPEN, k, iterations=2)
+    m = cv2.morphologyEx(m, cv2.MORPH_CLOSE, k, iterations=2)
+
+    n, lab, st, cent = cv2.connectedComponentsWithStats(m, 8)
+    if n &lt;= 1:
+        return None
+
+    ch, cw = crop.shape[:2]
+    floor = AREA_MIN * ch * cw
+    ok = [i for i in range(1, n) if st[i, cv2.CC_STAT_AREA] &gt;= floor]
+    if not ok:
+        return None
+    # ★ 가장 큰 것이 아니라 &lt;ROI 중심에 가장 가까운&gt; 것을 고른다.
+    #   화면에 다른 초록(다른 화분의 잎, 초록 물건)이 있어도 자기 화분을 지킨다.
+    ccx, ccy = cw / 2, ch / 2
+    i = min(ok, key=lambda j: (cent[j][0] - ccx) ** 2 + (cent[j][1] - ccy) ** 2)
+    gx, gy = cent[i]
+    return int(x0 + gx), int(y0 + gy), int(st[i, cv2.CC_STAT_AREA]), float(e[lab == i].mean())
+
+
+def save_atomic(path, data):
+    """open(path,'w') 는 여는 순간 파일을 비운다. 쓰다 죽으면 잘린 채 남는다.
+    config.json 은 처리군 배정의 단일 출처라 그러면 복구가 어렵다."""
+    d = os.path.dirname(os.path.abspath(path)) or "."
+    fd, tmp = tempfile.mkstemp(dir=d, suffix=".tmp")
+    with os.fdopen(fd, "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)
+        f.flush()
+        os.fsync(f.fileno())
+    os.replace(tmp, path)               # 원자적 — 옛 파일이거나 새 파일이거나
+
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("image", nargs="?", help="기본: calib.jpg, 없으면 photos/raw 의 최신")
+    ap.add_argument("--yes", action="store_true", help="config.json 에 실제로 반영")
+    ap.add_argument("-o", "--out", default="roi_offset.jpg",
+                    help="확인용 — ROI 와 잎이 얼마나 어긋났는지 겹쳐 그린다")
+    a = ap.parse_args()
+
+    src = a.image
+    if not src:
+        if os.path.exists("calib.jpg"):
+            src = "calib.jpg"
+        else:
+            cand = sorted(glob.glob("photos/raw/*.jpg"))
+            if not cand:
+                print("사진이 없습니다. setup_camera.py 에서 [촬영] 하세요.")
+                return 1
+            src = cand[-1]
+
+    img = cv2.imread(src)
+    if img is None:
+        print(f"못 읽음: {src}")
+        return 1
+    H, W = img.shape[:2]
+    C = json.load(open(CFG_PATH, encoding="utf-8"))
+    rois = C.get("rois", [])
+    if not rois:
+        print("config.json 에 rois 가 없습니다. 먼저 [격자로 나누기] 하세요.")
+        return 1
+
+    cap = tuple(C.get("capture", {}).get("size", [0, 0]))
+    print(f"\n사진   {src}  {W}x{H}")
+    if cap and (W, H) != cap:
+        print(f"  ★ config 의 capture.size {cap[0]}x{cap[1]} 와 다릅니다 — "
+              f"좌표가 안 맞을 수 있습니다")
+
+    sizes = {(r["w"], r["h"]) for r in rois}
+    print(f"ROI    {len(rois)}개 · 크기 {'모두 같음' if len(sizes) == 1 else '★ 다름 ' + str(sizes)}")
+    # ROI 는 사각형 박스(config.json 의 x,y,w,h)이고, 잎 중심은 마스크 픽셀의
+    # 무게중심이다. 둘 다 '중심'이라 부르면 무엇의 중심인지 알 수 없다.
+    print(f"\n{'화분':6} {'ROI 중심':&gt;14} {'잎 무게중심':&gt;14} {'보정량':&gt;12}   초록도  넓이")
+    print("-" * 72)
+
+    vis = img.copy()
+    moved = 0
+    for r in rois:
+        w, h = r["w"], r["h"]
+        cx, cy = r["x"] + w // 2, r["y"] + h // 2
+        hit = find_leaf(img, cx, cy, w, h)
+
+        cv2.rectangle(vis, (r["x"], r["y"]), (r["x"] + w, r["y"] + h), (120, 120, 120), 6)
+
+        if not hit:
+            print(f"{r['plant_id']:6} {f'({cx},{cy})':&gt;14} {'못 찾음':&gt;14} "
+                  f"{'-':&gt;12}      —      —")
+            continue
+
+        lx, ly, area, greenness = hit
+        nx = int(np.clip(lx - w // 2, 0, W - w))
+        ny = int(np.clip(ly - h // 2, 0, H - h))
+        dx, dy = nx - r["x"], ny - r["y"]
+
+        print(f"{r['plant_id']:6} {f'({cx},{cy})':&gt;14} {f'({lx},{ly})':&gt;14} "
+              f"{f'{dx:+d},{dy:+d}':&gt;12}   {greenness:.3f}  {area:,}px")
+
+        cv2.rectangle(vis, (nx, ny), (nx + w, ny + h), (255, 200, 0), 8)
+        cv2.circle(vis, (lx, ly), 18, (0, 0, 255), -1)
+        cv2.putText(vis, f"{r['plant_id']} {r.get('treat') or '(빈칸)'}",
+                    (nx + 14, ny + 74), cv2.FONT_HERSHEY_SIMPLEX, 2.0, (255, 200, 0), 5)
+
+        if dx or dy:
+            moved += 1
+        r["_new"] = (nx, ny)
+
+    cv2.imwrite(a.out, vis)
+    print(f"\n확인용 이미지: {a.out}"
+          f"   (회색=지금 ROI · 노랑=제안 ROI · 빨강점=잎 무게중심)")
+
+    if not a.yes:
+        print("\n  실제로 반영하려면:  uv run python center_roi.py --yes\n")
+        return 0
+
+    if moved == 0:
+        print("\n  이미 맞습니다. 바꿀 것 없음.\n")
+        return 0
+
+    for r in rois:
+        if "_new" in r:
+            r["x"], r["y"] = r.pop("_new")
+    for r in rois:
+        r.pop("_new", None)
+
+    save_atomic(CFG_PATH, C)
+    print(f"\n  config.json 갱신 — {moved}개 이동. 크기는 바꾸지 않았습니다.")
+    print("  ★ setup_camera.py 를 열어 [저장]하면 미리보기 좌표로 덮어씁니다. 열지 마세요.\n")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())</pre>
+    <span class="ftag">실행</span>
+<pre>uv run python center_roi.py            <span class="c"># 보기만 함 — roi_offset.jpg 로 눈으로 확인</span>
+uv run python center_roi.py --yes      <span class="c"># config.json 에 실제로 반영</span></pre>
+
+    <div class="box tip">
+      <span class="lbl">출력 읽는 법 — <code class="in">roi_offset.jpg</code></span>
+      <table>
+        <tr><th>색</th><th>뜻</th></tr>
+        <tr><td>회색 박스</td><td><b>지금</b> ROI — <code class="in">config.json</code> 에 적혀 있는 자리</td></tr>
+        <tr><td>노랑 박스</td><td><b>제안</b> ROI — 잎 쪽으로 옮긴 자리</td></tr>
+        <tr><td>빨강 점</td><td><b>잎 무게중심</b> — 초록 화소가 몰려 있는 지점</td></tr>
+      </table>
+      회색과 노랑이 거의 겹치면 손댈 것이 없습니다. 크게 벌어졌다면 <b>왜 벌어졌는지</b>를 먼저 보세요 —
+      모종이 치우친 것인지, 카메라가 밀린 것인지에 따라 할 일이 다릅니다.
+      카메라가 밀린 것이라면 이 도구가 아니라 <code class="in">frame_align.py</code>(패널 11) 의 영역입니다.
+    </div>
+
+    <div class="box warn">
+      <span class="lbl">&#9888; <b>촬영이 시작된 뒤에는 <code class="in">--yes</code> 를 쓰지 마세요</b></span>
+      찾아 주는 것은 <b>면적 무게중심</b>이지 기하학적 중심이 아닙니다.
+      잎이 한쪽으로 치우쳐 자라면 무게중심도 그쪽으로 끌리고, <b>ROI 가 따라 밀려</b>
+      반대쪽 잎이 박스 밖으로 잘려 나갈 수 있습니다.<br><br>
+      더 큰 문제는 <b>비교 가능성</b>입니다. ROI 가 바뀌면 그 전후의 면적은
+      <b>같은 잣대로 잰 값이 아닙니다.</b> 생장 곡선에 계단이 생기고, 그 계단이 처리 효과처럼 보입니다.
+      부득이 다시 잡았다면 <code class="in">reset_run.py</code>
+      (<code class="in">soil</code>&middot;<code class="in">pump_log</code>&middot;<code class="in">growth</code> 를 비우고
+      그 시점부터 새 구간으로 시작 &mdash; <code class="in">readings</code> 는 남깁니다) 로
+      <b>구간을 끊는 편</b>이 정직합니다.
+    </div>
+
     <div class="box ok">
       <span class="lbl">이 패널 통과 조건 — 여기까지가 <b>손으로 하는 설치</b>입니다</span>
       <ul class="chk">
@@ -4576,7 +4949,9 @@ if __name__ == "__main__":
     <div class="box tip">
       <span class="lbl">contour가 대시보드의 캐노피 오버레이를 만듭니다</span>
       외곽선을 <b>중심 기준 픽셀 좌표</b>로 저장하므로 좌표 크기 자체가 면적을 담습니다.
-      대시보드는 <b>3일 전과 지금을 그대로 겹쳐</b> 그리기만 하면 됩니다 — 자란 만큼 바깥으로 커집니다.
+      대시보드는 <b>하루 전과 지금을 그대로 겹쳐</b> 그리기만 하면 됩니다 — 자란 만큼 바깥으로 커집니다.
+      하루면 차이가 작지만 <b>그날그날의 변화</b>가 보입니다. 대신 눈에 잘 안 띄는 만큼,
+      캡션에는 <b>실험 시작 이래 총 성장률</b>을 따로 적습니다.
       점 64개로 줄여 저장하니 6주 × 2회 × 6화분이어도 <b>DB 부담이 없습니다.</b>
     </div>
 
@@ -4811,8 +5186,15 @@ def _rot_scale(ref_bgr, cur_bgr, n=512):
     A, B = _spectrum(_square(ref_bgr, n)), _spectrum(_square(cur_bgr, n))
     M = n / np.log(n / 2)
     fl = cv2.INTER_LINEAR + cv2.WARP_FILL_OUTLIERS
-    a = cv2.logPolar(A, (n / 2, n / 2), M, fl)
-    b = cv2.logPolar(B, (n / 2, n / 2), M, fl)
+    # cv2.logPolar 은 구형 C-API 호환 함수라 OpenCV 최신판에서 사라졌습니다
+    # (AttributeError: module 'cv2' has no attribute 'logPolar').
+    # warpPolar 이 대체입니다 — WARP_POLAR_LOG 를 주면 계산이 동일하고,
+    # maxRadius 를 M 에 맞춰 exp(maxRadius/M) 가 반지름 상한이 되게 잡습니다.
+    # 옛 logPolar 은 M 만 받아 상한이 암묵적이었는데, 여기서는 명시해야 같은 축척이 됩니다.
+    maxr = float(np.exp(n / M))              # logPolar(M) 과 같은 가로 축척
+    pflag = fl + cv2.WARP_POLAR_LOG
+    a = cv2.warpPolar(A, (n, n), (n / 2, n / 2), maxr, pflag)
+    b = cv2.warpPolar(B, (n, n), (n / 2, n / 2), maxr, pflag)
     win = np.outer(np.hanning(n), np.hanning(n)).astype(np.float32)
     (sx, sy), resp = cv2.phaseCorrelate(a, b, win)
     deg = -sy * 360.0 / n
@@ -4842,9 +5224,27 @@ def align(cur_path, ref_path=REF_PATH, cfg=None):
         out["msg"] = "배경이 15% 미만 — 맞출 단서가 부족합니다"
         return out
 
-    a, b = _prep(ref, mask), _prep(cur, mask)
-    (dx, dy), resp = cv2.phaseCorrelate(a, b)
-    deg, scale, resp2 = _rot_scale(ref, cur)
+    # ★ 이 함수는 &lt;실패해도 예외를 던지지 않는다&gt;는 약속으로 쓰입니다.
+    #   leaf_measure 가 이걸 부르는데, 여기서 예외가 새면 촬영 전체가 죽습니다.
+    #   실제로 2026-08-01 에 그랬습니다 — cv2.logPolar 이 최신 OpenCV 에서 사라져
+    #   AttributeError 가 났고, 그날 dawn·pm 두 번의 측정이 통째로 날아갔습니다.
+    #   밀림 보정은 &lt;부가 기능&gt;이고 면적 측정은 그것 없이도 됩니다. 그러니 여기서
+    #   막고, 다만 &lt;조용히 넘기지는 않습니다&gt; — 침묵하면 꺼진 줄도 모릅니다.
+    try:
+        a, b = _prep(ref, mask), _prep(cur, mask)
+        (dx, dy), resp = cv2.phaseCorrelate(a, b)
+    except Exception as e:
+        out["msg"] = f"평행이동 검출 실패({type(e).__name__}: {e}) — 보정 없이 진행합니다"
+        print(f"[frame_align] {out['msg']}")
+        return out
+
+    try:
+        deg, scale, resp2 = _rot_scale(ref, cur)
+    except Exception as e:
+        # 회전·배율만 실패한 경우입니다. 평행이동 보정은 살아 있으니 그것만 씁니다.
+        deg, scale, resp2 = 0.0, 1.0, 0.0
+        print(f"[frame_align] 회전·배율 검출 실패({type(e).__name__}: {e}) "
+              f"— 평행이동만 보정합니다")
 
     warn = float(qc.get("drift_warn_px", DEF_SHIFT_WARN))
     fail = float(qc.get("drift_fail_px", DEF_SHIFT_FAIL))
@@ -4937,6 +5337,27 @@ if __name__ == "__main__":
       </table>
       회전·배율은 <b>보정하지 않고 실패로 처리</b>합니다. ROI 를 옮기는 것만으로는 못 고치는 변형이라,
       조용히 틀린 값을 만드는 것보다 <b>멈추고 알리는 편</b>이 낫습니다.
+    </div>
+
+    <div class="box warn">
+      <span class="lbl">&#9888; 밀림 보정이 <b>측정 전체를 죽이지 않게</b> — 2026-08-01 에 겪은 일</span>
+      <code class="in">cv2.logPolar</code> 은 구형 C-API 호환 함수라 <b>최신 OpenCV 에서 사라졌습니다.</b>
+      그날 <code class="in">AttributeError</code> 가 났고, <code class="in">leaf_measure</code> 가 이 함수를 부르는 자리에서
+      예외가 그대로 새어 나가 <b>dawn·pm 두 번의 측정이 통째로 날아갔습니다.</b>
+      사진은 찍혔는데 DB 는 비었습니다.
+      <table>
+        <tr><th>무엇을</th><th>어떻게 고쳤나</th></tr>
+        <tr><td>사라진 함수</td>
+            <td><code class="in">cv2.warpPolar</code> + <code class="in">WARP_POLAR_LOG</code> 로 대체.
+                옛 함수는 반지름 상한이 암묵적이었으므로 <code class="in">maxRadius = exp(n/M)</code> 로
+                <b>명시해야 같은 축척</b>이 됩니다</td></tr>
+        <tr><td>새어 나간 예외</td>
+            <td><code class="in">align()</code> 이 <b>예외를 밖으로 던지지 않도록</b> 이중으로 막았습니다 —
+                평행이동이 실패하면 보정 없이, 회전·배율만 실패하면 <b>평행이동만</b> 보정하고 진행</td></tr>
+      </table>
+      원칙은 하나입니다 — <b>밀림 보정은 부가 기능이고 면적 측정은 그것 없이도 됩니다.</b>
+      다만 <b>조용히 넘기지는 않습니다</b>. 실패하면 <code class="in">[frame_align]</code> 로 로그에 남깁니다 —
+      침묵하면 꺼진 줄도 모른 채 6주가 지나갑니다.
     </div>
 
     <div class="box warn">
@@ -5398,7 +5819,7 @@ sudo systemctl daemon-reload</pre>
         <li><code class="in">sudo systemctl start plantsnap.service</code> 가 오류 없이 끝난다</li>
         <li><code class="in">photos/raw/</code> 에 사진이, <code class="in">photos/debug/</code> 에 오버레이가 생긴다</li>
         <li><code class="in">photos/growth.jsonl</code> 에 한 줄이 추가된다</li>
-        <li>대시보드 GROWTH 탭에 값이 뜬다 (<code class="in">DEMO_FILL</code> 이 꺼진 상태로)</li>
+        <li>대시보드 GROWTH 탭에 값이 뜬다 (<code class="in">DUMMY_FILL</code> 이 꺼진 상태로)</li>
         <li><b>다음 날 아침</b> <code class="in">journalctl -u plantsnap --since yesterday</code> 가 깨끗하다</li>
       </ul>
       마지막 줄이 진짜 검증입니다. 등록만 하고 확인을 안 하면
@@ -5474,7 +5895,7 @@ uv run python -c "import sqlite3;c=sqlite3.connect('plant.db');print(*c.execute(
     <div class="box ok">
       <span class="lbl">★ 노드가 없어도 정상 동작합니다 — 8가지 상태를 전부 검증했습니다</span>
       <table>
-        <tr><th>설치 상태</th><th><code class="in">DEMO_FILL=True</code></th><th><code class="in">False</code></th></tr>
+        <tr><th>설치 상태</th><th><code class="in">DUMMY_FILL=True</code></th><th><code class="in">False</code></th></tr>
         <tr><td>아무것도 없음</td><td>전체 화면 (가상)</td><td>안내 문구</td></tr>
         <tr><td><b>환경 노드만</b> ← 지금</td><td><b>환경 실측 + 나머지 가상</b></td><td>환경만 표시 + 안내</td></tr>
         <tr><td>환경 + 카메라</td><td><b>실측 화분에 맞춰</b> 가상 생성</td><td>환경 + 캐노피</td></tr>
@@ -5584,7 +6005,7 @@ from streamlit_autorefresh import st_autorefresh
 DB        = "plant.db"
 TZ        = 9            # UTC -&gt; KST
 TOL       = 2.0          # 평균 정렬 허용폭 (%p)
-DEMO_FILL = True         # ★ 비어 있는 테이블을 가상 데이터로 채워 레이아웃을 확인.
+DUMMY_FILL = True        # ★ 비어 있는 테이블을 가상 데이터로 채워 레이아웃을 확인.
                          #    실제 운용에 들어가면 False 로 바꾸세요.
 # ═════════════════════════════════
 
@@ -5668,7 +6089,7 @@ st.markdown("""&lt;style&gt;
  .chip s{text-decoration:none;color:var(--mut);font-family:ui-monospace,monospace;font-size:9.5px}
  .alert{background:#2B1614;border:1px solid #6E322A;color:#FFB4A8;border-radius:3px;
         padding:7px 11px;margin:5px 0;font-size:12.5px}
- .demo{display:inline-block;background:#2A2415;border:1px solid #6B5A28;color:#E8D9A8;
+ .dummy{display:inline-block;background:#2A2415;border:1px solid #6B5A28;color:#E8D9A8;
        border-radius:2px;padding:1px 7px;font-size:9.5px;font-weight:700;letter-spacing:.09em;
        margin-left:7px;vertical-align:2px}
  .grp{font-size:10px;font-weight:700;letter-spacing:.12em;color:#9AA1AC;margin:6px 0 2px}
@@ -5884,7 +6305,7 @@ REAL_POTS = set(roster_of(soil, grow))
 REAL_ENV  = not env.empty
 
 FAKE = set()
-if DEMO_FILL:
+if DUMMY_FILL:
     s2, p2, g2 = synth(roster_of(soil, grow) or None)      # ★ 실측 화분에 맞춰 생성
     if soil.empty: soil, _ = s2, FAKE.add("soil")
     if pump.empty: pump, _ = p2, FAKE.add("pump")
@@ -5904,17 +6325,17 @@ if soil.empty:
         st.markdown("### Environment")
         render_env(env)
         st.info("Water and camera nodes are not connected yet — those sections appear "
-                "automatically once they publish. Set DEMO_FILL = True to preview the full "
-                "layout with demo data.")
+                "automatically once they publish. Set DUMMY_FILL = True to preview the full "
+                "layout with dummy data.")
     st.stop()
 
-BADGE = '&lt;span class="demo"&gt;DEMO DATA&lt;/span&gt;'
+BADGE = '&lt;span class="dummy"&gt;DUMMY DATA&lt;/span&gt;'
 def head(title, fake_key=None):
     st.markdown(f"### {title}" + (BADGE if fake_key in FAKE else ""), unsafe_allow_html=True)
 
 if FAKE:
     st.markdown(
-        f'&lt;div class="alert"&gt;! &amp;nbsp;&lt;b&gt;DEMO DATA&lt;/b&gt; — &lt;b&gt;{", ".join(sorted(FAKE))}&lt;/b&gt;'
+        f'&lt;div class="alert"&gt;! &amp;nbsp;&lt;b&gt;DUMMY DATA&lt;/b&gt; — &lt;b&gt;{", ".join(sorted(FAKE))}&lt;/b&gt;'
         f'는 가상의 데이터이며 해당 노드 연결 시 실측값으로 변경 반영&lt;/div&gt;',
         unsafe_allow_html=True)
 
@@ -6053,7 +6474,7 @@ with tab_ov:
             st.plotly_chart(f, use_container_width=True, config={"displayModeBar": False}, key="validity_var")
 
     # ── 캐노피 오버레이 : 처리군당 한 줄 ──
-    head("Canopy projected area — 3 d ago → now", "growth")
+    head("Canopy projected area — 1 d ago → now", "growth")
     dawn = grow[grow.phase == "dawn"] if "phase" in grow else grow
     if dawn.empty or "contour" not in dawn:
         st.caption("Waiting for camera. leafcv.py must publish `contour`.")
@@ -6066,10 +6487,21 @@ with tab_ov:
                 d = dawn[(dawn.plant_id == p)].dropna(subset=["contour"])
                 if len(d) &lt; 2:
                     col.caption(f"{p.upper()} — not enough frames"); continue
+                d = d.sort_values("ts")
                 new = d.iloc[-1]
-                older = d[d.ts &lt;= new.ts - pd.Timedelta(days=3)]
+                # 겹쳐 그리는 것은 &lt;하루 전&gt;. 하루면 차이가 작지만 그날그날의
+                # 변화를 본다. 하루 전 프레임이 없으면 가장 가까운 이전 것을 쓴다.
+                older = d[d.ts &lt;= new.ts - pd.Timedelta(days=1)]
                 old = older.iloc[-1] if len(older) else d.iloc[0]
+                gap_d = (new.ts - old.ts).total_seconds() / 86400
                 gain = 100 * (new.area_px - old.area_px) / old.area_px
+
+                # 캡션은 &lt;초기 시점 대비&gt;. 하루 변화는 작아 눈에 안 띄므로,
+                # 실험 시작 이래 얼마나 자랐는지를 숫자로 따로 보여준다.
+                base = d.iloc[0]
+                span_d = (new.ts - base.ts).total_seconds() / 86400
+                tot = (100 * (new.area_px - base.area_px) / base.area_px
+                       if base.area_px else float("nan"))
                 c = CT[treat]
                 f = go.Figure()
                 # 어두운 배경에서는 낮은 불투명도가 더 많이 죽습니다 — 3d 전 실루엣을 조금 올렸습니다.
@@ -6081,13 +6513,16 @@ with tab_ov:
                 lim = float(np.abs(np.array(json.loads(new.contour))).max()) * 1.12
                 f.update_layout(height=150, margin=dict(l=0, r=0, t=22, b=0), showlegend=False,
                                 title=dict(text=f"&lt;b&gt;{p.upper()}&lt;/b&gt;  "
-                                                f"&lt;span style='color:{CD[treat]}'&gt;+{gain:.0f}%&lt;/span&gt;",
+                                                f"&lt;span style='color:{CD[treat]}'&gt;{gain:+.0f}%&lt;/span&gt;"
+                                                f"&lt;span style='color:{MUT};font-size:10px'&gt;"
+                                                f"  {gap_d:.1f}일&lt;/span&gt;",
                                            font=dict(size=12, color=INK), x=0, y=.97),
                                 xaxis=dict(visible=False, range=[-lim, lim]),
                                 yaxis=dict(visible=False, range=[-lim, lim], scaleanchor="x"), **BLANK)
                 col.plotly_chart(f, use_container_width=True, config={"displayModeBar": False},
                                  key=f"canopy_{treat}_{p}")
-                col.caption(f"{old.area_cm2:.1f} → {new.area_cm2:.1f} cm²")
+                col.caption(f"초기 {base.area_cm2:.1f} → {new.area_cm2:.1f} cm² "
+                            f"({tot:+.0f}% · {span_d:.1f}일)")
 
     # ── 톱니 : 좌 STABLE / 우 FLUCTUATING ──
     head("Wetting–drying cycles — 7 d", "soil")
@@ -6314,7 +6749,7 @@ with tab_gr:
 
 with st.expander("Export CSV"):
     for nm, df in [("readings", env), ("soil", soil), ("pump_log", pump), ("growth", grow)]:
-        st.download_button(nm + (" (demo)" if nm.split("_")[0] in FAKE else ""),
+        st.download_button(nm + (" (dummy)" if nm.split("_")[0] in FAKE else ""),
                            df.to_csv(index=False), f"{nm}.csv", "text/csv", key=nm)</pre>
     <span class="ftag">실행</span>
 <pre>uv run streamlit run dashboard.py --server.address 0.0.0.0 --server.port 8501

@@ -23,7 +23,7 @@ from streamlit_autorefresh import st_autorefresh
 DB        = "plant.db"
 TZ        = 9            # UTC -> KST
 TOL       = 2.0          # 평균 정렬 허용폭 (%p)
-DEMO_FILL = True         # ★ 비어 있는 테이블을 가상 데이터로 채워 레이아웃을 확인.
+DUMMY_FILL = True        # ★ 비어 있는 테이블을 가상 데이터로 채워 레이아웃을 확인.
                          #    실제 운용에 들어가면 False 로 바꾸세요.
 # ═════════════════════════════════
 
@@ -107,7 +107,7 @@ st.markdown("""<style>
  .chip s{text-decoration:none;color:var(--mut);font-family:ui-monospace,monospace;font-size:9.5px}
  .alert{background:#2B1614;border:1px solid #6E322A;color:#FFB4A8;border-radius:3px;
         padding:7px 11px;margin:5px 0;font-size:12.5px}
- .demo{display:inline-block;background:#2A2415;border:1px solid #6B5A28;color:#E8D9A8;
+ .dummy{display:inline-block;background:#2A2415;border:1px solid #6B5A28;color:#E8D9A8;
        border-radius:2px;padding:1px 7px;font-size:9.5px;font-weight:700;letter-spacing:.09em;
        margin-left:7px;vertical-align:2px}
  .grp{font-size:10px;font-weight:700;letter-spacing:.12em;color:#9AA1AC;margin:6px 0 2px}
@@ -323,7 +323,7 @@ REAL_POTS = set(roster_of(soil, grow))
 REAL_ENV  = not env.empty
 
 FAKE = set()
-if DEMO_FILL:
+if DUMMY_FILL:
     s2, p2, g2 = synth(roster_of(soil, grow) or None)      # ★ 실측 화분에 맞춰 생성
     if soil.empty: soil, _ = s2, FAKE.add("soil")
     if pump.empty: pump, _ = p2, FAKE.add("pump")
@@ -343,17 +343,17 @@ if soil.empty:
         st.markdown("### Environment")
         render_env(env)
         st.info("Water and camera nodes are not connected yet — those sections appear "
-                "automatically once they publish. Set DEMO_FILL = True to preview the full "
-                "layout with demo data.")
+                "automatically once they publish. Set DUMMY_FILL = True to preview the full "
+                "layout with dummy data.")
     st.stop()
 
-BADGE = '<span class="demo">DEMO DATA</span>'
+BADGE = '<span class="dummy">DUMMY DATA</span>'
 def head(title, fake_key=None):
     st.markdown(f"### {title}" + (BADGE if fake_key in FAKE else ""), unsafe_allow_html=True)
 
 if FAKE:
     st.markdown(
-        f'<div class="alert">! &nbsp;<b>DEMO DATA</b> — <b>{", ".join(sorted(FAKE))}</b>'
+        f'<div class="alert">! &nbsp;<b>DUMMY DATA</b> — <b>{", ".join(sorted(FAKE))}</b>'
         f'는 가상의 데이터이며 해당 노드 연결 시 실측값으로 변경 반영</div>',
         unsafe_allow_html=True)
 
@@ -492,7 +492,7 @@ with tab_ov:
             st.plotly_chart(f, use_container_width=True, config={"displayModeBar": False}, key="validity_var")
 
     # ── 캐노피 오버레이 : 처리군당 한 줄 ──
-    head("Canopy projected area — 3 d ago → now", "growth")
+    head("Canopy projected area — 1 d ago → now", "growth")
     dawn = grow[grow.phase == "dawn"] if "phase" in grow else grow
     if dawn.empty or "contour" not in dawn:
         st.caption("Waiting for camera. leafcv.py must publish `contour`.")
@@ -505,10 +505,21 @@ with tab_ov:
                 d = dawn[(dawn.plant_id == p)].dropna(subset=["contour"])
                 if len(d) < 2:
                     col.caption(f"{p.upper()} — not enough frames"); continue
+                d = d.sort_values("ts")
                 new = d.iloc[-1]
-                older = d[d.ts <= new.ts - pd.Timedelta(days=3)]
+                # 겹쳐 그리는 것은 <하루 전>. 하루면 차이가 작지만 그날그날의
+                # 변화를 본다. 하루 전 프레임이 없으면 가장 가까운 이전 것을 쓴다.
+                older = d[d.ts <= new.ts - pd.Timedelta(days=1)]
                 old = older.iloc[-1] if len(older) else d.iloc[0]
+                gap_d = (new.ts - old.ts).total_seconds() / 86400
                 gain = 100 * (new.area_px - old.area_px) / old.area_px
+
+                # 캡션은 <초기 시점 대비>. 하루 변화는 작아 눈에 안 띄므로,
+                # 실험 시작 이래 얼마나 자랐는지를 숫자로 따로 보여준다.
+                base = d.iloc[0]
+                span_d = (new.ts - base.ts).total_seconds() / 86400
+                tot = (100 * (new.area_px - base.area_px) / base.area_px
+                       if base.area_px else float("nan"))
                 c = CT[treat]
                 f = go.Figure()
                 # 어두운 배경에서는 낮은 불투명도가 더 많이 죽습니다 — 3d 전 실루엣을 조금 올렸습니다.
@@ -520,13 +531,16 @@ with tab_ov:
                 lim = float(np.abs(np.array(json.loads(new.contour))).max()) * 1.12
                 f.update_layout(height=150, margin=dict(l=0, r=0, t=22, b=0), showlegend=False,
                                 title=dict(text=f"<b>{p.upper()}</b>  "
-                                                f"<span style='color:{CD[treat]}'>+{gain:.0f}%</span>",
+                                                f"<span style='color:{CD[treat]}'>{gain:+.0f}%</span>"
+                                                f"<span style='color:{MUT};font-size:10px'>"
+                                                f"  {gap_d:.1f}일</span>",
                                            font=dict(size=12, color=INK), x=0, y=.97),
                                 xaxis=dict(visible=False, range=[-lim, lim]),
                                 yaxis=dict(visible=False, range=[-lim, lim], scaleanchor="x"), **BLANK)
                 col.plotly_chart(f, use_container_width=True, config={"displayModeBar": False},
                                  key=f"canopy_{treat}_{p}")
-                col.caption(f"{old.area_cm2:.1f} → {new.area_cm2:.1f} cm²")
+                col.caption(f"초기 {base.area_cm2:.1f} → {new.area_cm2:.1f} cm² "
+                            f"({tot:+.0f}% · {span_d:.1f}일)")
 
     # ── 톱니 : 좌 STABLE / 우 FLUCTUATING ──
     head("Wetting–drying cycles — 7 d", "soil")
@@ -753,5 +767,5 @@ with tab_gr:
 
 with st.expander("Export CSV"):
     for nm, df in [("readings", env), ("soil", soil), ("pump_log", pump), ("growth", grow)]:
-        st.download_button(nm + (" (demo)" if nm.split("_")[0] in FAKE else ""),
+        st.download_button(nm + (" (dummy)" if nm.split("_")[0] in FAKE else ""),
                            df.to_csv(index=False), f"{nm}.csv", "text/csv", key=nm)

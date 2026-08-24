@@ -87,8 +87,15 @@ def _rot_scale(ref_bgr, cur_bgr, n=512):
     A, B = _spectrum(_square(ref_bgr, n)), _spectrum(_square(cur_bgr, n))
     M = n / np.log(n / 2)
     fl = cv2.INTER_LINEAR + cv2.WARP_FILL_OUTLIERS
-    a = cv2.logPolar(A, (n / 2, n / 2), M, fl)
-    b = cv2.logPolar(B, (n / 2, n / 2), M, fl)
+    # cv2.logPolar 은 구형 C-API 호환 함수라 OpenCV 최신판에서 사라졌습니다
+    # (AttributeError: module 'cv2' has no attribute 'logPolar').
+    # warpPolar 이 대체입니다 — WARP_POLAR_LOG 를 주면 계산이 동일하고,
+    # maxRadius 를 M 에 맞춰 exp(maxRadius/M) 가 반지름 상한이 되게 잡습니다.
+    # 옛 logPolar 은 M 만 받아 상한이 암묵적이었는데, 여기서는 명시해야 같은 축척이 됩니다.
+    maxr = float(np.exp(n / M))              # logPolar(M) 과 같은 가로 축척
+    pflag = fl + cv2.WARP_POLAR_LOG
+    a = cv2.warpPolar(A, (n, n), (n / 2, n / 2), maxr, pflag)
+    b = cv2.warpPolar(B, (n, n), (n / 2, n / 2), maxr, pflag)
     win = np.outer(np.hanning(n), np.hanning(n)).astype(np.float32)
     (sx, sy), resp = cv2.phaseCorrelate(a, b, win)
     deg = -sy * 360.0 / n
@@ -118,9 +125,27 @@ def align(cur_path, ref_path=REF_PATH, cfg=None):
         out["msg"] = "배경이 15% 미만 — 맞출 단서가 부족합니다"
         return out
 
-    a, b = _prep(ref, mask), _prep(cur, mask)
-    (dx, dy), resp = cv2.phaseCorrelate(a, b)
-    deg, scale, resp2 = _rot_scale(ref, cur)
+    # ★ 이 함수는 <실패해도 예외를 던지지 않는다>는 약속으로 쓰입니다.
+    #   leaf_measure 가 이걸 부르는데, 여기서 예외가 새면 촬영 전체가 죽습니다.
+    #   실제로 2026-08-01 에 그랬습니다 — cv2.logPolar 이 최신 OpenCV 에서 사라져
+    #   AttributeError 가 났고, 그날 dawn·pm 두 번의 측정이 통째로 날아갔습니다.
+    #   밀림 보정은 <부가 기능>이고 면적 측정은 그것 없이도 됩니다. 그러니 여기서
+    #   막고, 다만 <조용히 넘기지는 않습니다> — 침묵하면 꺼진 줄도 모릅니다.
+    try:
+        a, b = _prep(ref, mask), _prep(cur, mask)
+        (dx, dy), resp = cv2.phaseCorrelate(a, b)
+    except Exception as e:
+        out["msg"] = f"평행이동 검출 실패({type(e).__name__}: {e}) — 보정 없이 진행합니다"
+        print(f"[frame_align] {out['msg']}")
+        return out
+
+    try:
+        deg, scale, resp2 = _rot_scale(ref, cur)
+    except Exception as e:
+        # 회전·배율만 실패한 경우입니다. 평행이동 보정은 살아 있으니 그것만 씁니다.
+        deg, scale, resp2 = 0.0, 1.0, 0.0
+        print(f"[frame_align] 회전·배율 검출 실패({type(e).__name__}: {e}) "
+              f"— 평행이동만 보정합니다")
 
     warn = float(qc.get("drift_warn_px", DEF_SHIFT_WARN))
     fail = float(qc.get("drift_fail_px", DEF_SHIFT_FAIL))
