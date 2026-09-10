@@ -144,6 +144,21 @@ def cmd_seed(args) -> int:
     conn.commit()
     conn.close()
     print(f"seeded {p.db}: readings={len(env)} soil={len(soil)} pump_log={len(pump)} growth={len(grow)} (node='dummy')")
+    if args.with_config:
+        from .config_model import Roi
+        from .vision.roi_tools import grid_rois
+        store = ConfigStore(p.config, example=p.example_config)
+
+        def _u(c):
+            rois = grid_rois(c.capture.size[0], c.capture.size[1], 3, 2)
+            for i, r in enumerate(rois):
+                r["treat"] = "stable" if i < 3 else "fluct"
+            c.rois = [Roi(**r) for r in rois]
+            c.treat_mode = "manual"
+            if not c.qc.px_per_cm_ref:
+                c.qc.px_per_cm_ref = 30.0
+        store.update(_u)
+        print(f"config: 6 rois (3 stable / 3 fluct), px_per_cm_ref={store.get().qc.px_per_cm_ref} -> {p.config}")
     return 0
 
 
@@ -275,6 +290,7 @@ def build_parser() -> argparse.ArgumentParser:
     sd = sub.add_parser("seed")
     sd.add_argument("--days", type=int, default=7)
     sd.add_argument("--force", action="store_true")
+    sd.add_argument("--with-config", action="store_true", help="also seed 6 ROIs + treatments + scale into config.json")
     sd.set_defaults(fn=cmd_seed)
 
     sub.add_parser("check-config").set_defaults(fn=cmd_check_config)

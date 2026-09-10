@@ -80,11 +80,15 @@ UV="$(command -v uv || echo "$HOME/.local/bin/uv")"
 echo "  $($UV --version)"
 
 step "python venv (system site-packages so apt's picamera2/gpiozero are visible)"
+# ★ Always the SYSTEM interpreter, for venv AND sync: if uv is left to pick a managed CPython
+#   (e.g. from .python-version) it silently recreates .venv without system site-packages and
+#   picamera2/gpiozero vanish. UV_PYTHON pins it for every uv call in this script.
+export UV_PYTHON=/usr/bin/python3
 if [[ ! -f .venv/pyvenv.cfg ]] || ! grep -q 'include-system-site-packages = true' .venv/pyvenv.cfg; then
   rm -rf .venv
   "$UV" venv --system-site-packages --python /usr/bin/python3
 fi
-SYNC_ARGS=(--frozen --no-dev)
+SYNC_ARGS=(--frozen --no-dev --python /usr/bin/python3)
 [[ $LEGACY -eq 1 ]] && SYNC_ARGS+=(--extra legacy)
 "$UV" sync "${SYNC_ARGS[@]}"
 grep -q 'include-system-site-packages = true' .venv/pyvenv.cfg || { echo "venv lost system-site-packages"; exit 1; }

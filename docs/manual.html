@@ -52,6 +52,14 @@
   .box.tip{border-color:var(--accent); background:#effaf6;} .box.tip .lbl{color:var(--accent);}
   .box.warn{border-color:var(--warn); background:#fdf0ee;} .box.warn .lbl{color:var(--warn);}
   .box.ok{border-color:#27ae60; background:#eafaf0;} .box.ok .lbl{color:#27ae60;}
+  /* 레거시 표시 — 2026-09 웹 UI 통합으로 대체된 내용. 1 릴리스 동안만 유지 */
+  .box.legacy{border-color:#8a98a6; background:#f3f5f7; color:#5f6f7e;} .box.legacy .lbl{color:#7f8c8d;}
+  .legacy-tag{display:inline-block; background:#8a98a6; color:#fff; font-size:10.5px; font-weight:800; padding:2px 8px; border-radius:20px; margin-left:6px; vertical-align:middle; letter-spacing:.03em;}
+  details.legacy{border:1.5px dashed #8a98a6; border-radius:9px; padding:8px 14px; margin:12px 0; background:#f8f9fa;}
+  details.legacy>summary{cursor:pointer; font-weight:800; color:#7f8c8d; font-size:13px; list-style:none;}
+  details.legacy>summary::before{content:'▶ '; font-size:11px;} details.legacy[open]>summary::before{content:'▼ ';}
+  details.legacy>summary .legacy-tag{margin-left:8px;}
+  .box.dummy{border-color:#8e44ad; background:#f7f0fb;} .box.dummy .lbl{color:#8e44ad;}
   table{width:100%; border-collapse:collapse; margin:12px 0; font-size:12.5px;}
   th,td{border:1px solid var(--line); padding:7px 10px; text-align:left; vertical-align:top;}
   th{background:var(--muted); font-weight:700;}
@@ -153,7 +161,7 @@
 <body>
 <div class="stage">
   <aside class="sidebar">
-    <div class="brand"><b>식물 생장 모니터링 — 데모</b><span>환경노드 R4 WiFi + 급수노드 Core S3 + Raspberry Pi 5 + noVNC · rev. 2026-07</span><span style="display:block;margin-top:4px;color:#5d6c7d">빌드 2026-07-29 09:38 · MANIFEST c686722e17c4</span></div>
+    <div class="brand"><b>식물 생장 모니터링 — 데모</b><span>환경노드 R4 WiFi + 급수노드 Core S3 + Raspberry Pi 5 + plantsvc 웹 UI · rev. 2026-09</span><span style="display:block;margin-top:4px;color:#5d6c7d">빌드 2026-09-10 · rev. 2026-09</span></div>
 
     <div class="nav-group">시작하기</div>
     <div class="nav-item" data-target="s0"><span class="n">0</span>개요 &amp; 준비물</div>
@@ -182,8 +190,11 @@
     <div class="nav-group">⑥ 카메라 — 운용 (자동)</div>
     <div class="nav-item" data-target="sC"><span class="n">11</span>측정 · 자동 촬영</div>
 
-    <div class="nav-group">⑦ 대시보드</div>
+    <div class="nav-group">⑦ 대시보드 · 웹 UI · 운용</div>
     <div class="nav-item" data-target="sG"><span class="n">12</span>대시보드</div>
+    <div class="nav-item" data-target="sW"><span class="n">18</span>웹 UI (plantsvc)</div>
+    <div class="nav-item" data-target="sL"><span class="n">19</span>LED 촬영 루틴 (자리)</div>
+    <div class="nav-item" data-target="sI"><span class="n">20</span>설치·배포 스크립트</div>
 
     <div class="nav-group">⑧ 데모 판정</div>
     <div class="nav-item" data-target="sT"><span class="n">13</span>데모 합격 판정</div>
@@ -354,8 +365,8 @@
   <!-- 대시보드 -->
   <line x1="875" y1="228" x2="875" y2="272" class="axl" marker-end="url(#ar)"/>
   <rect x="790" y="276" width="170" height="66" rx="9" fill="#f7f0fb" stroke="#8e44ad" stroke-width="2"/>
-  <text x="804" y="300" class="axb">dashboard.py</text>
-  <text x="804" y="320" class="ax">plantdash.service &#183; :8501</text>
+  <text x="804" y="300" class="axb">plantsvc (웹 UI)</text>
+  <text x="804" y="320" class="ax">plantsvc.service &#183; :8080</text>
 
   <!-- 한 방향 표시 -->
   <text x="356" y="316" class="axr">&#9888; 화살표가 한 방향뿐입니다</text>
@@ -372,7 +383,7 @@
     <table>
       <tr><th></th><th>급수 고리</th><th>측정 고리</th></tr>
       <tr><td>어디서 도나</td><td><b>급수 노드 보드 안</b></td><td><b>Pi 안</b></td></tr>
-      <tr><td>주기</td><td>5분마다 판단 · 필요하면 도즈</td><td>하루 2회 (06:00 · 15:00)</td></tr>
+      <tr><td>주기</td><td>5분마다 판단 · 필요하면 도즈</td><td>하루 2회 (05:50 · 15:00 — 패널 19)</td></tr>
       <tr><td>입력</td><td>토양수분 raw</td><td>사진 1장</td></tr>
       <tr><td>출력</td><td>펌프 ON/OFF</td><td>화분별 면적·윤곽</td></tr>
       <tr><td>네트워크가 죽으면</td><td colspan="2"><b>그대로 계속 돕니다</b> — 로그만 못 남깁니다</td></tr>
@@ -439,8 +450,8 @@
       </tr>
       <tr>
         <td><b>카메라</b><br><span style="color:#5f6f7e">Pi</span></td>
-        <td><code class="in">setup_camera.py</code><br>plantsnap.timer</td>
-        <td><code class="in">config.json</code> 하나</td>
+        <td>웹 UI <code class="in">/camera/setup</code><br>plantsnap.timer</td>
+        <td><code class="in">data/config.json</code> 하나</td>
         <td><code class="in">check_config.py</code> 통과 +<br>
             <code class="in">photos/debug/</code> 윤곽 육안 확인</td>
         <td>10~11</td>
@@ -488,7 +499,7 @@
       <div class="fphase fph-hub2">
         <div class="fphase-h"><span class="pico">📷</span><span class="pnum">④ 라즈베리파이</span>카메라 · 24시간 무인 운용</div>
         <div class="fsteps">
-          <div class="fstep"><div><div class="fs-t">이관 — 파일 복사 + IP 교체</div><div class="fs-d">run_collector.py·DB를 그대로 옮기고 노드의 <span class="fs-c">BROKER</span>만 수정 · 패널 8</div></div></div>
+          <div class="fstep"><div><div class="fs-t">설치 — git clone + install.sh</div><div class="fs-d">저장소를 그대로 클론하고 <span class="fs-c">scripts/install.sh</span> 한 번. 노드의 <span class="fs-c">BROKER</span>만 Pi IP로 · 패널 8·20</div></div></div>
           <div class="fstep"><div><div class="fs-t">카메라 — 초점·노출 고정 ★</div><div class="fs-d"><b>오토포커스는 결함입니다</b>(FAQ). 고정 후 6주간 불변 · 패널 8</div></div></div>
           <div class="fstep"><div><div class="fs-t">종이 잎 검증</div><div class="fs-d">면적을 아는 도형으로 <b>정확도를 수치화</b> · 패널 11</div></div></div>
         </div>
@@ -515,8 +526,9 @@
       <tr>
         <td><code class="in">setup_</code></td>
         <td><b>설치할 때 손으로 1회.</b><br>숫자가 하는 순서</td>
-        <td><code class="in">setup_camera.py</code><br>
-            &nbsp;&nbsp;<span style="font-size:11px;color:#5f6f7e">브라우저에서 노출·배율·ROI·처리군·기준사진을 <b>한 번에</b></span></td>
+        <td>웹 UI <code class="in">/camera/setup</code> (패널 10·18)<br>
+            &nbsp;&nbsp;<span style="font-size:11px;color:#5f6f7e">브라우저에서 노출·배율·ROI·처리군·기준사진을 <b>한 번에</b>.
+            예전 <code class="in">setup_camera.py</code>(:8000)의 5단계가 그대로 옮겨졌습니다</span></td>
         <td>사람<br><b>6주간 다시 안 씀</b></td>
       </tr>
       <tr>
@@ -531,27 +543,30 @@
         <td><code class="in">run_</code></td>
         <td><b>6주 동안 자동으로.</b><br>사람이 안 건드림</td>
         <td><code class="in">run_collector.py</code> MQTT → DB<br>
-            <code class="in">run_capture.py</code> 촬영 → 측정 → 발행</td>
-        <td>systemd<br><b>planthub.service</b><br><b>plantsnap.timer</b></td>
+            <code class="in">plantsvc capture</code> LED → 촬영 → 측정 → 발행<br>
+            <code class="in">plantsvc serve</code> 웹 UI · API · 미리보기 (:8080)<br>
+            <span style="font-size:11px;color:#5f6f7e"><code class="in">run_capture.py</code>는 <code class="in">plantsvc capture</code>로 연결되는 shim으로 남아 있습니다</span></td>
+        <td>systemd<br><b>planthub.service</b><br><b>plantsvc.service</b><br><b>plantsnap.timer</b> (+ catch-up)</td>
       </tr>
       <tr>
         <td>—</td>
         <td>나머지</td>
         <td><code class="in">leaf_measure.py</code> 측정 엔진(라이브러리)<br>
             <code class="in">frame_align.py</code> 카메라 밀림 감지(라이브러리)<br>
-            <code class="in">center_roi.py</code> ROI 재중심 — <b>촬영 시작 전에만</b><br>
-            <code class="in">dashboard.py</code> 화면<br>
-            <code class="in">config.json</code> <b>모든 설정</b><br>
-            <code class="in">plant.db</code> 데이터</td>
+            <code class="in">center_roi.py</code> ROI 재중심 — <b>촬영 시작 전에만</b> (웹 UI의 [ROI 재중심] 버튼과 같은 일)<br>
+            <code class="in">plantsvc doctor</code> 점검표 · <code class="in">plantsvc seed</code> 더미 DB (패널 20)<br>
+            <code class="in">data/config.json</code> <b>모든 설정</b> (웹 UI /system 에서 편집)<br>
+            <code class="in">data/plant.db</code> 데이터 · <code class="in">data/events.db</code> 서비스 자체 기록</td>
         <td><code class="in">leaf_measure</code>는 직접 실행하지 않고
-            <code class="in">run_capture.py</code>가 불러 씁니다</td>
+            <code class="in">plantsvc capture</code>가 불러 씁니다.<br>
+            <span style="font-size:11px;color:#5f6f7e"><code class="in">dashboard.py</code>(Streamlit)는 레거시 — 패널 12</span></td>
       </tr>
     </table>
 
     <div class="box tip">
       <span class="lbl">★ 값을 고칠 곳은 <code class="in">config.json</code> 하나뿐입니다</span>
-      노출·초점·해상도·ROI·마커 크기 — 전부 여기 있습니다.
-      <code class="in">setup_camera.py</code>와 <code class="in">run_capture.py</code>가
+      노출·초점·해상도·ROI·LED·촬영 시각 — 전부 여기 있습니다 (<code class="in">~/plant/data/config.json</code>).
+      웹 UI의 카메라 설정과 <code class="in">plantsvc capture</code>가
       <b>모두 같은 파일을 읽으므로</b>, 한 곳만 고치면 셋이 함께 따라옵니다.<br>
       <b>스크립트 안의 숫자를 직접 고치지 마세요.</b> 세 곳이 어긋나는 순간
       &ldquo;미리보기에서 본 것&rdquo;과 &ldquo;실제로 찍히는 것&rdquo;이 달라지고, 그건 <b>사진만 봐서는 알 수 없습니다.</b>
@@ -566,7 +581,7 @@
 
     <div class="box tip">
       <span class="lbl">파이프라인의 80%를 오늘 끝낼 수 있습니다</span>
-      mosquitto·run_collector.py·dashboard.py는 <b>플랫폼 무관</b>입니다. PC에서 완성해두면 Pi 도착 시
+      mosquitto·run_collector.py·plantsvc(웹 UI)는 <b>플랫폼 무관</b>입니다. PC에서 완성해두면 Pi 도착 시
       <b>파일 복사 + 노드의 BROKER IP 한 줄 교체</b>가 이관의 전부입니다.
     </div>
     <div class="box tip">
@@ -658,7 +673,7 @@ cd "C:\Program Files\mosquitto"
             <b>picamera2</b>와 카메라 스택이 기본 포함되어 있어 설치 사고가 줄어듭니다.
           </div>
           <span class="ftag">PC 터미널</span>
-<pre>ssh xparapx@rasp.local        # ← 자기 계정@호스트명
+<pre>ssh &lt;계정&gt;@raspi.local        # ← 자기 계정@호스트명 (deploy.ps1 의 기본 호스트명은 raspi)
 
 # Pi 안에서
 sudo apt update && sudo apt full-upgrade -y
@@ -2714,20 +2729,38 @@ void loop() {
     <p class="lead">Pi가 맡는 것은 <b>카메라</b>와 <b>24시간 무인 운용</b>입니다. 브로커·run_collector.py 자체는 패널 1·2와 동일하고,
     여기서는 <b>Pi에서만 되는 것</b>과 <b>전원만 꽂으면 알아서 도는 구성</b>을 다룹니다.</p>
 
-    <h3>1) PC에서 만들던 게 있다면 — 옮기기 <span class="pill later">해당자만</span></h3>
-    <p><b>처음부터 Pi로 하셨다면 이 절은 건너뛰세요.</b> 패널 1(브로커)·2(run_collector.py)를 Pi에서 그대로 하면 됩니다.</p>
-    <span class="ftag">PC → Pi (기존 작업 이관)</span>
-<pre># PC에서 — plant 폴더 통째로
-scp -r plant xparapx@rasp.local:~/
-
-# Pi에서
+    <h3>1) 설치 — 저장소를 <b>그대로 클론</b>하고 <code class="in">install.sh</code> 한 번</h3>
+    <p>2026-09 판부터 Pi 에는 <b>저장소 구조 그대로</b> 올립니다. 예전처럼 <code class="in">hub/</code> 안의 파일을 <code class="in">~/plant</code> 에 펼쳐 놓지 않습니다.
+    런타임 데이터(<code class="in">plant.db</code> · <code class="in">events.db</code> · <code class="in">config.json</code> · <code class="in">calib.jpg</code> · <code class="in">photos/</code>)는
+    전부 <code class="in">~/plant/data/</code>(<code class="in">PLANT_DATA_DIR</code>) 한 곳에 모입니다 — git 이 건드리지 않는 폴더라 <code class="in">git pull</code> 이 데이터를 덮을 일이 없습니다.</p>
+    <span class="ftag">Pi — 처음 설치 (다른 Debian 계열 SBC 도 동일)</span>
+<pre>git clone https://github.com/xparapx/Plant_Growth_Monitoring_Demo.git ~/plant
 cd ~/plant
-uv sync
-uv add opencv-python
+scripts/install.sh --set-timezone      <span class="c"># apt → uv venv → uv sync → data/config.json 시드 → 웹 UI → systemd 유닛 렌더·설치 → 활성화 → doctor</span>
 
-hostname -I                 # ← 노드 펌웨어에 넣을 새 BROKER 주소</pre>
-    <p>노드 펌웨어의 <code class="in">BROKER</code>만 Pi의 IP로 바꿔 재업로드하면 끝입니다.
-    <b>DB 파일(<code class="in">plant.db</code>)도 그대로 따라옵니다</b> — 지금까지 쌓인 데이터를 잃지 않습니다.</p>
+hostname -I                            <span class="c"># ← 노드 펌웨어에 넣을 BROKER 주소</span></pre>
+    <p>12 단계가 순서대로 찍히고, 마지막에 <code class="in">plantsvc doctor</code> 점검표와 <code class="in">http://&lt;pi&gt;:8080/</code> 안내가 나옵니다.
+    노드 펌웨어의 <code class="in">BROKER</code>만 Pi 의 IP 로 바꿔 재업로드하면 끝입니다. 옵션과 각 단계의 설명은 <b>패널 20</b>에 있습니다.</p>
+    <div class="box tip">
+      <span class="lbl">PC 에서, 또는 예전 평탄화 설치에서 만들던 게 있다면 — <code class="in">migrate_legacy.sh</code> <span class="pill later">해당자만</span></span>
+      2026-07 판 방식(<code class="in">~/plant</code> 에 <code class="in">run_collector.py</code>·<code class="in">plant.db</code>·<code class="in">photos/</code> 가 나란히)으로 돌리고 있었다면
+      <b>그 폴더를 옆으로 치우고</b> 새로 클론한 뒤 데이터만 옮깁니다. <b>복사만 하고 원본은 절대 지우지 않습니다.</b>
+<pre>mv ~/plant ~/plant.legacy-$(date +%Y%m%d)
+git clone https://github.com/xparapx/Plant_Growth_Monitoring_Demo.git ~/plant
+cd ~/plant
+scripts/migrate_legacy.sh --from ~/plant.legacy-20260910     <span class="c"># plant.db(sqlite backup) · config.json · calib.jpg · truth.json · photos/ → data/</span>
+scripts/install.sh --set-timezone</pre>
+      PC 에서 쌓은 <code class="in">plant.db</code> 도 같은 방법입니다 — <code class="in">scp</code> 로 임시 폴더에 올린 뒤 <code class="in">--from</code> 으로 가리키면 됩니다.
+      옮긴 뒤 <code class="in">data/MIGRATED_FROM.txt</code> 에 출처와 테이블별 행 수가 남습니다.
+      예전 유닛(<code class="in">plantdash</code>·<code class="in">plantcam</code>)은 <code class="in">install.sh</code> 가 비활성화합니다 — 파일은 남겨 둡니다.
+    </div>
+    <div class="box">
+      <span class="lbl">첫 점검 — <code class="in">plantsvc doctor</code></span>
+      설치 끝에 자동으로 한 번 돌고, 언제든 <code class="in">cd ~/plant &amp;&amp; .venv/bin/plantsvc doctor</code> 로 다시 볼 수 있습니다.
+      venv · import(picamera2·cv2·gpiozero) · config.json · 데이터 폴더 · DB 행 수 · 브로커 · 카메라 · 카메라 잠금 · LED · 타이머 · 시간대 · NTP · 유닛 · web/dist 를
+      <b>OK / WARN / FAIL / SKIP</b> 으로 찍고, 고치는 명령을 옆에 적어 줍니다. <b>무언가 이상하면 이 표부터 보세요.</b>
+    </div>
+
     <div class="box warn">
       <span class="lbl">IP를 고정하세요</span>
       공유기 관리페이지에서 <b>DHCP 예약</b>으로 Pi의 IP를 묶어두세요. 재부팅 때 IP가 바뀌면
@@ -2759,8 +2792,8 @@ rpicam-jpeg -o test.jpg -t 2000</pre>
       이 네 가지를 <code class="in">config.json</code>의 <code class="in">capture</code>에 적습니다 —
       <code class="in">lens_position</code> · <code class="in">exposure_us</code> ·
       <code class="in">gain</code> · <code class="in">colour_gains</code>.<br>
-      실제 촬영은 <b>패널 10의 <code class="in">setup_camera.py</code></b>가
-      화면을 보면서 합니다. 별도의 촬영 스크립트는 두지 않습니다 —
+      실제 촬영은 <b>패널 10의 웹 UI <code class="in">/camera/setup</code></b>에서
+      화면을 보면서 합니다([자동 측정 → 고정]이 한 번 재서 잠급니다). 별도의 촬영 스크립트는 두지 않습니다 —
       <b>같은 일을 하는 스크립트가 둘이면 반드시 어긋납니다.</b>
     </div>
 
@@ -2785,8 +2818,10 @@ rpicam-jpeg -o test.jpg -t 2000</pre>
       <b>이게 가장 나쁜 종류의 실패입니다</b> — 에러도 안 나고 사진도 멀쩡히 나옵니다.
       다만 <b>자동 노출·자동 화이트밸런스로 찍힌 사진</b>일 뿐이라, 6주 뒤 면적 그래프가 흔들리고 나서야 알게 됩니다.<br>
       <code class="in">sleep(2)</code>도 빼지 마세요. 설정 직후 바로 찍으면 <b>이전 설정으로 찍힙니다.</b><br>
-      패널 11의 <code class="in">run_capture.py</code>도 <b>같은 순서</b>여야 합니다 —
-      두 스크립트가 다르면 <code class="in">calib.jpg</code>와 매일 찍는 사진의 색이 달라집니다.
+      패널 11의 <code class="in">plantsvc capture</code>도 <b>같은 순서</b>입니다 —
+      미리보기·기준 사진·매일 촬영이 <b>같은 CameraManager 코드</b>를 쓰므로 어긋날 곳이 없습니다.
+      (예전처럼 <code class="in">setup_camera.py</code>와 <code class="in">run_capture.py</code>가 따로 있던 때는
+      두 스크립트가 다르면 <code class="in">calib.jpg</code>와 매일 찍는 사진의 색이 달라졌습니다.)
     </div>
 
     <h3>4) ★ systemd — 전원만 꽂으면 알아서 도는 구성</h3>
@@ -2809,6 +2844,63 @@ systemctl is-active  mosquitto     # active  여야 함
 sudo systemctl enable --now mosquitto</pre>
     </div>
 
+    <div class="box ok">
+      <span class="lbl">2026-09 — 유닛 파일은 <code class="in">install.sh</code> 가 <b>템플릿에서 렌더</b>해 설치합니다</span>
+      <code class="in">deploy/systemd/*.tmpl</code> 에는 계정·경로가 없습니다. <code class="in">install.sh</code>(또는 <code class="in">plantsvc render-units</code>)가
+      <b>현재 사용자(<code class="in">id -un</code>) · 현재 클론 경로 · <code class="in">data/config.json</code>(촬영 시각·LED 워밍업)</b> 을 채워
+      <code class="in">/etc/systemd/system/</code> 에 넣고 <code class="in">daemon-reload</code> 까지 합니다.
+      그래서 <b><code class="in">User=</code>·<code class="in">WorkingDirectory=</code>·uv 경로를 손으로 고칠 일이 없습니다.</b>
+      <code class="in">config.json</code> 에서 촬영 시각이나 LED 설정을 바꿨다면 <code class="in">scripts/install.sh --update</code> 로 다시 렌더하세요.
+    </div>
+    <table>
+      <tr><th>유닛</th><th>하는 일</th><th>비고</th></tr>
+      <tr><td><b>planthub.service</b></td><td><code class="in">hub/run_collector.py</code> — MQTT → SQLite</td><td><b>plant.db 의 유일한 writer.</b> <code class="in">Requires=mosquitto</code></td></tr>
+      <tr><td><b>plantsvc.service</b></td><td><code class="in">plantsvc serve</code> — 웹 UI · API · 카메라 미리보기 (:8080)</td><td>부팅·종료 때 <code class="in">plantsvc led off</code> 를 한 번씩 (릴레이 부동 방지)</td></tr>
+      <tr><td><b>plantsnap.timer</b></td><td>05:50 · 15:00 에 plantsnap.service 를 부름</td><td><code class="in">Persistent=true</code> · <code class="in">AccuracySec=1s</code> — 시스템 시간대 기준</td></tr>
+      <tr><td><b>plantsnap.service</b></td><td><code class="in">plantsvc capture --phase auto</code> — LED → 촬영 → 측정 → 발행</td><td><code class="in">ExecStopPost=plantsvc led off</code> — 실패·타임아웃이어도 램프는 꺼짐</td></tr>
+      <tr><td><b>plantsnap-catchup.service</b></td><td>부팅 때 <code class="in">capture --if-missing</code></td><td>워밍업 중 정전으로 놓친 그날 phase 만 보충 (패널 19)</td></tr>
+      <tr><td style="color:#7f8c8d">plantdash · plantcam</td><td style="color:#7f8c8d">Streamlit · 구 미리보기 서버</td><td style="color:#7f8c8d">설치는 되지만 <b>disabled</b> — 롤백용 (패널 20)</td></tr>
+    </table>
+    <p>서비스는 <b><code class="in">.venv/bin/plantsvc</code> 를 직접</b> 실행합니다. <code class="in">uv run</code> 은 설치 도구이지 런타임이 아닙니다 —
+    05:50 에 네트워크로 의존성을 확인하러 나가면 안 되기 때문입니다.</p>
+    <span class="ftag">렌더 결과 예 — plantsnap.service (계정 pi · ~/plant · LED 미설치)</span>
+<pre><span class="c"># /etc/systemd/system/plantsnap.service  ← deploy/systemd/plantsnap.service.tmpl 에서 렌더됨. 손으로 고치지 마세요</span>
+[Unit]
+Description=Plant capture - LED warm-up (when installed), shoot, measure, publish (dawn/pm)
+After=network-online.target time-sync.target plantsvc.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=pi
+SupplementaryGroups=video gpio
+WorkingDirectory=/home/pi/plant
+Environment=PLANT_DATA_DIR=/home/pi/plant/data
+Environment=PLANT_PORT=8080
+Environment=PYTHONUNBUFFERED=1
+Environment=GPIOZERO_PIN_FACTORY=lgpio
+ExecStart=/home/pi/plant/.venv/bin/plantsvc capture --phase auto
+ExecStopPost=-/home/pi/plant/.venv/bin/plantsvc led off
+TimeoutStartSec=900        <span class="c"># = max(900, LED 워밍업 + 600)</span></pre>
+    <span class="ftag">확인 · 로그 보기</span>
+<pre>systemctl status planthub plantsvc --no-pager       <span class="c"># 둘 다 active (running)</span>
+systemctl list-timers plantsnap.timer               <span class="c"># NEXT 가 오늘 15:00 또는 내일 05:50</span>
+journalctl -u planthub -f                           <span class="c"># 실시간 로그 (Ctrl+C로 나감)</span>
+journalctl -u plantsvc -n 50 --no-pager
+journalctl -u plantsnap --since today
+
+# 코드를 고친 뒤 (PC 에서는 .\scripts\deploy.ps1 이 이 전부를 대신합니다)
+cd ~/plant &amp;&amp; git pull &amp;&amp; scripts/install.sh --update</pre>
+    <div class="box warn">
+      <span class="lbl">⚠️ 그래도 확인할 두 가지</span>
+      <b>① 시간대</b> — 타이머는 <b>시스템 시간대</b>로 울립니다. <code class="in">timedatectl</code> 이 <code class="in">config.json</code> 의 <code class="in">tz</code>(Asia/Seoul)와 다르면
+      05:50 이 엉뚱한 시각이 됩니다. <code class="in">install.sh --set-timezone</code> 이 맞춰 주고, doctor 가 WARN 으로 알립니다.<br>
+      <b>② 그룹</b> — 서비스는 <code class="in">SupplementaryGroups=video gpio</code> 로 돌지만, <b>SSH 셸에서 직접</b> <code class="in">plantsvc capture</code> 를 돌리려면
+      내 계정이 <code class="in">video</code>·<code class="in">gpio</code> 그룹이어야 합니다. install.sh 가 넣어 주되 <b>다시 로그인해야</b> 적용됩니다.
+    </div>
+<details class="legacy">
+<summary>예전 방식 — 유닛 파일을 heredoc 으로 손으로 만들기<span class="legacy-tag">레거시 — 1 릴리스 동안만 유지</span></summary>
+<div class="box legacy"><span class="lbl">이제는 쓰지 않습니다</span><code class="in">scripts/install.sh</code>가 같은 유닛을 템플릿에서 렌더해 설치합니다(위). 아래는 2026-07 판의 내용으로, 이미 이렇게 설치한 분이 자기 시스템을 알아보기 위해서만 남겨 둡니다. <code class="in">User=</code>·경로가 박혀 있고 <code class="in">uv run</code>을 런타임에 쓰는 것이 단점이었습니다.</div>
     <span class="ftag">① run_collector.py — 데이터 수집 (필수)</span>
 <pre>sudo tee /etc/systemd/system/planthub.service > /dev/null &lt;&lt; 'EOF'
 [Unit]
@@ -2870,6 +2962,7 @@ sudo systemctl restart planthub</pre>
       <b>③ <code class="in">ExecStart=</code>의 uv 경로</b> — <code class="in">which uv</code>로 확인.
       systemd는 <b>PATH를 물려받지 않으므로 반드시 절대경로</b>여야 합니다. 이게 1순위 실패 원인입니다.
     </div>
+</details>
     <div class="box tip">
       <span class="lbl">★ 진짜 검증 — 재부팅해 보세요</span>
       <code class="in">sudo reboot</code> 후 SSH 없이 <b>몇 분 기다렸다가</b> 다시 접속해
@@ -2878,7 +2971,9 @@ sudo systemctl restart planthub</pre>
       정전 뒤에 조용히 죽어 있을 수 있습니다.
     </div>
     <div class="box tip">
-      <span class="lbl">이전 이름으로 이미 만들어 두었다면 — <b>개명 이관</b></span>
+      <span class="lbl">이전 이름으로 이미 만들어 두었다면 — <b>개명 이관</b> <span class="legacy-tag">레거시 — 1 릴리스 동안만 유지</span></span>
+      <b>2026-09 판에서는 이 절차가 필요 없습니다</b> — <code class="in">scripts/migrate_legacy.sh</code>(위 1절)가 데이터만 옮기고
+      <code class="in">install.sh</code>가 유닛을 새로 씁니다. 아래는 2026-07 판 이관 절차의 기록입니다.<br>
       이 개정판에서 파일 이름을 <b>실행 주체가 드러나게</b> 바꿨습니다(패널 i의 스크립트 지도).
       이미 <code class="in">hub.py</code>로 서비스를 돌리고 있다면 <b>파일과 서비스 정의를 함께</b> 고쳐야 합니다.
 <pre>cd ~/plant
@@ -2902,8 +2997,8 @@ systemctl status planthub --no-pager      <span class="c"># active (running) 확
 
     <div class="box tip">
       <span class="lbl">집 안(같은 WiFi)에서는 Tailscale이 필요 없습니다</span>
-      <code class="in">--server.address 0.0.0.0</code>으로 띄웠으므로 같은 공유기 안에서는 바로 열립니다.<br>
-      <code class="in">http://rasp.local:8501</code> &nbsp;또는&nbsp; <code class="in">http://&lt;hostname -I 의 IP&gt;:8501</code><br>
+      <code class="in">plantsvc serve --host 0.0.0.0</code>으로 떠 있으므로 같은 공유기 안에서는 바로 열립니다.<br>
+      <code class="in">http://raspi.local:8080</code> &nbsp;또는&nbsp; <code class="in">http://&lt;hostname -I 의 IP&gt;:8080</code><br>
       &#9888; <code class="in">.local</code>(mDNS)은 <b>안드로이드에서 자주 실패</b>합니다 — <b>폰은 IP로</b> 접속하세요.
     </div>
 
@@ -2914,12 +3009,12 @@ sudo tailscale up            # 출력된 URL을 브라우저에서 열어 계정
 tailscale ip -4              # 100.x.y.z  &lt;- 이 주소로 어디서든 접속
 tailscale status             # 연결된 기기 목록</pre>
     <p>노트북·폰에도 Tailscale을 깔고 <b>같은 계정으로 로그인</b>하면
-    <code class="in">http://100.x.y.z:8501</code>이 <b>어디서든</b> 열립니다.
+    <code class="in">http://100.x.y.z:8080</code>이 <b>어디서든</b> 열립니다. 폰에서는 브라우저 메뉴의 <b>홈 화면에 추가</b>로 PWA 설치가 됩니다(패널 18).
     공유기 포트포워딩도, 공인 IP도, DDNS도 필요 없습니다.</p>
 
     <div class="box tip">
       <span class="lbl">주소를 외우기 싫으면 — MagicDNS</span>
-      Tailscale 관리페이지에서 <b>MagicDNS</b>를 켜면 <code class="in">http://rasp:8501</code>로도 됩니다.
+      Tailscale 관리페이지에서 <b>MagicDNS</b>를 켜면 <code class="in">http://raspi:8080</code>로도 됩니다.
       기기 이름이 그대로 주소가 됩니다.
     </div>
 
@@ -2943,13 +3038,13 @@ tailscale status             # 연결된 기기 목록</pre>
 
     <div class="box">
       <span class="lbl">tailscale funnel — 실험 데이터에는 쓰지 마세요</span>
-      <code class="in">sudo tailscale funnel 8501</code>은 <b>공개 URL</b>을 만들어 Tailscale 없는 기기에서도 열리게 합니다.
+      <code class="in">sudo tailscale funnel 8080</code>은 <b>공개 URL</b>을 만들어 Tailscale 없는 기기에서도 열리게 합니다.
       편하지만 <b>인증 없이 노출</b>됩니다.
     </div>
 
     <div class="box">
       <span class="lbl">Restart=always의 의미</span>
-      run_collector.py가 예외로 죽어도 <b>5초 뒤 자동 재시작</b>합니다. 브로커가 잠깐 끊겨 run_collector.py가 종료돼도
+      run_collector.py(planthub)·plantsvc 가 예외로 죽어도 <b>5초 뒤 자동 재시작</b>합니다. 브로커가 잠깐 끊겨 run_collector.py가 종료돼도
       스스로 복구합니다. <b>다만 재시작이 반복되면 로그에 흔적이 남으니</b>
       <code class="in">journalctl</code>을 주 1회 확인하세요 — 조용한 실패가 가장 위험합니다.
     </div>
@@ -2970,6 +3065,13 @@ tailscale status             # 연결된 기기 목록</pre>
       마스크가 흙을 잎으로 잡았는지. SSH만 쓰면 그때마다 PC로 내려받아야 합니다.<br>
       <b>SSH를 대체하는 것이 아닙니다.</b> VNC가 죽으면 SSH로 들어가 고쳐야 합니다 —
       <b>SSH는 비상구, noVNC는 정문</b>입니다. 비상구를 없애지 마세요.
+    </div>
+    <div class="box ok">
+      <span class="lbl">2026-09 — 카메라 세팅에는 이제 데스크톱이 필요 없습니다</span>
+      노출·배율·ROI·처리군·기준 사진(패널 10)은 전부 <b>웹 UI <code class="in">http://&lt;pi&gt;:8080/camera/setup</code></b>에서
+      실시간 미리보기 위에서 합니다. 찍힌 사진·마스크·윤곽 오버레이도 <code class="in">/camera</code>·<code class="in">/growth</code> 페이지에서 바로 보입니다.
+      그래서 <b>이 패널은 선택 사항</b>이 되었습니다 — 파일을 GUI로 뒤져야 하거나 <code class="in">rpicam-hello</code> 화면을 급히 봐야 할 때만 세우세요.
+      나머지 내용은 그대로 유효합니다.
     </div>
 
     <h3>1) VNC는 두 종류입니다 — 헤드리스에서 성패가 갈리는 지점</h3>
@@ -3152,15 +3254,26 @@ ss -ltnp | grep -E '5901|6080'           <span class="c"># 둘 다 LISTEN 이면
       &ldquo;아무것도 안 켰는데 왜 실패하지&rdquo;에서 막힙니다.
     </div>
     <span class="ftag">누가 잡고 있는지 확인</span>
-<pre>pgrep -af 'setup_camera.py|rpicam|libcamera'
-sudo fuser -v /dev/media0        <span class="c"># 아무것도 안 나와야 정상</span></pre>
+<pre>plantsvc doctor                  <span class="c"># camera lock 행: free / held by pid N</span>
+pgrep -af 'plantsvc|rpicam|libcamera'
+sudo fuser -v /dev/media0        <span class="c"># plantsvc 서비스 하나만 나와야 정상 (미리보기 중이면)</span></pre>
+    <div class="box ok">
+      <span class="lbl">2026-09 — 충돌은 서비스가 스스로 조정합니다</span>
+      카메라를 쥐는 프로세스는 <b><code class="in">plantsvc</code> 하나</b>입니다. 미리보기는 보는 사람이 있을 때만 열리고
+      마지막 사람이 나가면 30초 뒤 닫힙니다. 촬영 시각(05:50·15:00) 1분 전부터는 미리보기가 <code class="in">paused_capture</code>로 멈추고,
+      <code class="in">plantsvc capture</code>가 서비스에 <b>놓아 달라고 요청</b>(<code class="in">POST /api/camera/release</code>)한 뒤
+      <code class="in">data/camera.lock</code> 파일 잠금을 잡고 찍습니다. 끝나면 대기 중인 미리보기가 다시 열립니다.<br>
+      아래의 <code class="in">plantcam.service</code> + 드롭인 방식은 이 조정을 흉내 내던 <b>예전 방법</b>입니다 —
+      <code class="in">install.sh</code>가 <code class="in">camera-lock.conf</code> 드롭인을 제거(백업)하고 plantcam 을 비활성화합니다.
+    </div>
 
     <div class="box tip">
-      <span class="lbl">미리보기는 <b>setup_camera.py</b> 하나로 통일하세요 — 별도 스트리밍 서버를 만들지 마세요</span>
+      <span class="lbl">미리보기는 <b>웹 UI(plantsvc)</b> 하나로 통일하세요 — 별도 스트리밍 서버를 만들지 마세요</span>
       인터넷 예제의 <code class="in">mjpeg.py</code> 류는 <b>오토포커스가 켜진 채</b> 돕니다.
-      그 화면으로 초점을 맞춰봐야 <code class="in">run_capture.py</code>는 고정 초점으로 찍으므로 <b>본 것과 찍히는 것이 다릅니다.</b><br>
-      패널 10의 <b><code class="in">setup_camera.py</code>는 촬영과 똑같은 수동 설정</b>으로 보여주고,
-      ROI 박스와 ArUco 검출까지 얹어 줍니다. 스트리밍이 필요하면 이걸 쓰세요.
+      그 화면으로 초점을 맞춰봐야 <code class="in">plantsvc capture</code>는 고정 초점으로 찍으므로 <b>본 것과 찍히는 것이 다릅니다.</b><br>
+      패널 10의 <b><code class="in">/camera/setup</code> 미리보기는 촬영과 똑같은 수동 설정</b>(같은 still 설정의 lores 출력)으로 보여주고,
+      ROI 박스와 밀림 판정까지 얹어 줍니다. 스트리밍이 필요하면 <code class="in">/api/camera/stream.mjpg</code> 를 쓰세요.
+      (2026-07 판의 <code class="in">setup_camera.py</code>가 하던 역할입니다.)
     </div>
 
     <p><b>VNC 안에서 화각만 급히 볼 때</b>는 이 명령이 유일하게 동작합니다.</p>
@@ -3169,6 +3282,8 @@ sudo fuser -v /dev/media0        <span class="c"># 아무것도 안 나와야 �
     <b>가상 디스플레이에서 실패</b>합니다. Qt 미리보기는 소프트웨어 렌더링이라 VNC로도 표시됩니다.
     <b>확인이 끝나면 Ctrl+C</b> — 켜둔 채 두면 자동 촬영이 실패합니다.</p>
 
+<details class="legacy">
+<summary>예전 방식 — plantcam.service + camera-lock.conf 드롭인<span class="legacy-tag">레거시 — 1 릴리스 동안만 유지</span></summary>
     <div class="box">
       <span class="lbl">스트리밍을 상시로 띄우고 싶다면 — systemd가 충돌을 조정하게</span>
       <b>기본 권장은 &ldquo;상시 스트리밍 안 함&rdquo;</b>입니다. 그래도 둘 다 유지하고 싶다면
@@ -3211,6 +3326,7 @@ sudo systemctl daemon-reload</pre>
       이렇게 걸면 <code class="in">run_capture.py</code>를 <b>직접 실행하면 안 됩니다</b> —
       <code class="in">sudo systemctl start plantsnap.service</code>로 돌려야 이 조정을 탑니다.
     </div>
+</details>
 
     <h3>10) 문제 해결</h3>
     <table>
@@ -3223,7 +3339,7 @@ sudo systemctl daemon-reload</pre>
       <tr><td><code class="in">vncserver</code>가 이상한 안내만 출력</td><td>RealVNC가 실행됨</td><td><code class="in">tigervncserver</code>로 명시</td></tr>
       <tr><td>재부팅 후 안 켜짐</td><td><code class="in">enable</code> 안 함</td><td><code class="in">sudo systemctl enable tigervnc@1 novnc</code></td></tr>
       <tr><td>화면이 심하게 느림</td><td>해상도·색심도 과다</td><td><code class="in">-geometry 1280x720 -depth 16</code></td></tr>
-      <tr><td><b>카메라 <code class="in">busy</code></b></td><td>미리보기가 살아 있음</td><td><code class="in">pgrep -af setup_camera.py</code> → 종료</td></tr>
+      <tr><td><b>카메라 <code class="in">busy</code></b></td><td>다른 프로세스가 <code class="in">data/camera.lock</code> 을 쥐고 있음</td><td><code class="in">plantsvc doctor</code> · <code class="in">pgrep -af plantsvc</code> → 패널 ! 참조</td></tr>
     </table>
 
     <div class="box warn">
@@ -3272,7 +3388,7 @@ rm -rf ~/.vnc ~/.config/tigervnc</pre>
       <div class="arrow"><div class="a">→</div></div>
       <div class="dbox"><div class="t">② 거치대</div><div class="d">만들고 고정<br><b>사람</b></div></div>
       <div class="arrow"><div class="a">→</div></div>
-      <div class="dbox hub"><div class="t">③ setup_camera</div><div class="d">노출·배율·ROI<br>브라우저</div></div>
+      <div class="dbox hub"><div class="t">③ /camera/setup</div><div class="d">노출·배율·ROI<br>브라우저 (:8080)</div></div>
       <div class="arrow"><div class="a">→</div></div>
       <div class="dbox cloud"><div class="t">④ config.json</div><div class="d">완성<br><b>자동 기록</b></div></div>
     </div>
@@ -3320,7 +3436,7 @@ rm -rf ~/.vnc ~/.config/tigervnc</pre>
           <td>§3 화면에서 보고 조정. <b>정한 뒤 6주간 불변</b></td></tr>
       <tr><td><code class="in">rois</code></td>
           <td><b>도구가 자동</b></td>
-          <td><code class="in">setup_camera.py</code>의 [잎 찾아 배치] 또는 [격자로 나누기]. <b>손으로 적지 마세요</b></td></tr>
+          <td>웹 UI <code class="in">/camera/setup</code>의 [잎 찾아 배치] 또는 [격자로 나누기]. <b>손으로 적지 마세요</b></td></tr>
       <tr><td><code class="in">ref_marker</code> · <code class="in">qc.px_per_cm_ref</code></td>
           <td><b>도구가 자동</b></td>
           <td>[저장]이 기록합니다. 빈 배열 <code class="in">[]</code>로 두고 시작</td></tr>
@@ -3395,9 +3511,31 @@ rm -rf ~/.vnc ~/.config/tigervnc</pre>
       인쇄·코팅·부착·6주 관리가 사라지는 대신, <b>카메라를 단단히 고정하는 것</b>이 전제가 됩니다.
     </div>
 
-    <h3>2) 카메라 세팅 — <code class="in">setup_camera.py</code> 하나로 끝</h3>
-    <p>화각 조정 · 촬영 · 배율 측정 · ROI 잡기 · 처리군 배정 · 저장을
+    <h3>2) 카메라 세팅 — 웹 UI <code class="in">/camera/setup</code> 한 화면으로 끝</h3>
+    <p>화각 조정 · 배율 측정 · ROI 잡기 · 처리군 배정 · 기준 사진을
     <b>브라우저 한 화면에서</b> 합니다. 폰으로 열면 카메라 옆에 서서 밀면서 볼 수 있습니다.</p>
+    <span class="ftag">열기 — 따로 띄울 것이 없습니다</span>
+<pre>http://&lt;pi&gt;:8080/camera/setup        <span class="c"># plantsvc.service 가 이미 떠 있음. 폰은 IP 로 · 밖에서는 Tailscale 주소</span>
+plantsvc doctor                         <span class="c"># camera 행이 OK 인지 먼저 (FAIL 이면 케이블 — 패널 8)</span></pre>
+    <div class="box ok">
+      <span class="lbl">2026-09 — 예전 <code class="in">setup_camera.py</code>(:8000) 의 5단계가 <b>그대로</b> 웹 UI 로 옮겨졌습니다</span>
+      <table>
+        <tr><th>단계</th><th>버튼</th><th>config.json 에 남는 것</th></tr>
+        <tr><td><b>①</b> 노출 · 초점</td><td><code class="in">[자동 측정 → 고정]</code> — 수렴할 때까지 재고 잠급니다. gain 이 높으면 &ldquo;조명을 밝게&rdquo; 경고</td><td><code class="in">capture.lens_position · exposure_us · gain · colour_gains</code></td></tr>
+        <tr><td><b>②</b> 배율</td><td>길이(cm) 입력 → <code class="in">[두 점 찍기]</code> → 화면에서 두 점 클릭. <b>화분 지름</b> 기록은 검산용</td><td><code class="in">qc.px_per_cm_ref</code> · <code class="in">layout.pot_cm</code></td></tr>
+        <tr><td><b>③</b> ROI</td><td><code class="in">[잎 찾아 배치]</code> / <code class="in">[격자로 나누기]</code>(열·행) / <code class="in">[이름 다시 매기기]</code>(박스를 순서대로 클릭) / <code class="in">[ROI 재중심]</code>(5절)</td><td><code class="in">rois[]</code> — 크기는 한 변으로 고정</td></tr>
+        <tr><td><b>④</b> 처리군</td><td><code class="in">[무작위 배정]</code> 또는 박스마다 <b>꾸준 / 널뜀</b> 직접 지정. 어느 쪽이었는지 <code class="in">treat_mode</code> 로 남아 보고서에 &ldquo;무작위 배정&rdquo;이라 쓸 수 있는지 알려 줍니다</td><td><code class="in">rois[].treat</code> · <code class="in">treat_mode</code></td></tr>
+        <tr><td><b>⑤</b> 기준 사진</td><td><code class="in">[촬영 — calib.jpg]</code> — 마지막에 한 번. 다시 누르면 &ldquo;6주 밀림 판정의 기준이 바뀝니다&rdquo; 경고</td><td><code class="in">data/calib.jpg</code></td></tr>
+      </table>
+      끝난 단계는 번호가 <b>✓</b>로 바뀝니다. 다섯 개가 다 초록이면 <b>다음 05:50 부터 자동 촬영</b>이 시작됩니다 — 따로 켤 것이 없습니다.<br>
+      화면 아래 <b>밀림 판정</b> 칸은 기준 사진이 생긴 뒤부터 현재 프레임과 <code class="in">calib.jpg</code> 의 이동·회전·배율 차이를 보여 줍니다(4절·패널 11 frame_align 과 같은 계산).
+      <b>상태 JSON</b> 버튼은 지금 화면이 보고 있는 값 그대로를 보여 주므로 &ldquo;저장됐나?&rdquo;를 의심할 때 누르세요.
+    </div>
+    <div class="box tip">
+      <span class="lbl">카메라가 없는 PC 에서 미리 손에 익히기</span>
+      <code class="in">PLANT_FAKE_HW=1 uv run plantsvc serve</code> 로 띄우면 <b>가짜 카메라</b>가 잎 모양 합성 프레임을 줍니다.
+      5단계를 끝까지 눌러 볼 수 있고 촬영 루틴도 돌지만, 가짜 프레임의 측정값은 <b>절대 발행되지 않습니다</b>(패널 18).
+    </div>
 
 <div class="box tip">
       <span class="lbl">ArUco 가 잡히려면 — 다섯 가지가 <b>동시에</b> 맞아야 합니다</span>
@@ -3457,6 +3595,9 @@ rm -rf ~/.vnc ~/.config/tigervnc</pre>
       <b>면적을 서로 비교할 수 없기 때문</b>입니다.
     </div>
 
+<details class="legacy">
+<summary>예전 도구 — setup_camera.py 전체 소스 (:8000 단독 서버)<span class="legacy-tag">레거시 — 1 릴리스 동안만 유지</span></summary>
+<div class="box legacy"><span class="lbl">지금은 웹 UI /camera/setup 이 같은 5단계를 합니다</span>같은 버튼·같은 순서·같은 <code class="in">config.json</code> 키를 쓰므로 아래 소스는 <b>동작을 이해하는 참고용</b>입니다. 실행하면 plantsvc 와 카메라를 두고 충돌합니다 — 돌리지 마세요.</div>
         <span class="ftag">setup_camera.py &middot; <b>손으로, 세팅하는 동안</b> &middot; 브라우저 :8000 &rarr; calib.jpg + config.json</span>
 <pre>"""
 setup_camera.py — 카메라 세팅을 이 파일 하나로 끝낸다.
@@ -4218,13 +4359,16 @@ if __name__ == "__main__":
     <span class="ftag">실행</span>
 <pre>uv run python setup_camera.py
 <span class="c"># http://rasp:8000   (안 되면 http://&lt;IP&gt;:8000 · 밖에서는 Tailscale 주소)</span></pre>
+</details>
 
     <div class="box tip">
-      <span class="lbl">★ 이 스크립트가 카메라를 <b>계속 쥐고</b> 있습니다 — 그게 핵심입니다</span>
-      촬영할 때도 놓지 않고 <b>모드만 잠깐 바꿉니다.</b> 그래서 화각을 몇 번을 다시 잡든
-      <code class="in">Device or resource busy</code>가 나지 않습니다.<br>
+      <span class="lbl">★ 서비스(plantsvc)가 카메라를 <b>쥐고 있다가, 촬영 시각에는 스스로 놓습니다</b> — 그게 핵심입니다</span>
+      세팅하는 동안은 서비스가 카메라를 쥐고 있어서 화각을 몇 번을 다시 잡든
+      <code class="in">Device or resource busy</code>가 나지 않습니다. 기준 사진도 같은 프로세스에서 찍습니다.<br>
       미리보기와 촬영이 <b>같은 프로세스·같은 설정</b>이므로 &ldquo;화면에서 본 것&rdquo;과
-      &ldquo;찍히는 것&rdquo;이 반드시 일치합니다.
+      &ldquo;찍히는 것&rdquo;이 반드시 일치합니다.<br>
+      예약 촬영(05:50·15:00) 때는 <code class="in">plantsvc capture</code>가 서비스에 놓아 달라고 요청하고 파일 잠금을 잡습니다 —
+      <b>Ctrl+C 로 무엇을 끄거나, 켜 두어서 촬영이 실패하는 일이 없습니다.</b> 브라우저 탭은 그냥 닫으면 됩니다.
     </div>
 
     <div class="fig">
@@ -4295,8 +4439,12 @@ if __name__ == "__main__":
         <div class="fsteps">
           <div class="fstep"><div><div class="fs-t"><span class="fs-c">촬영 — calib.jpg</span> · 마지막에 한 번</div>
             <div class="fs-d">이 한 장이 6주간 밀림 판정의 기준이 됩니다</div></div></div>
-          <div class="fstep"><div><div class="fs-t"><span class="fs-c">Ctrl+C</span> 로 끄기</div>
-            <div class="fs-d"><b>반드시.</b> 켜둔 채 두면 run_capture.py 가 카메라를 못 잡습니다</div></div></div>
+          <div class="fstep"><div><div class="fs-t">브라우저 탭을 닫으면 끝</div>
+            <div class="fs-d">보는 사람이 없으면 서비스가 30초 뒤 카메라를 놓습니다. 예약 촬영은 어차피 스스로 카메라를 넘겨받습니다 —
+            예전처럼 <b>Ctrl+C 로 끌 것이 없습니다</b></div></div></div>
+          <div class="fstep"><div><div class="fs-t"><span class="fs-c">밀림 판정</span> 확인</div>
+            <div class="fs-d">기준 사진이 생기면 같은 화면 아래에 현재 프레임 대비 <b>이동 px · 회전 · 배율</b>과 OK / WARN / FAIL 이 표시됩니다.
+            방금 찍었으니 OK 여야 합니다. 이후 6주간 이 판정을 보러 오는 곳입니다</div></div></div>
         </div>
       </div>
     </div>
@@ -4439,7 +4587,9 @@ if not BAD:
     print("  ✔ 치명적인 문제 없음 — 촬영·측정을 시작해도 됩니다")
 print()</pre>
     <span class="ftag">실행</span>
-<pre>uv run python check_config.py</pre>
+<pre>cd ~/plant
+uv run plantsvc check-config            <span class="c"># 같은 검사. hub/check_config.py 도 그대로 동작</span>
+uv run python hub/check_config.py</pre>
     <div class="box tip">
       <span class="lbl">무엇을 잡아 주는가</span>
       <table>
@@ -4464,18 +4614,27 @@ print()</pre>
       급수 노드를 <b>그 배정대로</b> 구우세요.
 <pre>uv run python -c "
 import json
-for r in json.load(open('config.json'))['rois']: print(r['plant_id'], r['treat'])"</pre>
+for r in json.load(open('data/config.json'))['rois']: print(r['plant_id'], r['treat'])"
+<span class="c"># 또는 웹 UI /camera/setup 의 ④ 처리군 칸 — 무작위 / 직접 지정 여부가 함께 표시됩니다</span></pre>
     </div>
 
-    <h3>5) ROI 재중심 — center_roi.py</h3>
+    <h3>5) ROI 재중심 — 웹 UI [ROI 재중심] 버튼 (CLI <code class="in">center_roi.py</code> 도 유지)</h3>
+    <div class="box ok">
+      <span class="lbl">2026-09 — 버튼 하나로 같은 일을 합니다</span>
+      <code class="in">/camera/setup</code> ③ ROI 칸의 <b>[ROI 재중심]</b> → <b>[재중심 미리보기]</b>가 아래 CLI 와 같은 계산(잎 무게중심으로 중심만 이동, 크기 고정)을
+      하고 회색(지금)·노랑(제안) 박스를 미리보기 위에 겹쳐 보여줍니다. 마음에 들면 <b>[적용]</b>.
+      화면에 <i>&ldquo;촬영이 시작된 뒤 ROI 를 옮기면 그 전후 면적을 비교할 수 없습니다&rdquo;</i>라는 경고가 붙어 있는 이유는 아래 ⚠ 상자와 같습니다.<br>
+      CLI 버전은 SSH 만 있을 때를 위해 남겨 둡니다 — 저장소를 그대로 클론하므로 경로는 <code class="in">hub/center_roi.py</code>, 데이터는 <code class="in">PLANT_DATA_DIR</code>(기본 <code class="in">~/plant/data</code>) 기준입니다.
+    </div>
     <div class="box">
       <span class="lbl">무엇을 하나</span>
-      <code class="in">setup_camera.py</code> 로 잡은 ROI 박스는 <b>격자 계산으로 놓인 자리</b>입니다.
+      웹 UI 로 잡은 ROI 박스는 <b>격자 계산으로 놓인 자리</b>입니다.
       실제 모종은 화분 한가운데에 정확히 심기지 않으므로, 박스와 잎이 조금씩 어긋나 있는 것이 보통입니다.
       이 스크립트는 각 ROI 둘레에서 <b>잎 덩어리를 찾아</b> 박스를 그쪽으로 옮겨 줍니다.
       <b>크기는 건드리지 않고 위치만</b> 옮깁니다 — 크기가 달라지면 화분끼리 비교할 수 없기 때문입니다.
     </div>
 
+    <div class="box legacy"><span class="lbl">소스 읽을 때 <span class="legacy-tag">표기 주의</span></span>아래 소스와 그 출력 문구에 나오는 <code class="in">setup_camera.py</code>는 2026-07 판 도구 이름입니다 — 지금은 <b>웹 UI <code class="in">/camera/setup</code></b>으로 읽으세요. &ldquo;setup_camera.py 를 열어 [저장]하면 덮어쓴다&rdquo;는 경고도 같은 뜻입니다: 재중심 뒤에 웹 UI 에서 ROI 를 <b>다시 만들면</b>(잎 찾아 배치·격자) 결과가 덮입니다.</div>
     <span class="ftag">center_roi.py &middot; <b>손으로 &middot; 촬영 시작 전에만</b> &middot; calib.jpg &rarr; ROI 보정 제안 + roi_offset.jpg</span>
 <pre>"""
 center_roi.py — ROI 크기는 그대로 두고 &lt;중심만&gt; 잎에 맞춘다.
@@ -4683,8 +4842,9 @@ def main():
 if __name__ == "__main__":
     raise SystemExit(main())</pre>
     <span class="ftag">실행</span>
-<pre>uv run python center_roi.py            <span class="c"># 보기만 함 — roi_offset.jpg 로 눈으로 확인</span>
-uv run python center_roi.py --yes      <span class="c"># config.json 에 실제로 반영</span></pre>
+<pre>cd ~/plant
+uv run python hub/center_roi.py            <span class="c"># 보기만 함 — data/photos/roi_offset.jpg 로 눈으로 확인</span>
+uv run python hub/center_roi.py --yes      <span class="c"># data/config.json 에 실제로 반영 (웹 UI [적용]과 동일)</span></pre>
 
     <div class="box tip">
       <span class="lbl">출력 읽는 법 — <code class="in">roi_offset.jpg</code></span>
@@ -4739,7 +4899,7 @@ uv run python center_roi.py --yes      <span class="c"># config.json 에 실제�
         <tr><th></th><th>패널 10 — 설치</th><th>패널 11 — 운용</th></tr>
         <tr><td>실행 주체</td><td><b>사람</b>이 손으로</td><td><b>systemd timer</b>가 자동</td></tr>
         <tr><td>횟수</td><td>설치 때 <b>1회</b></td><td>6주 동안 <b>84회</b> (2회 × 42일)</td></tr>
-        <tr><td>스크립트</td><td><code class="in">setup_*.py</code></td><td><code class="in">run_run_capture.py</code></td></tr>
+        <tr><td>스크립트</td><td>웹 UI <code class="in">/camera/setup</code></td><td><code class="in">plantsvc capture</code> (plantsnap.timer)</td></tr>
         <tr><td>실패하면</td><td>즉시 눈에 보임</td><td><b>조용히 결측</b> — 로그를 봐야 압니다</td></tr>
       </table>
     </div>
@@ -5055,7 +5215,7 @@ python3 -m http.server 8080</pre>
       Otsu 임계값이 올라가 마스크가 <b>잎 안쪽으로 파고듭니다.</b><br><br>
       더 나쁜 것은 이게 <b>날마다 조금씩 다르다</b>는 점입니다 — 흐린 날·맑은 날, 계절에 따라
       일출 시각까지 밀립니다. 생장 곡선에 <b>날씨가 섞여 들어옵니다.</b><br><br>
-      <b>백색 LED 를 타이머로 06:00·15:00 에 켜지게</b> 하고 그 아래서 찍으세요.
+      <b>백색 LED 를 촬영 루틴이 05:50·15:00 에 켜게</b>(패널 19 — 릴레이 모듈을 달면 <code class="in">led.enabled=true</code>) 하고 그 아래서 찍으세요.
       촬영 시각을 고정하는 것보다 <b>조명을 고정하는 것</b>이 확실합니다.
       보라색 재배등은 안 됩니다 — G 성분이 없어 ExG 가 작동하지 않습니다.
     </div>
@@ -5523,26 +5683,53 @@ if errs:
       <span class="lbl">&#9888; 해상도가 다르면 <b>ROI가 통째로 어긋납니다</b> — 4배 오차가 아니라 측정 불능</span>
       <code class="in">config.json</code>의 ROI 좌표는 <b>calib.jpg의 좌표계</b>로 적혀 있습니다.
       예컨대 <code class="in">p3</code>는 <code class="in">x:2270 w:900</code>, 즉 오른쪽 끝이 <b>3170px</b>입니다.<br>
-      만약 <code class="in">run_capture.py</code>가 <b>2304px 폭</b>으로 찍으면 그 좌표는 <b>화면 밖</b>이고,
+      만약 촬영이 <b>2304px 폭</b>으로 찍히면 그 좌표는 <b>화면 밖</b>이고,
       <code class="in">leaf_measure.py</code>가 이렇게 뱉습니다:
 <pre>[WARN] p3: ROI outside frame -- skipped</pre>
       화분 6개 중 절반이 <b>측정에서 빠집니다.</b> 그래서 두 스크립트가 각자 숫자를 들고 있으면 안 되고,
       <code class="in">config.json</code>의 <code class="in">size</code> <b>한 곳</b>만 읽어야 합니다.
     </div>
 
-    <h3>8) ★ 자동 촬영 — <code class="in">run_capture.py</code> + systemd timer</h3>
+    <h3>8) ★ 자동 촬영 — <code class="in">plantsvc capture</code> + systemd timer</h3>
     <p>여기서부터 <b>손을 뗍니다.</b> 앞에서 고정한 값 위에서 매일 2회 자동으로 찍고 재고 발행합니다.
-    사람이 하는 일은 <b>주 1회 로그 확인</b>뿐입니다.</p>
+    사람이 하는 일은 <b>주 1회 로그 확인</b>뿐입니다. 웹 UI <code class="in">/camera</code> 페이지에 다음 촬영까지의 카운트다운 · 진행 단계 · 마지막 결과 · 이력이 있습니다.</p>
 
     <div class="diagram">
-      <div class="dbox"><div class="t">plantsnap.timer</div><div class="d">06:00 · 15:00</div></div>
+      <div class="dbox"><div class="t">plantsnap.timer</div><div class="d">05:50 · 15:00</div></div>
       <div class="arrow"><div class="a">→</div></div>
-      <div class="dbox hub"><div class="t">run_capture.py</div><div class="d">촬영 → 측정 → 발행</div></div>
+      <div class="dbox hub"><div class="t">plantsvc capture</div><div class="d">카메라 넘겨받기 → LED → 촬영 → 측정</div></div>
       <div class="arrow"><div class="a">→</div></div>
       <div class="dbox"><div class="t">growth.jsonl</div><div class="d">먼저 파일에</div></div>
       <div class="arrow"><div class="a">→</div></div>
-      <div class="dbox cloud"><div class="t">MQTT → DB</div><div class="d">대시보드</div></div>
+      <div class="dbox cloud"><div class="t">MQTT → DB</div><div class="d">웹 UI /growth</div></div>
     </div>
+    <div class="box ok">
+      <span class="lbl">2026-09 — 한 번의 촬영이 하는 일 (순서대로)</span>
+      <ol style="margin:4px 0 0 18px; line-height:1.75;">
+        <li>서비스에 <code class="in">POST /api/camera/release</code> — 미리보기가 떠 있으면 놓아 달라고 요청 (없어도 무방)</li>
+        <li><code class="in">data/camera.lock</code> 파일 잠금 — 다른 프로세스와 카메라를 겹쳐 쓰지 않도록. 최대 8분 대기</li>
+        <li><b>LED 점등 → 워밍업</b> <code class="in">led.warmup_s</code>(기본 300 s). <b>램프가 없으면 0 초</b> — 저널에 <code class="in">[LED] skipped — not installed</code></li>
+        <li><code class="in">config.capture</code> 의 고정값으로 <b>1장</b> → <code class="in">data/photos/raw/2026-09-11_0550.jpg</code></li>
+        <li><b>LED 소등</b> — 예외가 나도 <code class="in">finally</code> 로, 프로세스가 죽어도 유닛의 <code class="in">ExecStopPost</code> 로</li>
+        <li><code class="in">leaf_measure</code> — frame_align 밀림 보정 → ROI → ExG → Otsu → 면적</li>
+        <li><code class="in">data/photos/growth.jsonl</code> 에 <b>먼저</b> 한 줄</li>
+        <li>MQTT <code class="in">plant/tray/growth</code> 발행 (qos=1) → planthub 가 <code class="in">growth</code> 테이블에</li>
+      </ol>
+      <b>왜 05:50 인가</b> — 램프가 달리면 5분 워밍업 뒤 <b>05:55</b>에 찍히고, 램프가 없으면 <b>05:50</b>에 바로 찍힙니다.
+      어느 쪽이든 새벽 촬영이 <b>06:00 전</b>에 끝나 자연광이 섞이기 전 사진이 됩니다. 시각은 <code class="in">config.json</code> 의 <code class="in">schedule</code> 에 있고,
+      바꾸면 <code class="in">install.sh --update</code> 로 타이머를 다시 렌더합니다 (패널 19).<br>
+      <b>디바운스</b> — 같은 날 같은 phase 의 성공이 <b>30분 안</b>에 있으면 <code class="in">skipped (debounced)</code> 로 끝납니다.
+      <code class="in">Persistent=true</code> 보충 실행과 부팅 catch-up 이 두 번 찍지 않게 하는 장치입니다. 시험 삼아 다시 찍으려면 <code class="in">--force</code>.<br>
+      <b>가짜 카메라</b>(<code class="in">PLANT_FAKE_HW=1</code>) 프레임은 <code class="in">fake_</code> 접두어로 저장되고 <b>발행되지 않습니다</b> — 실측 DB 에 합성 값이 섞일 길을 막습니다.
+    </div>
+    <span class="ftag">plantsvc capture — 옵션</span>
+<pre>plantsvc capture [--phase auto|dawn|pm] [--force] [--if-missing] [--no-led] [--warmup N] [--no-release]
+  --phase auto     시각으로 판단 (12시 전이면 dawn)          ← plantsnap.service
+  --if-missing     오늘 그 phase 가 없고 시간창 안일 때만     ← plantsnap-catchup.service (부팅 때)
+  --force          30분 디바운스 무시 (시험용)
+  --no-led         램프가 있어도 켜지 않음 · --warmup 0 은 워밍업 생략
+  --no-release     서비스에 카메라 반납을 요청하지 않음 (서비스가 죽어 있을 때 3초 절약)
+plantsvc replay    발행 못 한 growth.jsonl 줄을 다시 보냄 (사진 재촬영 없이)</pre>
 
     <div class="box tip">
       <span class="lbl">파일에 먼저 적고, 그다음 발행합니다</span>
@@ -5552,6 +5739,9 @@ if errs:
       6주 중 하루치를 통신 문제로 잃지 않기 위한 순서입니다.
     </div>
 
+<details class="legacy">
+<summary>예전 스크립트 — run_capture.py 전체 소스<span class="legacy-tag">레거시 — 1 릴리스 동안만 유지</span></summary>
+<div class="box legacy"><span class="lbl">지금은 <code class="in">plantsvc capture</code> 가 같은 흐름 + LED·잠금·디바운스를 합니다</span><code class="in">hub/run_capture.py</code> 는 <code class="in">plantsvc capture</code> 로 연결되는 얇은 shim 으로만 남아 있습니다. 아래 소스는 &ldquo;파일에 먼저, 발행은 나중&rdquo; 같은 설계 이유를 읽기 위한 것입니다.</div>
     <span class="ftag">run_capture.py &middot; <b>타이머가 자동, 하루 2회</b> &middot; 촬영 &rarr; 측정 &rarr; 발행</span>
 <pre>"""
 run_capture.py — 하루 2회 촬영 -&gt; 측정 -&gt; 발행.  systemd timer 가 부릅니다.
@@ -5707,6 +5897,7 @@ def main():
 
 if __name__ == "__main__":
     main()</pre>
+</details>
 
     <div class="box warn">
       <span class="lbl">&#9888; <code class="in">BROKER</code> 를 확인하세요</span>
@@ -5757,10 +5948,22 @@ PYEOF</pre>
     </div>
 
         <span class="ftag">발행 못 한 측정 되살리기 — 사진을 다시 찍지 않아도 됩니다</span>
-<pre>uv run python run_capture.py --replay</pre>
-    <p><code class="in">photos/growth.jsonl</code> 중 <b>DB 에 없는 줄만</b> 골라 다시 보냅니다.
+<pre>cd ~/plant &amp;&amp; .venv/bin/plantsvc replay     <span class="c"># 또는 웹 UI /system → [미발행 측정 재발행]</span></pre>
+    <p><code class="in">data/photos/growth.jsonl</code> 중 <b>DB 에 없는 줄만</b> 골라 다시 보냅니다.
+    가짜 카메라(<code class="in">fake_</code> 접두어) 줄은 건너뜁니다.
     측정을 파일에 먼저 적어두는 이유가 여기 있습니다 — 통신 문제로 하루치를 잃지 않습니다.</p>
 
+        <span class="ftag">systemd — 이미 등록돼 있습니다 (install.sh) · 05:50 / 15:00</span>
+<pre>systemctl list-timers plantsnap.timer              <span class="c"># NEXT · LAST 확인 — 시스템 시간대 기준</span>
+systemctl cat plantsnap.timer                      <span class="c"># OnCalendar=*-*-* 05:50:00 / 15:00:00 · Persistent=true · AccuracySec=1s</span>
+systemctl status plantsnap-catchup.service         <span class="c"># 부팅 때 한 번 돌고 inactive 가 정상</span>
+
+# 시각을 바꾸려면 — 유닛을 손으로 고치지 말고
+#   웹 UI /system → config.json 편집 → "schedule": {"dawn": "05:50", "pm": "15:00"}
+cd ~/plant &amp;&amp; scripts/install.sh --update          <span class="c"># 타이머를 다시 렌더 · daemon-reload</span></pre>
+<details class="legacy">
+<summary>예전 방식 — plantsnap.service / .timer 를 heredoc 으로 (06:00 · 15:00)<span class="legacy-tag">레거시 — 1 릴리스 동안만 유지</span></summary>
+<div class="box legacy"><span class="lbl">이제는 install.sh 가 씁니다</span>계정·경로가 박혀 있고, LED 워밍업·catch-up 이 없던 2026-07 판입니다.</div>
         <span class="ftag">systemd 등록 — 06:00 / 15:00</span>
 <pre>sudo tee /etc/systemd/system/plantsnap.service &gt;/dev/null &lt;&lt;'EOF'
 [Unit]
@@ -5788,11 +5991,13 @@ EOF
 sudo systemctl daemon-reload
 sudo systemctl enable --now plantsnap.timer
 systemctl list-timers plantsnap        <span class="c"># 다음 실행 시각 확인</span></pre>
+</details>
 
     <div class="box warn">
       <span class="lbl">&#9888; 손으로 돌릴 때도 <b>서비스를 통해</b> 실행하세요</span>
-<pre>sudo systemctl start plantsnap.service   <span class="c"># ○ 실제 타이머와 같은 경로</span>
-uv run python run_capture.py             <span class="c"># △ 환경이 달라 통과해도 안심 못 함</span></pre>
+<pre>sudo systemctl start plantsnap.service              <span class="c"># ○ 실제 타이머와 같은 경로 (LED·잠금·ExecStopPost 포함)</span>
+journalctl -u plantsnap -n 30 --no-pager            <span class="c">#   결과 확인</span>
+.venv/bin/plantsvc capture --phase auto --force     <span class="c"># △ 같은 코드지만 환경변수는 셸 것 — 시험용. --force 는 30분 디바운스 무시</span></pre>
       <code class="in">systemd</code> 는 <b>PATH 와 환경변수를 물려받지 않습니다.</b>
       터미널에서 되는 것과 타이머에서 되는 것은 별개입니다.
       <b>서비스로 한 번 성공</b>해야 6주 무인 운용이 성립합니다.
@@ -5800,9 +6005,12 @@ uv run python run_capture.py             <span class="c"># △ 환경이 달라 
 
     <div class="box warn">
       <span class="lbl">&#9888; 카메라를 붙잡는 것이 남아 있지 않은지</span>
-      <code class="in">setup_camera.py</code> 를 켜둔 채 두면 촬영이 실패합니다.
-      <code class="in">run_capture.py</code> 가 30초 간격으로 3번 재시도하지만, 그 뒤엔 포기합니다.
-<pre>pgrep -af setup_camera.py       <span class="c"># 아무것도 안 나와야 정상</span>
+      <b>2026-09 부터는 미리보기를 켜 두어도 촬영이 실패하지 않습니다</b> — <code class="in">plantsvc capture</code>가 서비스에
+      <code class="in">/api/camera/release</code> 로 놓아 달라고 한 뒤 <code class="in">data/camera.lock</code> 을 잡습니다(최대 8분 대기).
+      실패하는 경우는 <b>plantsvc 가 아닌 다른 프로세스</b>(예: 예전 <code class="in">setup_camera.py</code>, <code class="in">rpicam-hello</code>, 직접 띄운 스크립트)가
+      카메라를 쥐고 있을 때뿐입니다. 저널에 <code class="in">camera lock held by pid N</code> 이 남습니다.
+<pre>plantsvc doctor                 <span class="c"># camera lock 행 확인</span>
+pgrep -af 'plantsvc|setup_camera|rpicam'
 sudo fuser -v /dev/media0</pre>
       예전에 만든 <code class="in">mjpeg.service</code> 가 남아 있다면 <b>반드시 정리하세요</b> —
       부팅 때마다 카메라를 잡습니다.
@@ -5816,11 +6024,14 @@ sudo systemctl daemon-reload</pre>
     <div class="box ok">
       <span class="lbl">이 단계 통과 조건</span>
       <ul class="chk">
-        <li><code class="in">sudo systemctl start plantsnap.service</code> 가 오류 없이 끝난다</li>
-        <li><code class="in">photos/raw/</code> 에 사진이, <code class="in">photos/debug/</code> 에 오버레이가 생긴다</li>
-        <li><code class="in">photos/growth.jsonl</code> 에 한 줄이 추가된다</li>
-        <li>대시보드 GROWTH 탭에 값이 뜬다 (<code class="in">DUMMY_FILL</code> 이 꺼진 상태로)</li>
-        <li><b>다음 날 아침</b> <code class="in">journalctl -u plantsnap --since yesterday</code> 가 깨끗하다</li>
+        <li><code class="in">sudo systemctl start plantsnap.service</code> 가 오류 없이 끝나고, 저널에 순서대로
+            <code class="in">[LED] skipped — not installed</code> (램프 미설치) → <code class="in">shot 2026-…jpg</code> → 화분별 <code class="in">ok</code> 줄 →
+            <code class="in">growth.jsonl</code> 기록 → <code class="in">plant/tray/growth 발행</code> 이 보인다.
+            두 번째 실행은 <code class="in">debounced</code> 로 건너뛰는 것이 정상(30분 안 재촬영 방지 — <code class="in">--force</code>)</li>
+        <li><code class="in">data/photos/raw/</code> 에 사진이, <code class="in">data/photos/debug/</code> 에 오버레이가 생긴다 (웹 UI /camera → 이력에서도 보임)</li>
+        <li><code class="in">data/photos/growth.jsonl</code> 에 한 줄이 추가된다</li>
+        <li>웹 UI /growth 캐노피 시계열에 값이 뜨고, 그 카드의 <b>DUMMY DATA 배지가 사라진다</b>(growth 테이블에 실측 행이 생기는 순간)</li>
+        <li><b>다음 날 아침</b> <code class="in">journalctl -u plantsnap --since yesterday</code> 가 깨끗하고, /camera 의 &ldquo;마지막 촬영&rdquo;이 오늘 05:50 이다</li>
       </ul>
       마지막 줄이 진짜 검증입니다. 등록만 하고 확인을 안 하면
       <b>조용히 실패한 채로 6주가 지나갑니다.</b>
@@ -5828,8 +6039,9 @@ sudo systemctl daemon-reload</pre>
 
     <div class="box tip">
       <span class="lbl">주 1회, 이 두 줄이면 됩니다</span>
-<pre>journalctl -u plantsnap --since '7 days ago' | grep -E 'ok|WARN|⚠'
-uv run python -c "import sqlite3;c=sqlite3.connect('plant.db');print(*c.execute('SELECT COUNT(*),MAX(ts) FROM growth'))"</pre>
+<pre>journalctl -u plantsnap --since '7 days ago' | grep -E 'ok|WARN|⚠|failed|debounced'
+uv run python -c "import sqlite3;c=sqlite3.connect('data/plant.db');print(*c.execute('SELECT COUNT(*),MAX(ts) FROM growth'))"
+<span class="c"># 같은 숫자가 웹 UI /system 의 DB 행 수 카드에도 있습니다</span></pre>
       행 수가 <b>하루 2개씩 늘고</b> 있으면 정상입니다.
     </div>
 
@@ -5841,10 +6053,11 @@ uv run python -c "import sqlite3;c=sqlite3.connect('plant.db');print(*c.execute(
       <tr><td><b>debug/</b> 윤곽선</td><td>눈으로 확인</td></tr>
       <tr><td><code class="in">growth</code> 테이블</td><td>숫자만</td></tr>
     </table>
-<pre>photos/
-├── raw/    2026-08-01_0600.jpg      원본 (수정 금지)
-├── mask/   2026-08-01_0600_p1.png   누끼 (이진 마스크)
-└── debug/  2026-08-01_0600_p1.jpg   윤곽선 오버레이</pre>
+<pre>data/photos/                             (PLANT_DATA_DIR 아래)
+├── raw/    2026-09-11_0550.jpg      원본 (수정 금지) — 가짜 카메라면 fake_ 접두어
+├── mask/   2026-09-11_0550_p1.png   누끼 (이진 마스크)
+├── debug/  2026-09-11_0550_p1.jpg   윤곽선 오버레이
+└── growth.jsonl                     측정 기록 — 발행보다 먼저 씀</pre>
     <div class="box tip">
       <span class="lbl">원본을 남기는 이유 — 알고리즘은 바뀔 수 있습니다</span>
       6주 뒤 "ExG 말고 다른 방법을 썼어야 했다"를 깨달아도, <b>원본이 있으면 전부 재처리</b>할 수 있습니다.
@@ -5864,7 +6077,43 @@ uv run python -c "import sqlite3;c=sqlite3.connect('plant.db');print(*c.execute(
   <!-- ════════ sG ════════ -->
   <section class="panel" id="sG">
     <h2 class="title"><span class="badge">12</span>대시보드</h2>
-    <p class="lead">브로커가 PC든 Pi든 <b>동일합니다.</b> 데이터가 흐르기 시작하면 이 화면으로 <b>실험이 아직 유효한지</b>를 봅니다.</p>
+    <p class="lead">브로커가 PC든 Pi든 <b>동일합니다.</b> 데이터가 흐르기 시작하면 이 화면으로 <b>실험이 아직 유효한지</b>를 봅니다.
+    2026-09 부터 화면은 <b>plantsvc 웹 UI(:8080)</b>입니다 — Streamlit <code class="in">dashboard.py</code>(:8501)는 레거시.</p>
+    <div class="box ok">
+      <span class="lbl">2026-09 — Streamlit 섹션이 어느 페이지로 갔나</span>
+      <table>
+        <tr><th>예전 dashboard.py 섹션</th><th>웹 UI 페이지 · 카드</th><th>달라진 점</th></tr>
+        <tr><td>Environment 5종 메트릭 + 스파크라인</td><td><b>/overview</b> — 환경 KPI</td><td>같음. 온·습 동시 0 이면 &ldquo;센서 없음&rdquo; 규칙도 같음</td></tr>
+        <tr><td>Nodes 상태</td><td><b>/overview</b> — 노드 상태 칩</td><td>실측 노드만 판정, 없는 노드는 회색 (규칙 동일)</td></tr>
+        <tr><td>Validity (Δμ 정렬 / σ 비)</td><td><b>/overview</b> — Validity 카드</td><td><code class="in">analysis.tol_pp</code> · <code class="in">sep_ratio</code> 가 config.json 으로</td></tr>
+        <tr><td>캐노피 실루엣 · 톱니 7일 · 최근 관수</td><td><b>/overview</b></td><td>같음</td></tr>
+        <tr><td>—</td><td><b>/overview</b> — <b>관수 기록</b> 카드 <span class="pill now">신설</span></td><td>처리군별 누적 급수 · 화분당 · 급수 간격. &ldquo;총 급수량은 통제하지 않고 결과로 본다&rdquo;를 화면에 둡니다</td></tr>
+        <tr><td>Treatment — ρ(w) 히스토그램 · 접힌 ∩/∪ 참고 · 주간 정렬 추세</td><td><b>/treatment</b></td><td>같음</td></tr>
+        <tr><td>정오 처짐 지수</td><td><b>/treatment</b> — 처짐 지수 + <b>14일 타임라인</b> <span class="pill now">신설</span></td><td>dawn·pm 짝이 없는 화분은 캡션으로 이유 표시 (KeyError 재발 없음)</td></tr>
+        <tr><td>Growth — dawn 시계열 · RGR ± 95% CI · Cohen's d</td><td><b>/growth</b></td><td>같음. CSV 내보내기도 여기</td></tr>
+        <tr><td>—</td><td><b>/camera</b> · <b>/camera/setup</b> <span class="pill now">신설</span></td><td>촬영 카운트다운 · LED 상태 · 지금 촬영 · 이력 / 세팅 5단계 (패널 10·11)</td></tr>
+        <tr><td>—</td><td><b>/system</b> <span class="pill now">신설</span></td><td>서비스 상태 · 디스크/온도 · DB 행 수 · <b>config.json 편집기</b>(검증 후 저장) · 로그 · 미발행 측정 재발행</td></tr>
+      </table>
+    </div>
+    <div class="box dummy">
+      <span class="lbl">DUMMY DATA 배지 — 어느 카드가 가짜인지 항상 보입니다</span>
+      <code class="in">config.json</code> 의 <code class="in">analysis.dummy_fill</code> 이 <code class="in">auto</code>(기본)면 <b>비어 있는 테이블</b>(readings·soil·pump_log·growth)만 합성 데이터로 채우고,
+      그 테이블을 쓰는 카드마다 <b>보라색 <code class="in">DUMMY DATA</code> 배지</b>와 &ldquo;… 는 가상의 데이터입니다&rdquo; 배너가 붙습니다.
+      실제 MQTT 행이 <b>한 줄이라도</b> 들어오는 순간 그 테이블은 실측으로 바뀌고 배지가 사라집니다 — 테이블 단위라 환경 노드만 있어도 환경 카드는 실측, 나머지는 가상입니다.<br>
+      배지 없이 숫자가 보이면 <b>실측</b>입니다. 반대로 노드를 붙였는데 배지가 남아 있으면 <code class="in">plant/…</code> 토픽이 planthub 에 닿지 않는 것입니다(패널 5·!).
+      <code class="in">off</code> 로 바꾸면 빈 카드는 안내 문구만 보입니다.
+    </div>
+    <div class="box tip">
+      <span class="lbl">config.json 은 /system 에서 고칩니다</span>
+      편집기가 저장 전에 <code class="in">plantsvc check-config</code> 와 같은 검사를 하고, 서비스가 파일 변경을 바로 읽습니다.
+      다만 <b>촬영 시각(<code class="in">schedule</code>)과 LED 워밍업</b>은 systemd 타이머에 렌더돼 있어 <code class="in">scripts/install.sh --update</code> 를 한 번 더 돌려야 반영됩니다(패널 19).
+    </div>
+    <div class="box legacy">
+      <span class="lbl">레거시 — Streamlit 전용 부분 <span class="legacy-tag">1 릴리스 동안만 유지</span></span>
+      이 패널 아래쪽 소스에 있는 <b>다크 테마 3중 처리</b>(런타임 테마 옵션 · CSS 변수 · Plotly layout.font), <code class="in">st.plotly_chart(..., key=...)</code> 의 key 중복 오류 회피,
+      <code class="in">html_table</code> 헬퍼는 전부 Streamlit 의 제약을 우회하던 것입니다. 웹 UI(React + ECharts)에는 해당이 없고,
+      <code class="in">scripts/rollback.sh &lt;sha&gt; --streamlit</code> 으로 되돌렸을 때만 의미가 있습니다.
+    </div>
 
 <div class="box warn">
       <span class="lbl">&#9888; 센서가 빠져도 노드는 <b>0 을 발행합니다</b> — 결측과 진짜 0을 구분하세요</span>
@@ -5885,17 +6134,19 @@ uv run python -c "import sqlite3;c=sqlite3.connect('plant.db');print(*c.execute(
       한쪽이 없거나 <code class="in">ok=0</code> 이면 그 화분은 계산에서 빠집니다.
       화분 목록으로 그대로 찍으면 이렇게 죽습니다.
 <pre>KeyError: "['p1'] not in index"</pre>
-      운용 첫날에는 <b>거의 반드시</b> 겪습니다 — 06:00 만 찍히고 15:00 이 아직 안 왔거나,
+      운용 첫날에는 <b>거의 반드시</b> 겪습니다 — 05:50 만 찍히고 15:00 이 아직 안 왔거나,
       한쪽 사진에서 잎이 ROI 테두리에 닿아 <code class="in">ok=0</code> 이 되는 경우입니다.<br>
       그래서 <b>있는 화분만 골라</b> 그리고, 빠진 화분은 이름과 이유를 캡션으로 알립니다.
       화면이 죽는 것보다 <b>무엇이 왜 빠졌는지 보이는 것</b>이 낫습니다.
     </div>
 
-        <span class="ftag">dashboard.py &middot; <b>서비스가 자동</b> &middot; plant.db &rarr; 브라우저 (:8501)</span>
+    <h3>설계 결정 — 화면이 바뀌어도 그대로인 것들</h3>
+    <p>아래 상자들은 Streamlit 시절에 내린 결정이지만 <b>웹 UI 도 같은 규칙</b>으로 구현되어 있습니다. 코드 표기만 예전 것입니다.</p>
     <div class="box ok">
       <span class="lbl">★ 노드가 없어도 정상 동작합니다 — 8가지 상태를 전부 검증했습니다</span>
+      (웹 UI 에서는 <code class="in">DUMMY_FILL</code> 상수 대신 <code class="in">config.json</code> 의 <code class="in">analysis.dummy_fill</code> — <code class="in">auto</code> / <code class="in">off</code>)
       <table>
-        <tr><th>설치 상태</th><th><code class="in">DUMMY_FILL=True</code></th><th><code class="in">False</code></th></tr>
+        <tr><th>설치 상태</th><th><code class="in">dummy_fill: auto</code> (구 <code class="in">DUMMY_FILL=True</code>)</th><th><code class="in">off</code></th></tr>
         <tr><td>아무것도 없음</td><td>전체 화면 (가상)</td><td>안내 문구</td></tr>
         <tr><td><b>환경 노드만</b> ← 지금</td><td><b>환경 실측 + 나머지 가상</b></td><td>환경만 표시 + 안내</td></tr>
         <tr><td>환경 + 카메라</td><td><b>실측 화분에 맞춰</b> 가상 생성</td><td>환경 + 캐노피</td></tr>
@@ -5933,7 +6184,7 @@ uv run python -c "import sqlite3;c=sqlite3.connect('plant.db');print(*c.execute(
       개체차와 그룹차를 <b>눈으로 분리</b>할 수 있게 됩니다.
     </div>
     <div class="box tip">
-      <span class="lbl">그래서 결론은 &ldquo;마지막 면적&rdquo;이 아니라 GROWTH 탭의 <b>RGR + 효과크기</b></span>
+      <span class="lbl">그래서 결론은 &ldquo;마지막 면적&rdquo;이 아니라 /growth 페이지의 <b>RGR + 효과크기</b></span>
       <b>마지막 값만 보면 출발 크기가 섞입니다</b> — 6주차에 크다고 잘 자란 게 아니라 처음부터 컸을 수 있습니다.
       로그 기울기는 <b>비율</b>이라 출발 크기와 무관합니다.<br><br>
       <b>⚠️ 그리고 6주차 값이 가장 못 믿을 값입니다.</b> 잎이 겹칠수록 투영면적이 <b>포화</b>하니까요.
@@ -5958,7 +6209,7 @@ uv run python -c "import sqlite3;c=sqlite3.connect('plant.db');print(*c.execute(
       <span class="lbl">대신 이렇게 합니다</span>
       <b>주 패널 = 측정된 ρ(w) 두 분포뿐.</b> 중심은 같고 폭만 다른 것 —
       그것이 이 패널의 원래 임무인 <b>처리 검증</b>입니다. μ와 σ를 범례에 함께 씁니다.<br><br>
-      <b>해석 참조는 접어서 따로</b>(<code class="in">expander</code>) 둡니다 —
+      <b>해석 참조는 접어서 따로</b>(웹 UI 는 접힌 카드, Streamlit 은 <code class="in">expander</code>) 둡니다 —
       <b>∩와 ∪를 대칭으로 나란히</b> 그려 어느 쪽도 편들지 않고,
       <b>&ldquo;어느 쪽인지는 이 실험이 정한다&rdquo;</b>고 명시합니다.
       실험이 주는 것은 <b>곡선이 아니라 휨의 부호 하나</b>이니까요.
@@ -5980,6 +6231,13 @@ uv run python -c "import sqlite3;c=sqlite3.connect('plant.db');print(*c.execute(
       <b>선 굵기</b>: 톱니 <code class="in">2.2</code> · 생장·추이 <code class="in">3.0</code> ·
       스파크라인 <code class="in">2.2</code> · 실루엣 테두리 <code class="in">2.6</code>
     </div>
+<details class="legacy">
+<summary>예전 화면 — Streamlit dashboard.py 전체 소스 (:8501)<span class="legacy-tag">레거시 — 1 릴리스 동안만 유지</span></summary>
+<div class="box legacy"><span class="lbl">읽는 법</span>
+  화면 규칙(가상 데이터 · RGR 회귀 · 앵커링 방지 · 팔레트)은 웹 UI 가 그대로 이어받았습니다. 아래 소스는 그 규칙이 <b>코드로 어떻게 표현됐는지</b> 보는 용도이며,
+  실행은 <code class="in">scripts/install.sh --legacy</code>(Streamlit 의존성 포함) 뒤 <code class="in">sudo systemctl enable --now plantdash</code> 로만 하세요.
+  <b>2026-07 판의 알려진 버그</b> — 펌프 <code class="in">reason</code> 이 <code class="in">'verify fail'</code>(공백)로 오는데 <code class="in">verify_fail</code> 만 찾아 <b>경보가 한 번도 울리지 않던</b> 문제는
+  웹 UI 에서 정규화되어 고쳐졌습니다(패널 !).</div>
 <pre>"""
 dashboard.py — Lettuce Variance Trial monitor
   uv run streamlit run dashboard.py --server.address 0.0.0.0 --server.port 8501
@@ -6754,10 +7012,324 @@ with st.expander("Export CSV"):
     <span class="ftag">실행</span>
 <pre>uv run streamlit run dashboard.py --server.address 0.0.0.0 --server.port 8501
 # http://rasp.local:8501  또는 PC라면 http://localhost:8501</pre>
+</details>
 
     <div class="nav-btns"><button class="ghost">◀ 이전</button><button>다음 ▶</button></div>
   </section>
 
+  <!-- ════════ sW ════════ -->
+  <section class="panel" id="sW">
+    <h2 class="title"><span class="badge">18</span>웹 UI (plantsvc)</h2>
+    <p class="lead">Streamlit 대시보드(:8501)와 <code class="in">setup_camera.py</code>(:8000)를 <b>하나의 서비스 <code class="in">plantsvc</code>(:8080)</b>로 합쳤습니다.
+    화면은 React, 뒤는 FastAPI. 이 패널은 <b>무엇이 어디에 있고, 왜 그렇게 나눴는지</b>입니다.</p>
+
+    <h3>1) 구조 — 프로세스는 셋, 포트는 둘</h3>
+<pre>환경 노드 ──┐                                        Raspberry Pi
+급수 노드 ──┴─ WiFi · MQTT ─→ mosquitto (:1883) ─→ run_collector.py ──→ data/plant.db   (planthub.service — 유일한 writer)
+                                     ↑                                        │ 읽기 전용
+                                     │ plant/tray/growth (qos=1)              ▼
+        plantsnap.timer (05:50·15:00) → plantsvc capture ─→ growth.jsonl   plantsvc serve (:8080, plantsvc.service)
+                                     LED → 촬영 → 측정                       ├─ 웹 UI (React, web/dist)     /overview /treatment /growth /camera /camera/setup /system
+                                     data/camera.lock 으로 조정 ←──────────┤─ /api/*  · /ws (실시간 이벤트)
+                                                                            ├─ 카메라 미리보기 MJPEG (보는 사람이 있을 때만)
+                                                                            └─ data/events.db (서비스 자체 기록 · 촬영 잡 · 설정 변경)</pre>
+    <table>
+      <tr><th></th><th>2026-07 판</th><th>2026-09 판</th></tr>
+      <tr><td>대시보드</td><td>Streamlit <code class="in">dashboard.py</code> :8501</td><td rowspan="2"><b>plantsvc</b> :8080 — 하나의 FastAPI + React</td></tr>
+      <tr><td>카메라 세팅</td><td><code class="in">setup_camera.py</code> :8000 (손으로 띄움)</td></tr>
+      <tr><td>촬영</td><td><code class="in">run_capture.py</code> + 드롭인으로 미리보기 내림</td><td><code class="in">plantsvc capture</code> — 서비스가 카메라를 스스로 넘겨줌</td></tr>
+      <tr><td>설치</td><td><code class="in">hub/</code> 평탄화 + 유닛 heredoc</td><td>클론 그대로 + <code class="in">install.sh</code> 템플릿 렌더</td></tr>
+      <tr><td>데이터</td><td><code class="in">~/plant/*.db</code></td><td><code class="in">~/plant/data/</code> (<code class="in">PLANT_DATA_DIR</code>)</td></tr>
+      <tr><td>열린 포트</td><td>1883 · 8501 · 8000</td><td><b>1883 · 8080</b> 뿐</td></tr>
+    </table>
+    <div class="box tip">
+      <span class="lbl">왜 planthub 는 그대로 두고 plantsvc 를 옆에 붙였나</span>
+      <code class="in">plant.db</code> 에 쓰는 프로세스를 <b>하나</b>로 유지하기 위해서입니다. 웹 서비스가 죽거나 재배포되는 동안에도 수집은 멈추지 않아야 하고,
+      SQLite 는 writer 가 둘이면 잠금 오류가 납니다. 그래서 plantsvc 는 plant.db 를 <b>읽기만</b> 하고, 자기 기록은 <code class="in">events.db</code> 에 따로 씁니다.
+      촬영 결과도 직접 넣지 않고 <b>MQTT 로 발행해 planthub 를 거칩니다</b> — 데이터가 들어오는 길이 노드와 똑같습니다.
+    </div>
+
+    <h3>2) 페이지</h3>
+    <table>
+      <tr><th>경로</th><th>무엇을 보나</th><th>패널</th></tr>
+      <tr><td><b>/overview</b></td><td>환경 5종 KPI + 스파크라인 · 노드 상태 칩 · Validity(Δμ 정렬 / σ 비) · 캐노피 실루엣(어제→오늘) · 습윤–건조 톱니 7일 · 최근 관수 · <b>관수 기록</b>(처리군별 누적 급수 · 간격)</td><td>12</td></tr>
+      <tr><td><b>/treatment</b></td><td>ρ(w) 히스토그램 · 접힌 해석 참고 곡선 ∩/∪ · 주간 평균 정렬 추세 · 정오 처짐 지수 + 14일 타임라인</td><td>12 · 16</td></tr>
+      <tr><td><b>/growth</b></td><td>캐노피 dawn 시계열 · RGR 포레스트 플롯(95% CI) · Cohen's d · CSV 내보내기</td><td>12 · 17</td></tr>
+      <tr><td><b>/camera</b></td><td>다음 촬영 카운트다운 · 촬영 진행 단계(lock → led_on → warmup → capture → measure → publish) · 마지막 결과 · LED 상태(미설치 안내) · <b>지금 촬영</b> · 이력</td><td>11 · 19</td></tr>
+      <tr><td><b>/camera/setup</b></td><td>실시간 미리보기 위에 ① 노출·초점 ② 배율 ③ ROI ④ 처리군 ⑤ 기준 사진 + ROI 재중심 + 밀림 판정</td><td>10</td></tr>
+      <tr><td><b>/system</b></td><td>서비스 상태 · 디스크/온도 · DB 행 수 · <b>config.json 편집</b> · 로그 · 미발행 측정 재발행 · 버전/git rev</td><td>8 · 20</td></tr>
+    </table>
+    <p>모바일 폭에서는 카드가 한 열로 쌓이고 아래 탭바로 페이지를 옮깁니다. 브라우저 메뉴의 <b>홈 화면에 추가</b>로 PWA 설치가 되어 카메라 옆에서 폰으로 세팅하기에 맞춰져 있습니다.</p>
+
+    <h3>3) 더미 데이터 모드 — 노드 없이도 전 화면이 돕니다</h3>
+    <div class="box dummy">
+      <span class="lbl">규칙은 하나 — 비어 있는 테이블만, 배지를 달고</span>
+      <table>
+        <tr><th>키 · 명령</th><th>하는 일</th></tr>
+        <tr><td><code class="in">analysis.dummy_fill: "auto"</code> (기본)</td><td>행이 0 개인 테이블만 합성 데이터로 채우고 그 카드에 <code class="in">DUMMY DATA</code> 배지. 실측 행이 생기면 그 테이블부터 실측</td></tr>
+        <tr><td><code class="in">analysis.dummy_fill: "off"</code></td><td>합성 없음. 빈 카드는 안내 문구</td></tr>
+        <tr><td><code class="in">plantsvc seed [--days 7]</code></td><td>PC 개발용 — <b>통째로 더미인</b> <code class="in">data/plant.db</code> 를 만듭니다(node='dummy'). 기존 DB 가 있으면 거부, <code class="in">--force</code> 로 덮어씀. <b>Pi 에서는 쓰지 마세요</b></td></tr>
+        <tr><td><code class="in">PLANT_FAKE_HW=1</code></td><td>가짜 카메라(합성 잎 프레임) · LED 는 noop. 세팅 5단계와 촬영 루틴을 시험할 수 있지만 <b>가짜 프레임은 발행되지 않습니다</b>(<code class="in">fake_</code> 접두어 · <code class="in">--allow-fake-publish</code> 는 시험 전용)</td></tr>
+      </table>
+      합성 값이 실측 DB 에 섞일 수 있는 길은 <code class="in">seed</code> 와 <code class="in">--allow-fake-publish</code> 두 개뿐이고, 둘 다 사람이 손으로 쳐야 합니다.
+    </div>
+
+    <h3>4) API · WebSocket — 화면이 쓰는 것과 같은 것</h3>
+    <table>
+      <tr><th>엔드포인트</th><th>내용</th></tr>
+      <tr><td><code class="in">GET /api/health</code> · <code class="in">/api/system/status</code></td><td>버전 · git rev · 카메라 드라이버 · dummy_fill · 서비스/디스크/온도 (deploy.ps1 의 헬스 체크가 봄)</td></tr>
+      <tr><td><code class="in">GET /api/summary</code> · <code class="in">/api/env</code> · <code class="in">/api/soil</code> · <code class="in">/api/pump</code> · <code class="in">/api/growth</code></td><td>대시보드 데이터 (응답에 어느 테이블이 더미인지 표시)</td></tr>
+      <tr><td><code class="in">GET /api/export/{table}.csv</code></td><td>readings · soil · pump_log · growth CSV</td></tr>
+      <tr><td><code class="in">GET /api/camera/status</code> · <code class="in">/stream.mjpg</code> · <code class="in">/frame.jpg</code> · <code class="in">/drift</code></td><td>카메라 상태(preview: live / paused_capture / unavailable, lock_holder_pid) · 미리보기 · 정지 프레임 · 밀림 판정</td></tr>
+      <tr><td><code class="in">POST /api/camera/actions/{name}</code> · <code class="in">/api/camera/release</code></td><td>세팅 버튼(auto · point · findleaf · grid · shuffle · shoot …) · 카메라 반납 (capture CLI 가 부름)</td></tr>
+      <tr><td><code class="in">GET /api/capture/schedule</code> · <code class="in">/status</code> · <code class="in">/jobs</code> · <code class="in">POST /api/capture/run</code> (202) · <code class="in">/cancel</code> · <code class="in">/replay</code></td><td>다음 촬영 시각 · 진행 중 잡 · 이력 · 지금 촬영 · 취소 · 재발행</td></tr>
+      <tr><td><code class="in">GET /api/led</code> · <code class="in">POST /api/led/on</code> · <code class="in">/off</code> · <code class="in">/test</code></td><td>LED 상태·수동 점등. 미설치면 <b>409 <code class="in">led_not_installed</code></b></td></tr>
+      <tr><td><code class="in">GET /api/config</code> · <code class="in">PUT /api/config</code> · <code class="in">/api/config/check</code></td><td>config.json 읽기 · 검증 후 저장 · 모순 검사</td></tr>
+      <tr><td><code class="in">GET /api/system/logs</code> · <code class="in">/api/events</code></td><td>journal 꼬리 · events.db</td></tr>
+      <tr><td><code class="in">WS /ws</code></td><td>촬영 단계 · 설정 변경 · 카메라 상태를 실시간 push (화면의 카운트다운·진행 바가 이걸 봅니다)</td></tr>
+    </table>
+<pre>curl -s http://raspi.local:8080/api/system/status | python3 -m json.tool
+curl -s http://raspi.local:8080/api/capture/schedule
+curl -s -X POST http://raspi.local:8080/api/capture/run -H 'content-type: application/json' -d '{"phase":"auto","force":true}'</pre>
+
+    <h3>5) PC 에서 하드웨어 없이 돌리기</h3>
+    <span class="ftag">Windows / macOS / Linux — 노드도 카메라도 없이</span>
+<pre>git clone https://github.com/xparapx/Plant_Growth_Monitoring_Demo.git &amp;&amp; cd Plant_Growth_Monitoring_Demo
+uv sync --group dev
+PLANT_FAKE_HW=1 uv run plantsvc serve        <span class="c"># http://localhost:8080 — 더미 데이터 + 가짜 카메라 (PowerShell: $env:PLANT_FAKE_HW='1'; uv run plantsvc serve)</span>
+
+# 화면을 고칠 때 — Vite 개발 서버 (/api 는 :8080 으로 프록시)
+cd web &amp;&amp; npm ci &amp;&amp; npm run dev            <span class="c"># http://localhost:5173</span>
+
+uv run pytest                                <span class="c"># 하드웨어 없이 도는 테스트</span>
+uv run plantsvc seed --days 14               <span class="c"># 통째로 더미인 data/plant.db (있으면 --force)</span></pre>
+    <div class="box">
+      <span class="lbl">서비스가 아닌 정적 데모 — GitHub Pages /app/</span>
+      <code class="in">https://xparapx.github.io/Plant_Growth_Monitoring_Demo/app/</code> 는 같은 React 화면을 <b>목(mock) API</b> 위에 올린 것입니다.
+      서버 없이 화면만 보는 용도라 버튼(촬영·저장)은 흉내만 냅니다.
+    </div>
+    <div class="box ok">
+      <span class="lbl">이 패널 통과 조건</span>
+      <ul class="chk">
+        <li><code class="in">http://&lt;pi&gt;:8080/</code> 가 열리고 <code class="in">/system</code> 에 planthub · plantsvc · plantsnap.timer 가 초록</li>
+        <li>폰(같은 WiFi, IP 로)에서도 열리고 홈 화면에 추가된다</li>
+        <li>노드가 붙은 카드에는 <code class="in">DUMMY DATA</code> 배지가 <b>없다</b>, 아직 없는 카드에는 있다</li>
+        <li><code class="in">ss -ltn</code> 에 1883 · 8080 만 있고 8501 · 8000 은 없다</li>
+      </ul>
+    </div>
+    <div class="nav-btns"><button class="ghost">◀ 이전</button><button>다음 ▶</button></div>
+  </section>
+
+  <!-- ════════ sL ════════ -->
+  <section class="panel" id="sL">
+    <h2 class="title"><span class="badge">19</span>LED 촬영 루틴 (자리)</h2>
+    <p class="lead">촬영은 <b>LED 점등 → 워밍업 → 촬영 → 소등</b> 순서로 짜여 있습니다. <b>램프 하드웨어는 아직 없습니다</b> —
+    그래서 기본값은 &ldquo;꺼짐·noop&rdquo;이고, 루틴은 램프가 없는 것처럼 돌면서 <b>자리만 비워 둡니다.</b> 램프를 달 때 이 패널만 보면 되게 써 두었습니다.</p>
+
+    <div class="box warn">
+      <span class="lbl">왜 조명을 루틴에 넣나 — 패널 11 의 &ldquo;날씨가 섞이는&rdquo; 문제</span>
+      노출을 고정했으니 어두운 아침엔 사진이 어둡고, Otsu 임계값이 올라 마스크가 잎 안쪽으로 파고듭니다(같은 잎이 −18%).
+      촬영 시각을 고정하는 것보다 <b>조명을 고정하는 것</b>이 확실합니다. 백색 LED 를 <b>찍기 직전에만</b> 켜면 6주 내내 같은 빛으로 찍힙니다.
+      보라색 재배등은 안 됩니다 — G 성분이 없어 ExG 가 작동하지 않습니다.
+    </div>
+
+    <h3>1) 순서 — 한 번의 촬영 안에서</h3>
+    <div class="diagram">
+      <div class="dbox"><div class="t">① 카메라 확보</div><div class="d">release 요청 →<br>camera.lock</div></div>
+      <div class="arrow"><div class="a">→</div></div>
+      <div class="dbox cloud"><div class="t">② LED 점등</div><div class="d">미설치면 skip<br>워밍업 0 s</div></div>
+      <div class="arrow"><div class="a">→</div></div>
+      <div class="dbox cloud"><div class="t">③ 워밍업</div><div class="d">warmup_s<br>기본 300 s</div></div>
+      <div class="arrow"><div class="a">→</div></div>
+      <div class="dbox hub"><div class="t">④ 촬영</div><div class="d">고정값 · 2 s settle<br>1장</div></div>
+      <div class="arrow"><div class="a">→</div></div>
+      <div class="dbox cloud"><div class="t">⑤ 소등</div><div class="d">finally +<br>ExecStopPost</div></div>
+      <div class="arrow"><div class="a">→</div></div>
+      <div class="dbox"><div class="t">⑥ 측정·발행</div><div class="d">jsonl 먼저<br>MQTT qos=1</div></div>
+    </div>
+    <p>램프가 켜진 채로 남을 수 있는 길을 <b>세 겹</b>으로 막습니다 — 코드의 <code class="in">finally</code>, 유닛의 <code class="in">ExecStopPost=plantsvc led off</code>(타임아웃으로 SIGKILL 돼도 실행),
+    그리고 드라이버의 <b>watchdog</b>(<code class="in">led.max_on_s</code>, 기본 1200 s 뒤 무조건 소등). plantsvc.service 도 시작·종료 때 <code class="in">led off</code> 를 한 번씩 합니다 —
+    릴레이 보드는 커널 초기화 중 핀이 떠서 켜질 수 있기 때문입니다.</p>
+
+    <h3>2) config.json <code class="in">led</code> 절</h3>
+    <table>
+      <tr><th>키</th><th>기본값</th><th>뜻</th></tr>
+      <tr><td><code class="in">enabled</code></td><td><code class="in">false</code></td><td>램프 사용 여부. false 면 루틴이 <code class="in">[LED] skipped — not installed</code> 를 남기고 워밍업 0 초</td></tr>
+      <tr><td><code class="in">driver</code></td><td><code class="in">"noop"</code></td><td><code class="in">noop</code> = 아무것도 안 함 · <code class="in">gpiozero</code> = <code class="in">gpiozero.OutputDevice</code>(apt python3-gpiozero + lgpio) · <code class="in">auto</code> = 있으면 gpiozero, 없으면 noop</td></tr>
+      <tr><td><code class="in">pin</code></td><td><code class="in">17</code></td><td>BCM 번호(물리 11번 핀). 릴레이/MOSFET 모듈의 IN</td></tr>
+      <tr><td><code class="in">active_high</code></td><td><code class="in">true</code></td><td>HIGH 에 켜짐. <b>액티브-로우 릴레이 보드</b>(대부분의 저가 릴레이 모듈)는 <code class="in">false</code></td></tr>
+      <tr><td><code class="in">warmup_s</code></td><td><code class="in">300</code></td><td>점등 후 촬영까지. LED 는 켜진 직후 몇 분간 광량·색온도가 흘러내리므로 안정된 뒤 찍습니다</td></tr>
+      <tr><td><code class="in">max_on_s</code></td><td><code class="in">1200</code></td><td>watchdog — 이 시간이 지나면 무조건 소등</td></tr>
+    </table>
+
+    <h3>3) 시각표 — 램프 유무에 따라</h3>
+    <table>
+      <tr><th></th><th>타이머</th><th>점등</th><th>촬영</th><th>소등</th><th>TimeoutStartSec</th></tr>
+      <tr><td><b>램프 없음</b> (지금)</td><td>05:50 · 15:00</td><td>—</td><td><b>05:50</b> · 15:00 (+ 2 s settle, 카메라 재시도 최대 3×30 s)</td><td>—</td><td>900 s</td></tr>
+      <tr><td><b>램프 설치</b> (warmup 300)</td><td>05:50 · 15:00</td><td>05:50 · 15:00</td><td><b>05:55</b> · 15:05</td><td>촬영 직후</td><td>900 s = max(900, 300 + 600)</td></tr>
+    </table>
+    <div class="box tip">
+      <span class="lbl">05:50 으로 당긴 이유 — 새벽 촬영은 <b>램프가 있든 없든 06:00 전</b></span>
+      2026-07 판은 06:00 이었습니다. 워밍업 5분을 앞에 두면 램프가 있을 때 06:05 가 되어 여름 일출과 겹칩니다.
+      그래서 타이머를 05:50 으로 당겨 <b>램프가 있으면 05:55, 없으면 05:50</b> 에 찍히게 했습니다. 어느 쪽이든 06:00 전이라 자연광 조건이 같습니다.<br>
+      <b>램프를 다는 날 실험 노트에 적으세요</b> — 그날부터 새벽 사진 시각이 05:50 → 05:55 로 바뀌고, 조명 조건도 바뀝니다. 생장 곡선에 그 날짜의 계단이 보이면 그 이유입니다.
+    </div>
+
+    <h3>4) 램프를 달 때 — 나중에 할 일</h3>
+    <div class="box warn">
+      <span class="lbl">왜 릴레이/MOSFET 모듈인가 — GPIO 핀은 램프를 못 켭니다</span>
+      GPIO 한 핀은 <b>3.3 V · 십수 mA</b> 입니다. 백색 LED 램프(수 W)는 커녕 밝은 LED 하나도 벅찹니다.
+      모듈은 <b>스위치일 뿐</b>이고, 램프 전원은 <b>별도 어댑터</b>에서 옵니다 — Pi 의 5 V 핀에서 램프 전류를 끌어오지 마세요(카메라·SD 브라운아웃).
+      릴레이 모듈이면 접점 정격, MOSFET 모듈이면 DC 전압·전류가 램프에 맞는지 확인하고, <b>GND 는 Pi 와 램프 전원이 공통</b>이어야 합니다.
+    </div>
+    <ol style="margin:4px 0 0 18px; line-height:1.8;">
+      <li>Pi 전원 끄고 배선 — 모듈 IN ← <b>BCM 17</b>(물리 11번), VCC ← 3.3 V 또는 5 V(모듈 사양대로), GND 공통. 램프 전원은 모듈의 출력 쪽</li>
+      <li>웹 UI <code class="in">/system</code> → config.json: <code class="in">"led": {"enabled": true, "driver": "gpiozero", "pin": 17, "active_high": true, …}</code>
+          — 켜야 할 때 꺼지고 꺼야 할 때 켜지면 <code class="in">active_high: false</code></li>
+      <li><code class="in">cd ~/plant &amp;&amp; scripts/install.sh --update</code> — 유닛을 다시 렌더 (TimeoutStartSec 에 워밍업이 반영됨)</li>
+      <li><code class="in">.venv/bin/plantsvc doctor --led-test</code> — led 행이 <code class="in">OK gpio 17</code> 이고 램프가 2 초 켜졌다 꺼지는지 눈으로</li>
+      <li><code class="in">sudo systemctl start plantsnap.service</code> — 저널에 <code class="in">[LED] on — warm-up 300s</code> → 5분 뒤 <code class="in">shot</code> → 소등. 30분 안이면 <code class="in">debounced</code> 이므로 시험은 <code class="in">plantsvc capture --force --warmup 10</code> 로</li>
+      <li>실험 노트에 날짜·시각 변경(05:50 → 05:55)·램프 종류·높이를 기록</li>
+    </ol>
+<pre>plantsvc led test --seconds 2      <span class="c"># 켰다 끔 — 램프 없으면 "LED not installed" 만 출력하고 0 으로 종료</span>
+plantsvc led on --seconds 30       <span class="c"># 30초 뒤 자동 소등. 웹 UI /camera 의 LED 카드에서도 같은 일</span>
+plantsvc led off                   <span class="c"># 강제 소등 (언제든 안전)</span></pre>
+
+    <h3>5) 놓친 촬영 — plantsnap-catchup.service</h3>
+    <div class="box">
+      <span class="lbl">Persistent=true 만으로는 부족한 경우</span>
+      systemd 타이머의 <code class="in">Persistent=true</code> 는 &ldquo;타이머가 <b>울렸다</b>&rdquo;는 도장을 찍습니다. 05:50 에 울려 램프를 켜고 워밍업하던 중 정전이 나면
+      도장은 이미 찍혀 있어 재부팅 후 다시 울리지 않습니다 — <b>그날 새벽 사진이 없습니다.</b><br>
+      그래서 부팅 때 한 번 <code class="in">plantsvc capture --phase auto --if-missing</code> 을 돌립니다: <b>오늘 그 phase 의 성공 행이 없고, 지금이 그 phase 의 시간창 안</b>일 때만 찍고,
+      아니면 <code class="in">skipped</code> 로 조용히 끝납니다. 정상 부팅에서는 늘 skipped 입니다.
+    </div>
+    <div class="box tip">
+      <span class="lbl">왜 LED 만 켜는 별도 유닛이 없나</span>
+      &ldquo;05:50 에 LED 유닛, 05:55 에 촬영 유닛&rdquo;으로 나누면 둘 사이의 <b>순서·실패 처리·소등 책임</b>이 systemd 의존성으로 흩어집니다 —
+      촬영이 실패했을 때 누가 끄는지, 촬영 유닛이 늦게 뜨면 워밍업이 얼마였는지 알 수 없습니다.
+      한 프로세스 안에서 켜고·기다리고·찍고·끄면 <b>워밍업 시간이 정확히 로그에 남고</b> <code class="in">finally</code> 하나로 소등이 보장됩니다.
+      그래서 LED 는 촬영 루틴의 <b>한 단계</b>이지 독립 서비스가 아닙니다.
+    </div>
+
+    <div class="box ok">
+      <span class="lbl">램프 설치 뒤 확인할 것</span>
+      <ul class="chk">
+        <li><code class="in">plantsvc doctor</code> led 행 OK · <code class="in">--led-test</code> 로 램프가 실제로 켜졌다 꺼진다</li>
+        <li><code class="in">journalctl -u plantsnap</code> 에 <code class="in">[LED] on — warm-up 300s</code> 가 있고 촬영 시각이 <b>05:55</b> 로 바뀌었다</li>
+        <li>촬영이 끝난 뒤(또는 <code class="in">systemctl stop plantsnap</code> 로 강제 중단해도) 램프가 <b>꺼져 있다</b></li>
+        <li>웹 UI /camera 의 LED 카드가 &ldquo;미설치&rdquo;가 아니라 상태(off · gpio 17)를 보여 준다</li>
+        <li>램프 아래서 찍은 <code class="in">calib.jpg</code> 를 <b>다시 찍었다</b> — 조명이 바뀌면 기준 사진도 바뀌어야 밀림 판정과 노출이 맞습니다</li>
+        <li>실험 노트에 날짜를 적었다</li>
+      </ul>
+    </div>
+    <div class="nav-btns"><button class="ghost">◀ 이전</button><button>다음 ▶</button></div>
+  </section>
+
+  <!-- ════════ sI ════════ -->
+  <section class="panel" id="sI">
+    <h2 class="title"><span class="badge">20</span>설치·배포 스크립트</h2>
+    <p class="lead"><code class="in">scripts/</code> 다섯 개와 <code class="in">plantsvc doctor</code>, 그리고 GitHub Actions. <b>손으로 하던 것을 스크립트가 어디까지 대신하는지</b>와, 각 스크립트가 <b>절대 하지 않는 것</b>을 적습니다.</p>
+
+    <h3>1) install.sh — 설치와 갱신을 같은 스크립트로</h3>
+    <span class="ftag">Pi · 서비스 계정으로 (root 아님)</span>
+<pre>scripts/install.sh [옵션]
+  (없음)            처음 설치. .venv 가 이미 있으면 자동으로 --update 로 동작
+  --update          apt 생략 · venv 유지 · 유닛 재렌더 · 서비스 재시작     ← git pull 뒤, config.json 의 schedule/led 를 바꾼 뒤
+  --web=release     GitHub 릴리스의 web-dist.tar.gz 를 받음 (기본. 실패하면 node 가 있을 때 로컬 빌드, 그것도 없으면 skip)
+  --web=local       web/web-dist.tar.gz 를 풀어 씀 (deploy.ps1 -Web local 이 올려 둠)
+  --web=build       Pi 에서 npm ci && npm run build (느림 · node 필요)
+  --web=skip        화면은 건드리지 않음
+  --tag vX.Y.Z      --web=release 에서 특정 릴리스
+  --data-dir DIR    PLANT_DATA_DIR (기본 &lt;repo&gt;/data)
+  --set-timezone    timedatectl set-timezone &lt;config.json 의 tz&gt;
+  --no-apt · --no-enable · --legacy(Streamlit 의존성 포함) · --dry-run(preflight 만)</pre>
+    <table>
+      <tr><th>#</th><th>단계</th><th>하는 일 · 확인하는 것</th></tr>
+      <tr><td>1</td><td>preflight</td><td>root 거부 · Pi 모델 표시 · git 체크아웃인지 · sudo 가능 여부(불가면 명령만 출력)</td></tr>
+      <tr><td>2</td><td>apt</td><td>python3-picamera2 · python3-gpiozero · python3-lgpio · mosquitto(-clients) · git · rpicam-apps (<code class="in">--update</code> 면 생략)</td></tr>
+      <tr><td>3</td><td>uv</td><td>없으면 설치</td></tr>
+      <tr><td>4</td><td>venv</td><td><code class="in">uv venv --system-site-packages --python /usr/bin/python3</code> — apt 의 picamera2·gpiozero 가 보이도록. <code class="in">UV_PYTHON=/usr/bin/python3</code> 로 고정한 채 <code class="in">uv sync --frozen --no-dev</code> (uv 가 관리형 CPython 을 골라 venv 를 조용히 다시 만들면 picamera2 가 사라지므로). Pi 에서 picamera2 import 실패면 중단</td></tr>
+      <tr><td>5</td><td>data dir + config</td><td><code class="in">data/photos/{raw,mask,debug}</code> · <code class="in">config.json</code> 이 없으면 <code class="in">hub/config.example.json</code> 복사</td></tr>
+      <tr><td>6</td><td>mosquitto</td><td><code class="in">hub/plant.conf</code> → <code class="in">/etc/mosquitto/conf.d/</code> (바뀌었을 때만 restart)</td></tr>
+      <tr><td>7</td><td>web/dist</td><td><code class="in">--web</code> 에 따라. 없으면 서비스가 <b>fallback 페이지</b>를 띄움(패널 !)</td></tr>
+      <tr><td>8</td><td>systemd 유닛</td><td><code class="in">plantsvc render-units</code> → <code class="in">deploy/systemd/rendered/</code> → sha256 이 바뀐 경우만 <code class="in">/etc/systemd/system/</code> 에 설치 · 구 <code class="in">camera-lock.conf</code> 드롭인 제거(백업 <code class="in">data/backup/etc/</code>) · daemon-reload</td></tr>
+      <tr><td>9</td><td>enable / start</td><td>plantdash · plantcam · mjpeg <b>disable</b> → planthub · plantsvc · plantsnap.timer · plantsnap-catchup <b>enable --now</b> · systemd-time-wait-sync enable · list-timers</td></tr>
+      <tr><td>10</td><td>timezone</td><td>시스템 tz 와 config.json 의 tz 비교. <code class="in">--set-timezone</code> 이면 맞춤, 아니면 WARN</td></tr>
+      <tr><td>11</td><td>groups</td><td>계정을 video · gpio 에 추가 (셸은 재로그인 필요, 서비스는 SupplementaryGroups 로 이미 됨)</td></tr>
+      <tr><td>12</td><td>doctor</td><td><code class="in">plantsvc doctor</code> 표 출력 · UI 주소 안내</td></tr>
+    </table>
+    <p>전 과정이 <code class="in">data/install.log</code> 에 append 됩니다. 실패하면 <code class="in">FAILED at step N</code> 으로 끝나니 그 단계부터 보세요.
+    <b>하지 않는 것</b>: 데이터 삭제 · 유닛 파일 손편집 존중(렌더 결과로 덮습니다 — 고칠 것은 템플릿이나 config.json) · root 실행.</p>
+
+    <h3>2) deploy.ps1 — 개발 PC(Windows) → Pi 한 번에</h3>
+    <span class="ftag">PC · PowerShell 5.1 · 키 기반 ssh 필요</span>
+<pre>.\scripts\deploy.ps1                          <span class="c"># 현재 브랜치 push → Pi 에서 pull → install.sh --update --web=release → doctor --brief → /api/system/status</span>
+.\scripts\deploy.ps1 -Web local               <span class="c"># 화면을 여기서 빌드해 web-dist.tar.gz 로 올림 (릴리스를 안 만들고 화면만 시험)</span>
+.\scripts\deploy.ps1 -PiHost raspi -Full      <span class="c"># apt 포함 전체 설치</span>
+.\scripts\deploy.ps1 -NoPush -Force           <span class="c"># push 생략 · 작업 트리가 지저분해도 진행</span></pre>
+    <p>기본 호스트명은 <code class="in">raspi</code>, 원격 경로는 <code class="in">~/plant</code>. 원격 명령은 한 줄로 보내고 stdin 을 쓰지 않아 CRLF 가 섞일 일이 없습니다.
+    실패하면 <code class="in">journalctl -u plantsvc</code> 명령과 <b>직전 커밋으로의 rollback 명령</b>을 찍어 줍니다.
+    ssh 키가 없으면 안내대로 <code class="in">id_ed25519.pub</code> 를 Pi 의 <code class="in">authorized_keys</code> 에 한 번 넣으세요.</p>
+
+    <h3>3) migrate_legacy.sh — 평탄화 설치에서 데이터만</h3>
+<pre>scripts/migrate_legacy.sh --from ~/plant.legacy-20260910 [--dry-run]
+<span class="c"># --from 을 생략하면 ~/plant.legacy-* 또는 .git 이 없는 /home/*/plant 를 찾아봄</span></pre>
+    <p><code class="in">plant.db</code>(sqlite backup API 로 안전 복사) · <code class="in">config.json</code> · <code class="in">calib.jpg</code> · <code class="in">truth.json</code> · <code class="in">photos/</code> 를 <code class="in">data/</code> 로.
+    <b>복사만, 삭제 없음</b>. 이미 있는 대상은 건너뜁니다(<code class="in">plantsvc migrate-data --force</code> 로 덮어쓰기). 결과는 <code class="in">data/MIGRATED_FROM.txt</code>.
+    옛 유닛이 enabled 면 알려만 주고 install.sh 가 비활성화합니다. 패널 8 의 1절이 전체 순서입니다.</p>
+
+    <h3>4) fetch_web.sh · rollback.sh</h3>
+<pre>scripts/fetch_web.sh [--tag v0.1.0]     <span class="c"># GitHub 릴리스의 web-dist.tar.gz (+ .sha256 검증) → web/dist, VERSION 파일 기록. jq 불필요</span>
+scripts/rollback.sh &lt;sha|tag&gt;            <span class="c"># git checkout 그 ref → install.sh --update --web=skip (화면은 그대로)</span>
+scripts/rollback.sh &lt;sha&gt; --streamlit    <span class="c"># + --legacy 로 Streamlit 의존성 · plantdash.service enable → :8501 (plantsvc · catch-up 은 disable)</span></pre>
+    <div class="box warn">
+      <span class="lbl">롤백은 코드만 되돌립니다</span>
+      <code class="in">data/</code> 는 그대로입니다. 2026-07 판 스크립트는 <code class="in">config.json</code> 을 폴더 바로 아래에서 찾으므로
+      Streamlit 롤백 뒤에는 <code class="in">PLANT_DATA_DIR</code> 를 알지 못하는 옛 코드가 빈 설정으로 뜰 수 있습니다 — 롤백은 <b>화면을 급히 살리는 용도</b>이지 운용 모드가 아닙니다.
+    </div>
+
+    <h3>5) plantsvc doctor — 점검표</h3>
+<pre>cd ~/plant &amp;&amp; .venv/bin/plantsvc doctor [--brief] [--json] [--led-test]
+
+venv            OK    /home/pi/plant/.venv
+import picamera2 OK  ·  import gpiozero WARN (ModuleNotFoundError)  → sudo apt install python3-gpiozero python3-lgpio
+config.json     OK    6 ROI
+data dir        OK    /home/pi/plant/data  free 24811 MB
+calib.jpg       WARN  missing                         → camera setup step 5
+plant.db        OK    readings=1440, soil=2880, pump_log=31, growth=12
+mqtt broker     OK    localhost:1883
+camera          OK    1 camera(s)
+camera lock     OK    free
+led             SKIP  not installed (led.enabled=false)
+schedule        OK    dawn 05:50 · pm 15:00 · next 15:00
+timezone        OK    Asia/Seoul
+ntp             OK    synchronized
+units           OK    planthub active · plantsvc active · plantsnap.timer active · catch-up enabled
+web/dist        OK    v0.1.0</pre>
+    <p>종료 코드는 FAIL 이 하나라도 있으면 1 — CI 나 deploy.ps1 이 그대로 씁니다. <code class="in">--json</code> 은 같은 표를 기계용으로.
+    행 이름·상태는 위 예와 같지만 세부 문구는 버전에 따라 조금 다를 수 있습니다.</p>
+
+    <h3>6) GitHub Actions</h3>
+    <table>
+      <tr><th>워크플로</th><th>언제</th><th>무엇을</th></tr>
+      <tr><td><code class="in">ci.yml</code></td><td>main · feat/** push, PR</td><td><code class="in">pytest</code> + <code class="in">web</code> 빌드. 하드웨어 없이 도는 테스트만</td></tr>
+      <tr><td><code class="in">release.yml</code></td><td>태그 <code class="in">v*</code> push</td><td>web/dist 를 <code class="in">web-dist.tar.gz</code>(+sha256) 로 릴리스에 첨부 — <code class="in">install.sh --web=release</code> · <code class="in">fetch_web.sh</code> 가 받는 것</td></tr>
+      <tr><td><code class="in">pages.yml</code></td><td>main 의 docs/** · web/** 변경</td><td>프로젝트 개요(index.html) · 이 매뉴얼 · <code class="in">/app/</code> 목 데이터 데모를 GitHub Pages 에</td></tr>
+    </table>
+<pre>git tag v0.1.1 &amp;&amp; git push origin v0.1.1      <span class="c"># → release.yml → Pi 에서 scripts/install.sh --update --web=release 가 이 화면을 받음</span></pre>
+
+    <h3>7) Windows 개발 PC — 알아 둘 것</h3>
+    <div class="box warn">
+      <span class="lbl">Smart App Control(애플리케이션 제어 정책)이 pydantic-core DLL 을 막을 수 있습니다</span>
+      최신 <code class="in">pydantic-core</code> 의 네이티브 DLL 이 서명 정책에 걸려 <code class="in">import pydantic</code> 이
+      &ldquo;애플리케이션 제어 정책에 의해 차단&rdquo;으로 실패하는 PC 가 있습니다. 그래서 <code class="in">pyproject.toml</code> 이 <b>win32 에서만</b> pydantic 2.10 을 고정합니다 —
+      <b>Pi 는 최신</b>을 씁니다. 정책을 끄지 마세요(패널 ! 에 증상).<br>
+      한글 로그가 <code class="in">cp949</code> 콘솔에서 깨지던 문제는 <code class="in">plantsvc</code> 가 stdout 을 UTF-8 로 재설정해 해결했습니다. 다른 스크립트가 깨지면 <code class="in">$env:PYTHONUTF8='1'</code>.
+    </div>
+    <div class="nav-btns"><button class="ghost">◀ 이전</button><button>다음 ▶</button></div>
+  </section>
+
+  <!-- ════════ sT ════════ -->
   <section class="panel" id="sT">
     <h2 class="title"><span class="badge">13</span>데모 합격 판정</h2>
     <p class="lead">전부 통과해야 2단계(프레임·7노드·열화상)로 넘어갑니다. 하나라도 미달이면 원인을 고치고 <b>다시 24시간</b>.</p>
@@ -8027,16 +8599,46 @@ GROUP BY treat;</pre>
       <tr><td>잎을 놓침 (과소)</td><td>정반사 → 조명 45° 양방향. 배경이 밝으면 무광 검정으로</td></tr>
       <tr><td><b>잎이 아예 안 잡힘</b></td><td><b>보라색 식물등</b>을 쓰고 있지 않은지 (FAQ)</td></tr>
     </table>
+    <h3>웹 UI · 촬영 루틴 (plantsvc) — 2026-09</h3>
+    <table>
+      <tr><th>증상 (저널 · 화면)</th><th>원인 · 조치</th></tr>
+      <tr><td><code class="in">camera lock held by pid N</code></td><td>다른 프로세스가 <code class="in">data/camera.lock</code> 을 쥐고 있음. <code class="in">plantsvc doctor</code> 의 camera lock 행 · <code class="in">pgrep -af plantsvc</code> 로 누가인지 확인. 예전 <code class="in">setup_camera.py</code> 나 <code class="in">rpicam-hello</code> 가 떠 있으면 종료. 죽은 프로세스의 pid 면 잠금은 커널이 이미 풀었으니 다시 시도</td></tr>
+      <tr><td>화면이 &ldquo;web/dist missing&rdquo; 안내(fallback 페이지)</td><td>웹 UI 빌드가 없음 — API 는 살아 있음. <code class="in">scripts/install.sh --update --web=release</code>(릴리스에서 받기) 또는 <code class="in">--web=build</code>(node 필요) · PC 에서 <code class="in">deploy.ps1 -Web local</code></td></tr>
+      <tr><td>doctor <code class="in">ntp  WARN  not synchronized</code></td><td>시계가 안 맞으면 05:50 이 05:50 이 아닙니다. <code class="in">timedatectl</code> 확인 · <code class="in">sudo systemctl enable --now systemd-time-wait-sync</code> (install.sh 가 켬) · 인터넷 없는 망이면 NTP 서버 지정</td></tr>
+      <tr><td>저널에 <code class="in">skipped … debounced</code></td><td><b>정상.</b> 같은 phase 를 30분 안에 이미 찍음(Persistent 보충·catch-up·손 실행 중복 방지). 시험용 재촬영은 <code class="in">plantsvc capture --force</code></td></tr>
+      <tr><td><code class="in">/api/led</code> 가 409 <code class="in">led_not_installed</code> · /camera 의 LED 카드가 &ldquo;미설치&rdquo;</td><td><b>정상(지금).</b> <code class="in">led.enabled=false</code>. 램프를 달았다면 패널 19 의 4절 — <code class="in">enabled=true, driver="gpiozero"</code> → <code class="in">install.sh --update</code> → <code class="in">doctor --led-test</code>. gpiozero import 가 WARN 이면 <code class="in">sudo apt install python3-gpiozero python3-lgpio</code></td></tr>
+      <tr><td>미리보기가 멈추고 <code class="in">preview: paused_capture</code></td><td><b>정상.</b> 예약 촬영 시간창(촬영 1분 전 ~ 워밍업 + 5분) 또는 촬영 잡 진행 중. 끝나면 스스로 돌아옵니다. 급하면 /camera 에서 잡 취소</td></tr>
+      <tr><td><code class="in">fake camera frame — not published</code> · 사진 이름이 <code class="in">fake_…</code></td><td>실제 Pi 에 <code class="in">PLANT_FAKE_HW=1</code>(또는 <code class="in">PLANT_CAMERA=fake</code>)이 잡혀 있음 — 셸 프로필·유닛 Environment 확인. 실측이 아니므로 <b>발행이 막힌 것이 맞습니다</b>. 카메라가 진짜로 안 잡혀 fake 로 떨어진 것이면 doctor camera 행</td></tr>
+      <tr><td>촬영은 되는데 /growth 에 <code class="in">DUMMY DATA</code> 가 남음</td><td>발행이 planthub 에 안 닿음 — <code class="in">journalctl -u plantsnap</code> 의 <code class="in">발행 실패</code> 여부 · <code class="in">mosquitto_sub -t 'plant/tray/growth'</code> · planthub 가 growth 토픽을 구독하는지. <code class="in">plantsvc replay</code> 로 jsonl 에서 재발행</td></tr>
+      <tr><td><code class="in">config.json</code> 을 바꿨는데 타이머 시각·워밍업이 그대로</td><td>schedule · led 는 유닛에 렌더돼 있음 — <code class="in">scripts/install.sh --update</code></td></tr>
+      <tr><td>Streamlit 시절 — <code class="in">verify_fail</code> 경보가 한 번도 안 울림</td><td>펌웨어는 <code class="in">'verify fail'</code>(공백)로 보내고 대시보드는 <code class="in">verify_fail</code> 만 찾았음. 웹 UI 는 두 표기를 정규화해 같은 것으로 봅니다. 옛 대시보드로 롤백했다면 이 경보는 믿지 마세요</td></tr>
+      <tr><td><code class="in">check_accuracy.py</code> 가 <code class="in">measure() missing … 'phase'</code></td><td>2026-07 판의 인자 누락 버그 — 고쳐졌습니다. <code class="in">git pull</code> 뒤 <code class="in">uv run python hub/check_accuracy.py data/truth.json data/calib.jpg</code></td></tr>
+    </table>
+
+    <h3>Windows 개발 PC</h3>
+    <table>
+      <tr><th>증상</th><th>원인 · 조치</th></tr>
+      <tr><td><code class="in">import pydantic</code> 이 &ldquo;애플리케이션 제어 정책에 의해 차단되었습니다&rdquo; (DLL)</td><td>Smart App Control 이 최신 pydantic-core 의 DLL 을 막음. <code class="in">pyproject.toml</code> 이 win32 에서만 pydantic 2.10 을 고정하므로 <code class="in">uv sync --group dev</code> 를 다시. 정책을 끄지 말 것 (패널 20)</td></tr>
+      <tr><td>콘솔의 한글이 <code class="in">?</code>·깨짐 · <code class="in">UnicodeEncodeError: 'cp949'</code></td><td><code class="in">plantsvc</code> 는 자체 처리. 다른 스크립트는 <code class="in">$env:PYTHONUTF8='1'</code> 뒤 실행</td></tr>
+      <tr><td><code class="in">deploy.ps1</code> 이 &ldquo;working tree is dirty&rdquo;</td><td>먼저 커밋하거나 <code class="in">-Force</code></td></tr>
+      <tr><td><code class="in">deploy.ps1</code> 이 ssh 단계에서 멈춤</td><td>키 로그인이 안 됨 — 스크립트가 찍어 주는 한 줄로 <code class="in">authorized_keys</code> 등록 (비밀번호 1회)</td></tr>
+    </table>
 
     <span class="ftag">진단 명령 모음</span>
 <pre># 오가는 메시지 실시간 (PATH 미등록 시: &amp; "C:\Program Files\mosquitto\mosquitto_sub.exe" ...)
 mosquitto_sub -h localhost -t 'plant/#' -v
 
 # DB 확인 -- sqlite3 CLI가 없으면 uv run python 으로
-uv run python -c "import sqlite3; c=sqlite3.connect('plant.db'); print(*c.execute('SELECT COUNT(*),MIN(ts),MAX(ts) FROM readings'))"
-uv run python -c "import sqlite3; c=sqlite3.connect('plant.db'); print(*c.execute('SELECT MIN(n),AVG(n) FROM readings'))"
+uv run python -c "import sqlite3; c=sqlite3.connect('data/plant.db'); print(*c.execute('SELECT COUNT(*),MIN(ts),MAX(ts) FROM readings'))"
+uv run python -c "import sqlite3; c=sqlite3.connect('data/plant.db'); print(*c.execute('SELECT MIN(n),AVG(n) FROM readings'))"
+<span class="c"># PC 단계(패널 1~2)에서 plant.db 를 폴더 바로 아래에 두었다면 'plant.db' 로</span>
 
-# Pi
+# Pi — 2026-09 웹 UI 판
+cd ~/plant &amp;&amp; .venv/bin/plantsvc doctor           # OK/WARN/FAIL/SKIP 점검표 — 제일 먼저
+systemctl status planthub plantsvc plantsnap.timer --no-pager
+journalctl -u plantsvc -n 50 --no-pager
+journalctl -u plantsnap -n 50 --no-pager
+curl -s http://localhost:8080/api/system/status | python3 -m json.tool | head -40
 systemctl status mosquitto --no-pager
 journalctl -u mosquitto -n 30 --no-pager
 vcgencmd measure_temp                              # 85°C면 스로틀링
@@ -8210,7 +8812,7 @@ df -h                                              # 이미지 누적</pre>
 </div>
 
 <script>
-  const order = ['s0', 's1', 'sB', 'sH', 'sE1', 'sE2', 'sE3', 'sW1', 'sW2', 'sP', 'sVNC', 'sV', 'sC', 'sG', 'sT', 'sJ', 'sM', 'sD', 'sR', 'sX', 'sQ', 'sN'];
+  const order = ['s0', 's1', 'sB', 'sH', 'sE1', 'sE2', 'sE3', 'sW1', 'sW2', 'sP', 'sVNC', 'sV', 'sC', 'sG', 'sW', 'sL', 'sI', 'sT', 'sJ', 'sM', 'sD', 'sR', 'sX', 'sQ', 'sN'];
   const items  = document.querySelectorAll('.nav-item');
   const panels = document.querySelectorAll('.panel');
   let idx = 0;

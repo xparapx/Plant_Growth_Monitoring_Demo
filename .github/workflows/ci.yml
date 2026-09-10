@@ -35,7 +35,7 @@ jobs:
           PLANT_FAKE_HW: "1"
           PLANT_DATA_DIR: ${{ runner.temp }}/plant-data
         run: |
-          uv run plantsvc seed --days 3
+          uv run plantsvc seed --days 3 --with-config
           uv run plantsvc doctor --brief || true
           uv run plantsvc capture --phase dawn --force --no-release
           test -s "$PLANT_DATA_DIR/photos/growth.jsonl"
