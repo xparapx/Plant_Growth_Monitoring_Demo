@@ -144,7 +144,7 @@ def cmd_seed(args) -> int:
     conn.commit()
     conn.close()
     print(f"seeded {p.db}: readings={len(env)} soil={len(soil)} pump_log={len(pump)} growth={len(grow)} (node='dummy')")
-    if args.with_config:
+    if getattr(args, "with_config", False):
         from .config_model import Roi
         from .vision.roi_tools import grid_rois
         store = ConfigStore(p.config, example=p.example_config)
