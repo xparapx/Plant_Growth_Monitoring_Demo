@@ -13,13 +13,13 @@ from fastapi.concurrency import run_in_threadpool
 from ..capture.replay import jsonl_tail, replay
 from ..capture.runner import JobBusy
 from ..led import LedNotInstalled
-from ..timeutil import add_minutes, iso_utc, next_occurrence, now_utc
+from ..timeutil import add_minutes, iso_utc, next_occurrence, now_utc, parse_systemd_ts
 from .deps import ApiError, ctx
 
 router = APIRouter(prefix="/api", tags=["capture"])
 
 
-def _timer_info() -> dict[str, Any] | None:
+def _timer_info(tz: str | None = None) -> dict[str, Any] | None:
     if not shutil.which("systemctl"):
         return None
     try:
@@ -29,7 +29,9 @@ def _timer_info() -> dict[str, Any] | None:
         return None
     d = dict(ln.split("=", 1) for ln in out.strip().splitlines() if "=" in ln)
     return {"unit": "plantsnap.timer", "active": d.get("ActiveState") == "active",
-            "next": d.get("NextElapseUSecRealtime") or None, "last": d.get("LastTriggerUSec") or None}
+            "next": parse_systemd_ts(d.get("NextElapseUSecRealtime"), tz),
+            "last": parse_systemd_ts(d.get("LastTriggerUSec"), tz),
+            "next_raw": d.get("NextElapseUSecRealtime") or None}
 
 
 @router.get("/capture/schedule")
@@ -42,7 +44,7 @@ def schedule(c=Depends(ctx)) -> dict[str, Any]:
             "expected_shot": {"dawn": add_minutes(cfg.schedule.dawn, warm // 60),
                               "pm": add_minutes(cfg.schedule.pm, warm // 60)},
             "next": {"phase": nxt[1], "at": iso_utc(nxt[0])},
-            "timer": _timer_info()}
+            "timer": _timer_info(cfg.tz)}
 
 
 @router.get("/capture/status")

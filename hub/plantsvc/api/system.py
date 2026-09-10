@@ -14,7 +14,7 @@ from fastapi import APIRouter, Depends
 
 from .. import __version__
 from ..db import ro_connect, table_counts
-from ..timeutil import iso_utc, now_utc
+from ..timeutil import iso_utc, now_utc, parse_systemd_ts
 from .deps import ApiError, ctx
 
 router = APIRouter(prefix="/api/system", tags=["system"])
@@ -37,7 +37,7 @@ def _git_rev(root) -> str | None:
         return None
 
 
-def services_status() -> dict[str, Any] | None:
+def services_status(tz: str | None = None) -> dict[str, Any] | None:
     if not shutil.which("systemctl"):
         return None
     out: dict[str, Any] = {}
@@ -46,7 +46,7 @@ def services_status() -> dict[str, Any] | None:
             r = subprocess.run(["systemctl", "show", u, "--property=ActiveState,SubState,ActiveEnterTimestamp,UnitFileState"],
                                capture_output=True, text=True, timeout=3).stdout
             d = dict(ln.split("=", 1) for ln in r.strip().splitlines() if "=" in ln)
-            out[u] = {"active": d.get("ActiveState"), "sub": d.get("SubState"), "since": d.get("ActiveEnterTimestamp") or None,
+            out[u] = {"active": d.get("ActiveState"), "sub": d.get("SubState"), "since": parse_systemd_ts(d.get("ActiveEnterTimestamp"), tz),
                       "enabled": d.get("UnitFileState")}
         except Exception as e:  # noqa: BLE001
             out[u] = {"active": None, "error": str(e)}
@@ -94,7 +94,7 @@ def status(c=Depends(ctx)) -> dict[str, Any]:
             "disk": {"total": du.total, "used": du.used, "free": du.free},
             "db": {"path": str(c.paths.db), "exists": c.paths.db.exists(),
                    "size": c.paths.db.stat().st_size if c.paths.db.exists() else 0, "tables": counts},
-            "photos": photos, "services": services_status(),
+            "photos": photos, "services": services_status(cfg.tz),
             "camera": c.camera.status(), "led": c.led.status(),
             "mqtt": c.bridge.status() if c.bridge else {"connected": False, "broker": None, "disabled": True},
             "ws_clients": c.hub.client_count, "web_dist": c.paths.web_dist.exists(),

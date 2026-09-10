@@ -19,10 +19,12 @@ const timeFmt = new Intl.DateTimeFormat('ko-KR', { hour: '2-digit', minute: '2-d
 const dtFmt = new Intl.DateTimeFormat('ko-KR', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false })
 const dateFmt = new Intl.DateTimeFormat('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit' })
 
-export const fmtTimeLocal = (d: Date) => timeFmt.format(d).replace(/\s/g, '')
-export const fmtDateTime = (iso: string | null | undefined) => (iso ? dtFmt.format(new Date(iso)) : '—')
-export const fmtDate = (iso: string | null | undefined) => (iso ? dateFmt.format(new Date(iso)) : '—')
-export const fmtHms = (iso: string | null | undefined) => (iso ? new Date(iso).toLocaleTimeString('ko-KR', { hour12: false }) : '—')
+const valid = (d: Date) => !Number.isNaN(d.getTime())
+/** Formatters never throw: an unparseable input (e.g. a systemd 'Fri 2026-09-11 05:50:00 KST') is shown verbatim. */
+export const fmtTimeLocal = (d: Date) => (valid(d) ? timeFmt.format(d).replace(/\s/g, '') : '—')
+export const fmtDateTime = (iso: string | null | undefined) => { if (!iso) return '—'; const d = new Date(iso); return valid(d) ? dtFmt.format(d) : iso }
+export const fmtDate = (iso: string | null | undefined) => { if (!iso) return '—'; const d = new Date(iso); return valid(d) ? dateFmt.format(d) : iso }
+export const fmtHms = (iso: string | null | undefined) => { if (!iso) return '—'; const d = new Date(iso); return valid(d) ? d.toLocaleTimeString('ko-KR', { hour12: false }) : iso }
 
 export function fmtAgoMin(m: number | null | undefined): string {
   if (m === null || m === undefined) return '—'

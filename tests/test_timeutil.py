@@ -34,3 +34,9 @@ def test_local_helpers():
     assert nxt > t and nxt.astimezone().hour in range(24)
     assert add_minutes("05:50", 5) == "05:55" and add_minutes("23:58", 5) == "00:03"
     assert seconds_between_hhmm("05:55", "06:00") == 300 and seconds_between_hhmm("06:05", "06:00") < 0
+
+
+def test_parse_systemd_ts():
+    from plantsvc.timeutil import parse_systemd_ts
+    assert parse_systemd_ts("Fri 2026-09-11 05:50:00 KST", "Asia/Seoul") == "2026-09-10T20:50:00Z"
+    assert parse_systemd_ts("", "Asia/Seoul") is None and parse_systemd_ts("n/a", "Asia/Seoul") is None

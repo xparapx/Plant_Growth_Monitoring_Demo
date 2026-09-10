@@ -105,3 +105,18 @@ def seconds_between_hhmm(a: str, b: str) -> int:
     ah, am = parse_hhmm(a)
     bh, bm = parse_hhmm(b)
     return (bh * 60 + bm - ah * 60 - am) * 60
+
+
+def parse_systemd_ts(value: str | None, tz: str | None = None) -> str | None:
+    """'Fri 2026-09-11 05:50:00 KST' (systemctl show) -> ISO-8601 UTC, or None when empty/unparseable.
+    The zone abbreviation is ignored; the time is taken as the host's local time (config tz)."""
+    if not value:
+        return None
+    parts = value.strip().split()
+    for i in range(len(parts) - 1):
+        try:
+            dt = datetime.strptime(f"{parts[i]} {parts[i + 1]}", DB_FMT)
+        except ValueError:
+            continue
+        return iso_utc(dt.replace(tzinfo=tzinfo(tz)))
+    return None
