@@ -1,0 +1,109 @@
+/* ------------------------------------------------------------------
+   Design tokens — the single source for Tailwind utilities, ECharts
+   theme and inline SVG.  Brand: #173046 · #2C5979 · #D84C27 · #F2F2F2 ·
+   #C0C0C0.  Environment series use the Plotly default palette.
+   Treatment pair: PROVISIONAL until the Claude Design mockup review
+   (stable = cool blue, fluct = gold — gold sits far from the brand
+   accent and from Plotly Temp red, so it never reads as an alert).
+   ------------------------------------------------------------------ */
+@import "tailwindcss";
+
+:root {
+  color-scheme: light;
+  --bg: #F2F2F2;
+  --bg-elev: #FFFFFF;
+  --bg-sunken: #E9ECEF;
+  --border: #C0C0C0;
+  --border-soft: #D9DDE2;
+  --ink: #173046;
+  --ink-muted: #5A6B7D;
+  --ink-faint: #8A96A3;
+  --primary: #2C5979;
+  --primary-ink: #FFFFFF;
+  --accent: #D84C27;
+  --accent-ink: #B23A17;
+  --accent-soft: #FBE7E0;
+  --ok: #2E9E5B;      --ok-ink: #1F7A45;   --ok-soft: #E3F5EA;
+  --warn: #E0A200;    --warn-ink: #9A6700; --warn-soft: #FBF1C7;
+  --bad: #D84C27;     --bad-ink: #B23A17;  --bad-soft: #FBE7E0;
+  --info-soft: #E4EEF5;
+  --focus: #2C5979;
+  --dummy: #8A6508;   --dummy-bg: #FBF1C7;
+
+  --stable: #3A8FB7;  --stable-ink: #1F6E8F;
+  --fluct:  #D4AF37;  --fluct-ink:  #8A6508;
+  --leaf: #5B8C4A;
+
+  --env-vpd: #636EFA; --env-temp: #EF553B; --env-hum: #00CC96; --env-co2: #AB63FA; --env-lux: #FFA15A;
+  --overlay-roi: #FFAA00; --overlay-bad: #FF3B30; --overlay-pt: #FFE04D;
+
+  --font-sans: "Pretendard Variable", Pretendard, "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+  --font-num: "JetBrains Mono Variable", "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  --r-sm: 4px; --r-md: 8px; --r-lg: 12px; --r-pill: 999px;
+  --sh-1: 0 1px 2px rgba(23, 48, 70, .06), 0 1px 6px rgba(23, 48, 70, .06);
+  --sh-2: 0 4px 16px rgba(23, 48, 70, .10);
+  --lw-trace: 2.2; --lw-growth: 3; --lw-spark: 2.2; --lw-outline: 2.6;
+  --dur-fast: 120ms; --dur-base: 200ms; --dur-slow: 320ms;
+  --ease-out: cubic-bezier(.2, .8, .2, 1);
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #0F1F2E;
+  --bg-elev: #173046;
+  --bg-sunken: #0B1826;
+  --border: #2C5979;
+  --border-soft: #22455F;
+  --ink: #F2F2F2;
+  --ink-muted: #9AA8B8;
+  --ink-faint: #5F7386;
+  --primary: #7CC4E8;
+  --primary-ink: #0F1F2E;
+  --accent: #D84C27;
+  --accent-ink: #FF8A66;
+  --accent-soft: #3A2119;
+  --ok: #4ADE80;      --ok-ink: #4ADE80;   --ok-soft: #14302A;
+  --warn: #F4B740;    --warn-ink: #F4B740; --warn-soft: #3A2E12;
+  --bad: #FB7185;     --bad-ink: #FB7185;  --bad-soft: #3A1B22;
+  --info-soft: #1B3448;
+  --focus: #7CC4E8;
+  --dummy: #E8C547;   --dummy-bg: #2A2415;
+  --stable: #3A8FB7;  --stable-ink: #7CC4E8;
+  --fluct:  #C9A227;  --fluct-ink:  #E8C547;
+  --leaf: #A8BA72;
+  --sh-1: none; --sh-2: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root { --dur-fast: 0ms; --dur-base: 0ms; --dur-slow: 0ms; }
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-elev: var(--bg-elev);
+  --color-sunken: var(--bg-sunken);
+  --color-border: var(--border);
+  --color-border-soft: var(--border-soft);
+  --color-ink: var(--ink);
+  --color-muted: var(--ink-muted);
+  --color-faint: var(--ink-faint);
+  --color-primary: var(--primary);
+  --color-primary-ink: var(--primary-ink);
+  --color-accent: var(--accent);
+  --color-accent-ink: var(--accent-ink);
+  --color-accent-soft: var(--accent-soft);
+  --color-ok: var(--ok); --color-ok-ink: var(--ok-ink); --color-ok-soft: var(--ok-soft);
+  --color-warn: var(--warn); --color-warn-ink: var(--warn-ink); --color-warn-soft: var(--warn-soft);
+  --color-bad: var(--bad); --color-bad-ink: var(--bad-ink); --color-bad-soft: var(--bad-soft);
+  --color-info-soft: var(--info-soft);
+  --color-focus: var(--focus);
+  --color-dummy: var(--dummy); --color-dummy-bg: var(--dummy-bg);
+  --color-stable: var(--stable); --color-stable-ink: var(--stable-ink);
+  --color-fluct: var(--fluct); --color-fluct-ink: var(--fluct-ink);
+  --color-leaf: var(--leaf);
+  --font-sans: var(--font-sans);
+  --font-num: var(--font-num);
+  --radius-sm: var(--r-sm); --radius-md: var(--r-md); --radius-lg: var(--r-lg);
+  --shadow-1: var(--sh-1); --shadow-2: var(--sh-2);
+}

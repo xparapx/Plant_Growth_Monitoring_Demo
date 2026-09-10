@@ -15,9 +15,14 @@ from .deps import ApiError, ctx
 router = APIRouter(prefix="/api/config", tags=["config"])
 
 
+def _mtime_ms(c) -> int:
+    """Milliseconds, not ns: the ns value exceeds JS Number.MAX_SAFE_INTEGER and breaks If-Match."""
+    return (c.store.mtime_ns or 0) // 1_000_000
+
+
 def _doc(c) -> dict[str, Any]:
     cfg = c.store.get()
-    return {"config": cfg.model_dump(mode="json"), "path": str(c.store.path), "mtime": c.store.mtime_ns,
+    return {"config": cfg.model_dump(mode="json"), "path": str(c.store.path), "mtime": _mtime_ms(c),
             "warnings": c.store.warnings, "check": check(cfg)}
 
 
@@ -37,7 +42,7 @@ def _deep_merge(base: dict, patch: dict) -> dict:
 
 
 def _write(c, data: dict[str, Any], if_match: str | None):
-    if if_match and str(c.store.mtime_ns) != if_match:
+    if if_match and str(_mtime_ms(c)) != if_match.strip():
         raise ApiError(409, "stale", "config changed since you loaded it — reload and retry")
     try:
         cfg = c.store.replace(data)

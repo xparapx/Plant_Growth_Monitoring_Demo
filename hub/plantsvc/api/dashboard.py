@@ -71,7 +71,7 @@ def summary(c=Depends(ctx), dummy: str | None = DummyQ) -> dict[str, Any]:
             "unknown_labels": roster.unknown, "suggested_sql": roster.suggested_sql(),
             "env": health_an.env_summary(fr), "nodes": nodes, "alerts": alerts,
             "validity": soil_an.validity(fr, roster, cfg),
-            "run_started": cfg.run_started, "tz": cfg.tz,
+            "run_started": cfg.run_started, "tz": cfg.tz, "real_env": fr.real_env,
             "capture": {"driver": c.camera.driver or c.camera.probe_driver()},
             "led": c.led.status()}
 

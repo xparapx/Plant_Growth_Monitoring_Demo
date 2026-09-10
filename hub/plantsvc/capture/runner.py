@@ -126,7 +126,10 @@ class CaptureRunner:
 
     def _log(self, job: JobRecord, msg: str) -> None:
         job.log.append(msg)
-        print(msg, flush=True)
+        try:
+            print(msg, flush=True)
+        except UnicodeEncodeError:            # cp949 console on Windows; never let logging kill a capture
+            print(msg.encode("ascii", "replace").decode(), flush=True)
 
     def _existing(self, cfg: Config, phase: str) -> tuple[datetime | None, bool]:
         """(when, had_ok_rows) of the last jsonl entry for (today local, phase)."""
