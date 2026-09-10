@@ -40,3 +40,18 @@ Thumbs.db
 
 # ===== 로그 =====
 *.log
+
+# ===== plantsvc 런타임 (PLANT_DATA_DIR 기본값) =====
+data/
+deploy/systemd/rendered/
+
+# ===== web (Vite) =====
+web/node_modules/
+web/dist/
+web/.cache/
+web/web-dist.tar.gz
+!web/public/*.png
+
+# ===== 테스트 픽스처 (위의 *.jpg/*.png 규칙 예외) =====
+!tests/fixtures/*.jpg
+!tests/fixtures/*.png

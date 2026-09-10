@@ -1,0 +1,59 @@
+{
+  "version": 2,
+  "tz": "Asia/Seoul",
+
+  "layout": { "cols": 3, "rows": 2, "pot_cm": 15, "gap_cm": 20 },
+
+  "capture": {
+    "size": [4608, 2592],
+    "lens_position": 1.82,
+    "exposure_us": 20000,
+    "gain": 2.0,
+    "colour_gains": [1.8, 1.6]
+  },
+
+  "rois": [],
+  "treat_mode": "",
+  "run_started": null,
+
+  "qc": {
+    "px_per_cm_ref": 0.0,
+    "edge_tol": 0.02,
+    "drift_warn_px": 8.0,
+    "drift_fail_px": 40.0,
+    "drift_resp_min": 0.05
+  },
+
+  "bands": {
+    "raw": { "stable": [1900, 1940], "fluct": [1820, 2020] },
+    "cal_default": [2120, 1750],
+    "cal": {}
+  },
+
+  "analysis": {
+    "tol_pp": 2.0,
+    "sep_ratio": 2.0,
+    "hist_bins": 44,
+    "soil_days": 7,
+    "pump_limit": 200,
+    "dummy_fill": "auto",
+    "env_interval_min": 5,
+    "soil_interval_min": 5,
+    "cam_interval_min": 720
+  },
+
+  "led": {
+    "enabled": false,
+    "driver": "noop",
+    "pin": 17,
+    "active_high": true,
+    "warmup_s": 300,
+    "max_on_s": 1200
+  },
+
+  "schedule": { "dawn": "05:50", "pm": "15:00" },
+
+  "mqtt": { "host": "localhost", "port": 1883, "growth_topic": "plant/tray/growth" },
+
+  "preview": { "size": [1280, 720], "jpeg_quality": 80, "frame_ms": 80 }
+}

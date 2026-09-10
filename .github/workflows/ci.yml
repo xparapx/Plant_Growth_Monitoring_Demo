@@ -1,0 +1,77 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  python:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.11", "3.13"]     # 3.11 = Raspberry Pi OS Bookworm system Python
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+      - run: uv python install ${{ matrix.python }}
+      - run: uv sync --frozen --group dev --python ${{ matrix.python }}
+      - run: uv run ruff check hub tests
+      - run: PLANT_FAKE_HW=1 uv run pytest -q
+      - name: doctor + dummy capture on a fresh data dir (what a new user sees)
+        env:
+          PLANT_FAKE_HW: "1"
+          PLANT_DATA_DIR: ${{ runner.temp }}/plant-data
+        run: |
+          uv run plantsvc seed --days 3
+          uv run plantsvc doctor --brief || true
+          uv run plantsvc capture --phase dawn --force --no-release
+          test -s "$PLANT_DATA_DIR/photos/growth.jsonl"
+          grep -q '"img": "fake_' "$PLANT_DATA_DIR/photos/growth.jsonl"
+
+  web:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: skip until web/ exists
+        id: has_web
+        run: test -f web/package.json && echo "yes=true" >> "$GITHUB_OUTPUT" || echo "yes=false" >> "$GITHUB_OUTPUT"
+      - uses: actions/setup-node@v4
+        if: steps.has_web.outputs.yes == 'true'
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - if: steps.has_web.outputs.yes == 'true'
+        working-directory: web
+        run: |
+          npm ci
+          npm run lint --if-present
+          npm run build
+      - uses: actions/upload-artifact@v4
+        if: steps.has_web.outputs.yes == 'true'
+        with:
+          name: web-dist
+          path: web/dist
+          retention-days: 14
+
+  scripts:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: shell syntax + timer expressions
+        run: |
+          if ls scripts/*.sh >/dev/null 2>&1; then bash -n scripts/*.sh; fi
+          systemd-analyze calendar "*-*-* 05:50:00" "*-*-* 15:00:00"
