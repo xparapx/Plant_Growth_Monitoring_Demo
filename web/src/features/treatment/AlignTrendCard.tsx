@@ -19,7 +19,7 @@ export function AlignTrendCard({ summary }: { summary: Summary }) {
   const hasData = !!q.data && (q.data.weeks?.length ?? 0) > 0 && Object.keys(q.data.groups ?? {}).length > 0
   const option = useMemo(() => (q.data && hasData ? alignTrendOption(q.data) : null), [q.data, hasData])
   return (
-    <Card>
+    <Card className="xl:col-span-6">
       <SectionHeader title={ko.align.title} dummy={summary.dummy.includes('soil')} sub={T.alignSub} />
       <QueryState data={q.data} isPending={q.isPending} error={q.error} refetch={q.refetch} skeleton={<Skeleton className="h-56" />}>
         {() => (option

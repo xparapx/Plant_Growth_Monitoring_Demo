@@ -23,7 +23,7 @@ export function DroopCard({ summary }: { summary: Summary }) {
   const barOpt = useMemo(() => (latest.rows.length ? droopOption(latest.rows) : null), [latest])
   const tlOpt = useMemo(() => (tl.data && tl.data.pots?.length && tl.data.days?.length ? droopTimelineOption(tl.data) : null), [tl.data])
   return (
-    <Card>
+    <Card className="xl:col-span-6">
       <SectionHeader title={ko.droop.title} dummy={summary.dummy.includes('growth')} sub={latest.day ? T.droopDay(latest.day) : T.droopSub} />
       <QueryState data={q.data} isPending={q.isPending} error={q.error} refetch={q.refetch} skeleton={<Skeleton className="h-56" />}>
         {(d) => (

@@ -14,7 +14,7 @@ import { T } from './strings'
  */
 export function HowToReadExpander() {
   return (
-    <div className="md:col-span-2">
+    <div className="md:col-span-2 xl:col-span-12">
       <Expander summary={ko.howto.title}>
         <Body />
       </Expander>
