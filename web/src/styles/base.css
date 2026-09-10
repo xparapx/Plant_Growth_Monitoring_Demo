@@ -14,11 +14,11 @@
   a { color: var(--primary); }
   a:hover { color: var(--accent-ink); }
   :focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; border-radius: var(--r-sm); }
-  ::selection { background: color-mix(in srgb, var(--primary) 25%, transparent); }
-  h1, h2, h3 { margin: 0; font-weight: 700; letter-spacing: -0.01em; }
+  ::selection { background: color-mix(in srgb, var(--primary) 30%, transparent); }
+  h1, h2, h3 { margin: 0; font-weight: 600; letter-spacing: -0.005em; }
   button { font: inherit; color: inherit; }
   dialog { color: inherit; }
-  dialog::backdrop { background: rgba(15, 31, 46, .55); backdrop-filter: blur(2px); }
+  dialog::backdrop { background: rgba(18, 40, 57, .62); backdrop-filter: blur(2px); }
   table { border-collapse: collapse; }
   img { display: block; max-width: 100%; }
   [hidden] { display: none !important; }
@@ -26,29 +26,40 @@
 
 @layer components {
   .num { font-family: var(--font-num); font-variant-numeric: tabular-nums; }
+  .mono { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+  /* Mockup caption: 500 11px, letter-spacing .1–.12em, muted, upper-case. */
   .label {
-    font-size: 11px; font-weight: 700; letter-spacing: .11em; text-transform: uppercase; color: var(--ink-muted);
+    font-size: 11px; font-weight: 500; letter-spacing: .11em; text-transform: uppercase; color: var(--ink-muted);
   }
+  /* Card title inside a card: 600 13px ink (mockup "토양수분 — 처리 밴드"). */
+  .card-title { font-size: 13px; font-weight: 600; color: var(--ink); }
   .card {
     background: var(--bg-elev); border: 1px solid var(--border-soft); border-radius: var(--r-lg);
     box-shadow: var(--sh-1);
   }
+  .card-sub { background: var(--bg-sunken); border-radius: var(--r-md); }
   .chip {
     display: inline-flex; align-items: center; gap: 7px; border: 1px solid var(--border-soft);
     background: var(--bg-elev); border-radius: var(--r-pill); padding: 5px 11px; font-size: 12px; white-space: nowrap;
   }
-  .chip .dot { width: 8px; height: 8px; border-radius: 50%; flex: none; }
+  .chip .dot { width: 7px; height: 7px; border-radius: 50%; flex: none; }
   .chip.pulse .dot { animation: ring var(--dur-slow) var(--ease-out); }
+  /* Verdict pill (ALIGNED / SEPARATED): 500 10px on a treatment fill. */
+  .pill {
+    display: inline-flex; align-items: center; border-radius: var(--r-pill); padding: 2px 8px;
+    font-size: 10px; font-weight: 500; letter-spacing: .04em; white-space: nowrap; line-height: 1.5;
+  }
+  .pill-lg { padding: 3px 10px; font-size: 10.5px; }
   .badge-dummy {
     display: inline-block; background: var(--dummy-bg); color: var(--dummy); border: 1px solid color-mix(in srgb, var(--dummy) 40%, transparent);
-    border-radius: 3px; padding: 1px 7px; font-size: 9.5px; font-weight: 800; letter-spacing: .09em; vertical-align: 2px;
+    border-radius: 4px; padding: 1px 7px; font-size: 9.5px; font-weight: 700; letter-spacing: .09em; vertical-align: 2px;
   }
   .tbl { width: 100%; font-size: 12.5px; }
   .tbl th { text-align: left; font-size: 10px; letter-spacing: .09em; text-transform: uppercase; color: var(--ink-muted);
-            font-weight: 700; border-bottom: 1px solid var(--border-soft); padding: 7px 9px; white-space: nowrap; position: sticky; top: 0; background: var(--bg-elev); }
+            font-weight: 500; border-bottom: 1px solid var(--border-soft); padding: 7px 9px; white-space: nowrap; position: sticky; top: 0; background: var(--bg-elev); }
   .tbl td { border-bottom: 1px solid var(--border-soft); padding: 7px 9px; white-space: nowrap; font-family: var(--font-num); }
   .tbl tr:last-child td { border-bottom: 0; }
-  .tbl tbody tr:hover td { background: color-mix(in srgb, var(--primary) 6%, transparent); }
+  .tbl tbody tr:hover td { background: color-mix(in srgb, var(--primary) 8%, transparent); }
   .skeleton {
     background: linear-gradient(90deg, var(--bg-sunken) 25%, color-mix(in srgb, var(--bg-sunken) 60%, var(--bg-elev)) 50%, var(--bg-sunken) 75%);
     background-size: 200% 100%; animation: shimmer 1.4s linear infinite; border-radius: var(--r-md);
@@ -56,6 +67,17 @@
   .stage-sticky { position: sticky; top: 0; z-index: 10; }
   .snap-x { scroll-snap-type: x mandatory; -webkit-overflow-scrolling: touch; }
   .snap-x > * { scroll-snap-align: center; }
+  /* Top navigation item — uppercase tracked caption with an accent underline when active. */
+  .nav-item {
+    position: relative; display: inline-flex; align-items: center; height: 100%; padding: 0 2px;
+    font-size: 11.5px; font-weight: 500; letter-spacing: .14em; text-transform: uppercase; color: var(--ink-muted);
+    text-decoration: none; transition: color var(--dur-fast) var(--ease-out);
+  }
+  .nav-item:hover { color: var(--ink); }
+  .nav-item[aria-current="page"] { color: var(--ink); }
+  .nav-item[aria-current="page"]::after {
+    content: ""; position: absolute; left: 0; right: 0; bottom: 14px; height: 2px; background: var(--accent); border-radius: 1px;
+  }
 }
 
 @keyframes ring {
@@ -64,6 +86,7 @@
 }
 @keyframes shimmer { from { background-position: 200% 0; } to { background-position: -200% 0; } }
 @keyframes pulse-soft { 0%, 100% { opacity: 1; } 50% { opacity: .45; } }
+@keyframes needle { from { transform: rotate(-90deg); } }
 @media (prefers-reduced-motion: reduce) {
   .skeleton, .chip.pulse .dot { animation: none; }
 }

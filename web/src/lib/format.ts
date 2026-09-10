@@ -24,7 +24,8 @@ const valid = (d: Date) => !Number.isNaN(d.getTime())
 export const fmtTimeLocal = (d: Date) => (valid(d) ? timeFmt.format(d).replace(/\s/g, '') : '—')
 export const fmtDateTime = (iso: string | null | undefined) => { if (!iso) return '—'; const d = new Date(iso); return valid(d) ? dtFmt.format(d) : iso }
 export const fmtDate = (iso: string | null | undefined) => { if (!iso) return '—'; const d = new Date(iso); return valid(d) ? dateFmt.format(d) : iso }
-export const fmtHms = (iso: string | null | undefined) => { if (!iso) return '—'; const d = new Date(iso); return valid(d) ? d.toLocaleTimeString('ko-KR', { hour12: false }) : iso }
+export const fmtHm = (iso: string | null | undefined) => { if (!iso) return '—'; const d = new Date(iso); return valid(d) ? timeFmt.format(d).replace(/\s/g, '') : iso }
+export const fmtHms =(iso: string | null | undefined) => { if (!iso) return '—'; const d = new Date(iso); return valid(d) ? d.toLocaleTimeString('ko-KR', { hour12: false }) : iso }
 
 export function fmtAgoMin(m: number | null | undefined): string {
   if (m === null || m === undefined) return '—'

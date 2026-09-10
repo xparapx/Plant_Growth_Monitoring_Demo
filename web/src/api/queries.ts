@@ -22,7 +22,7 @@ export const queryClient = new QueryClient({
 export const qk = {
   summary: ['summary'] as const,
   env: (bucket: string, from?: string) => ['env', bucket, from ?? ''] as const,
-  soil: (bucket: string, pots?: string) => ['soil', bucket, pots ?? ''] as const,
+  soil: (bucket: string, pots?: string, from?: string) => ['soil', bucket, pots ?? '', from ?? ''] as const,
   pumpRecent: (n: number) => ['pump', 'recent', n] as const,
   analytics: (name: string) => ['analytics', name] as const,
   camera: { status: ['camera', 'status'] as const, drift: ['camera', 'drift'] as const },
@@ -38,8 +38,8 @@ export const qk = {
 export const useSummary = () => useQuery({ queryKey: qk.summary, queryFn: () => apiFetch<Summary>('/api/summary') })
 export const useEnv = (bucket = 'auto', from?: string) =>
   useQuery({ queryKey: qk.env(bucket, from), queryFn: () => apiFetch<EnvSeries>(`/api/env?bucket=${bucket}${from ? `&from=${from}` : ''}`) })
-export const useSoil = (bucket = 'auto', pots?: string) =>
-  useQuery({ queryKey: qk.soil(bucket, pots), queryFn: () => apiFetch<SoilSeries>(`/api/soil?bucket=${bucket}${pots ? `&pots=${pots}` : ''}`) })
+export const useSoil = (bucket = 'auto', pots?: string, from?: string) =>
+  useQuery({ queryKey: qk.soil(bucket, pots, from), queryFn: () => apiFetch<SoilSeries>(`/api/soil?bucket=${bucket}${pots ? `&pots=${pots}` : ''}${from ? `&from=${encodeURIComponent(from)}` : ''}`) })
 export const usePumpRecent = (n = 5) => useQuery({ queryKey: qk.pumpRecent(n), queryFn: () => apiFetch<PumpRecent>(`/api/pump/recent?n=${n}`) })
 
 type AnalyticsMap = {

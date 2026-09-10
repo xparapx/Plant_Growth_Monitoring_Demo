@@ -19,7 +19,7 @@ function sample(f: (w: number) => number): [number, number][] {
 /** One reference panel: grey curve + dashed chord (p05→p95) + vertical gap at w = mean (Jensen's inequality). */
 export function howToReadOption(kind: 'concave' | 'convex', ref: Reference | undefined, mobile = false): EChartsOption {
   const f = kind === 'concave' ? concave : convex
-  const accent = trtColor(kind === 'concave' ? 'stable' : 'fluct', 'ink')
+  const accent = trtColor(kind === 'concave' ? 'stable' : 'fluct', 'fill')
   const grey = cssVar('--ink-muted')
   const p05 = ref?.p05 ?? null, p95 = ref?.p95 ?? null, mean = ref?.mean ?? null
   const hasRef = p05 !== null && p95 !== null && p95 > p05

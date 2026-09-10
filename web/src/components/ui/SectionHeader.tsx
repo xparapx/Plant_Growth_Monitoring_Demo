@@ -5,7 +5,7 @@ export function SectionHeader({ title, sub, dummy, actions, id }: { title: strin
   return (
     <div className="mb-3 flex flex-wrap items-start justify-between gap-2">
       <div>
-        <h2 id={id} className="label flex items-center gap-2">
+        <h2 id={id} className="card-title flex items-center gap-2">
           {title}
           {dummy && <DummyBadge />}
         </h2>

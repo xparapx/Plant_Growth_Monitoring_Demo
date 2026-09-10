@@ -29,7 +29,7 @@ export function droopOption(rows: Droop['rows']): EChartsOption {
       type: 'bar', name: 'droop', barMaxWidth: 34,
       data: rows.map((r) => ({
         value: r.droop_pct,
-        itemStyle: { color: trtColor(r.treat, 'fill'), borderColor: trtColor(r.treat, 'ink'), borderWidth: 1.5, borderRadius: [3, 3, 0, 0] },
+        itemStyle: { color: trtColor(r.treat, 'fill'), borderRadius: [4, 4, 0, 0] },
       })),
       label: { show: true, position: 'top', fontSize: 10.5, formatter: (p: { value: number }) => fmtNum(p.value, 1) },
     }],

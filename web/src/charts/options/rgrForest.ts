@@ -1,5 +1,6 @@
 import type { EChartsOption } from '@/charts/echarts'
 import type { Rgr } from '@/api/types'
+import { cssVar } from '@/app/theme'
 import { ko } from '@/i18n/ko'
 import { fmtNum } from '@/lib/format'
 import { TREAT_NAME, trtColor } from '@/lib/treat'
@@ -35,17 +36,17 @@ export function rgrForestOption(r: Rgr): EChartsOption {
     const name = TREAT_NAME[g] ?? g
     const mean = r.groups[g]?.mean
     series.push({
-      type: 'custom', name, z: 1, silent: true, renderItem: ciRenderer(trtColor(g, 'ink')),
+      type: 'custom', name, z: 1, silent: true, renderItem: ciRenderer(trtColor(g, 'fill')),
       encode: { x: [0, 1], y: 2 },
       data: mine.filter((p) => p.ci95).map((p) => [p.ci95![0], p.ci95![1], p.pot.toUpperCase()]),
     })
     series.push({
       type: 'scatter', name, z: 2, symbolSize: 12,
-      itemStyle: { color: trtColor(g, 'fill'), borderColor: trtColor(g, 'ink'), borderWidth: 2 },
+      itemStyle: { color: trtColor(g, 'fill'), borderColor: cssVar('--bg-elev'), borderWidth: 2 },
       data: mine.map((p) => [p.rgr, p.pot.toUpperCase()]),
       markLine: mean !== undefined && Number.isFinite(mean) ? {
         silent: true, symbol: 'none', animation: false,
-        lineStyle: { type: 'dotted', width: 1.5, color: trtColor(g, 'ink') },
+        lineStyle: { type: 'dotted', width: 1.5, color: trtColor(g, 'fill') },
         label: { show: false }, data: [{ xAxis: mean }],
       } : undefined,
     })
@@ -64,7 +65,7 @@ export function rgrForestOption(r: Rgr): EChartsOption {
       },
     },
     xAxis: { type: 'value', name: ko.rgr.xTitle, nameLocation: 'middle', nameGap: 24, scale: true, axisLabel: { fontSize: 10, formatter: (v: number) => fmtNum(v, 3) } },
-    yAxis: { type: 'category', data: cats, inverse: true, axisLabel: { fontSize: 11, fontWeight: 700 }, axisTick: { show: false } },
+    yAxis: { type: 'category', data: cats, inverse: true, axisLabel: { fontSize: 11, fontWeight: 600 }, axisTick: { show: false } },
     series,
   }
 }

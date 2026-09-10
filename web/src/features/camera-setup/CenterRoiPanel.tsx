@@ -7,6 +7,7 @@ import { SectionHeader } from '@/components/ui/SectionHeader'
 import { Segmented } from '@/components/ui/Segmented'
 import { ko } from '@/i18n/ko'
 import { capToPrev } from '@/lib/geometry'
+import { trtVar } from '@/lib/treat'
 import { useSetup } from './setupCtx'
 import { ss } from './strings'
 
@@ -49,7 +50,7 @@ export function CenterRoiPanel() {
         }
       />
       {proposedAt !== null && (
-        <div className="relative w-full aspect-[16/9] overflow-hidden rounded-lg bg-black">
+        <div className="relative w-full aspect-[16/9] overflow-hidden rounded-[12px] bg-sunken">
           {view === 'proposed' ? (
             <img src={assetUrl(`/api/images/data/roi_offset.jpg?t=${proposedAt}`)} alt={ss.centerProposed} className="absolute inset-0 h-full w-full object-fill" />
           ) : (
@@ -58,7 +59,7 @@ export function CenterRoiPanel() {
               <svg viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none" className="absolute inset-0 h-full w-full" role="img" aria-label={`ROI ${status.rois.length}`}>
                 {status.rois.map((roi, i) => {
                   const r = capToPrev(roi, status.scale)
-                  return <rect key={i} x={r.x} y={r.y} width={r.w} height={r.h} fill="none" stroke={roi.out ? 'var(--overlay-bad)' : 'var(--overlay-roi)'} strokeWidth={2} vectorEffect="non-scaling-stroke" />
+                  return <rect key={i} x={r.x} y={r.y} width={r.w} height={r.h} rx={4} fill="none" stroke={roi.out ? 'var(--overlay-bad)' : trtVar(roi.treat, 'fill')} strokeWidth={1.5} vectorEffect="non-scaling-stroke" />
                 })}
               </svg>
             </>

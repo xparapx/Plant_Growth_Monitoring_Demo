@@ -21,14 +21,14 @@ export default defineConfig(({ mode }) => {
         registerType: 'autoUpdate',
         includeAssets: ['favicon.svg', 'apple-touch-icon.png'],
         manifest: {
-          name: 'Plant Hub — 수분 변동성 실험',
-          short_name: 'Plant Hub',
+          name: 'plantlab — 수분 변동성 실험',
+          short_name: 'plantlab',
           description: '평균 일치 · 변동성 차이 생장 실험 모니터',
           display: 'standalone',
           start_url: base,
           scope: base,
-          theme_color: '#173046',
-          background_color: '#F2F2F2',
+          theme_color: '#122839',
+          background_color: '#173046',
           icons: [
             { src: 'pwa-192.png', sizes: '192x192', type: 'image/png' },
             { src: 'pwa-512.png', sizes: '512x512', type: 'image/png' },

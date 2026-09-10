@@ -15,16 +15,16 @@ export function ScaleStep({ cm, setCm }: StepProps) {
     <div className="flex flex-col gap-3">
       <NumberField label={ko.setup.lengthCm} value={cm} onChange={(v) => setCm(v === '' ? 0 : v)} min={0.5} step={0.5} unit="cm" />
       <div className="flex flex-wrap gap-2">
-        <Button variant={measure ? 'primary' : 'sub'} onClick={() => setMeasure(!measure)} disabled={disabled} aria-pressed={measure} className="min-h-11 flex-1 md:min-h-0">
+        <Button variant={measure ? 'primary' : 'alt'} size="sm" onClick={() => setMeasure(!measure)} disabled={disabled} aria-pressed={measure} className="min-h-10 flex-1 md:min-h-9">
           {measure ? ss.measureOn : ss.measureOff}
         </Button>
-        <Button variant="ghost" onClick={() => run('clearpoints')} busy={pending === 'clearpoints'} disabled={disabled} className="min-h-11 md:min-h-0">
+        <Button variant="ghost" size="sm" onClick={() => run('clearpoints')} busy={pending === 'clearpoints'} disabled={disabled} className="min-h-10 md:min-h-9">
           {ko.setup.clearPts}
         </Button>
       </div>
       {measure && hint && <div className="text-[12px] text-muted">{hint}</div>}
       {status.pts.length >= 2 && (
-        <div className="num rounded-md bg-ok-soft px-3 py-2 text-[12.5px] text-ok-ink">
+        <div className="num rounded-[8px] bg-ok-soft px-3 py-2 text-[12px] text-ok-ink">
           {ss.scaleReadout(fmtNum(status.ppc, 1), status.cm)} — {status.msg}
         </div>
       )}

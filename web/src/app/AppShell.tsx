@@ -13,7 +13,7 @@ export function AppShell() {
         본문으로 건너뛰기
       </a>
       <TopBar />
-      <main id="main" className="mx-auto w-full max-w-[1440px] flex-1 px-4 pb-24 pt-4 md:px-6 md:pb-10">
+      <main id="main" className="mx-auto w-full max-w-[1440px] flex-1 px-4 pb-24 pt-4 md:px-9 md:pb-10 md:pt-6">
         <DummyBanner />
         <ErrorBoundary key={pathname}>
           <PageTransition pathname={pathname}>

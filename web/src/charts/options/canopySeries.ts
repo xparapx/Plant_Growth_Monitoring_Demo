@@ -16,7 +16,7 @@ export function canopySeriesOption(c: Canopy, mobile = false): EChartsOption {
     series: pots.map((p) => ({
       type: 'line', name: p.plant_id.toUpperCase(), connectNulls: false,
       data: (p.ts ?? []).map((t, i) => [t, p.area_cm2?.[i] ?? null]),
-      symbol: 'circle', symbolSize: 6, lineStyle: { width: 3, color: trtColor(p.treat, 'ink') }, itemStyle: { color: trtColor(p.treat, 'ink') },
+      symbol: 'circle', symbolSize: 5, lineStyle: { width: 2.5, color: trtColor(p.treat, 'fill') }, itemStyle: { color: trtColor(p.treat, 'fill') },
     })),
   }
 }

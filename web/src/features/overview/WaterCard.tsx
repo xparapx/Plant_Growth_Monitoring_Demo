@@ -26,9 +26,9 @@ export function WaterCard({ summary }: { summary: Summary }) {
           <ChartFrame option={option} height={200} ariaLabel="처리군별 일일 급수량" />
           <dl className="flex flex-col gap-2">
             {Object.entries(q.data.groups).map(([g, v]) => (
-              <div key={g} className="rounded-md border border-border-soft px-3 py-2">
+              <div key={g} className="card-sub px-3 py-2">
                 <dt className="label !text-[9.5px]" style={{ color: trtVar(g, 'ink') }}>{TREAT_NAME[g]}</dt>
-                <dd className="num text-[18px] font-bold">{fmtNum(v.total_ml / 1000, 2)} <span className="text-[11px] font-normal text-muted">L · {v.events}회</span></dd>
+                <dd className="num text-[18px] font-semibold">{fmtNum(v.total_ml / 1000, 2)} <span className="text-[11px] font-normal text-muted">L · {v.events}회</span></dd>
                 <dd className="num text-[11px] text-muted">{ko.water.perPot} {fmtNum(v.ml_per_pot, 0)} mL</dd>
               </div>
             ))}
@@ -52,7 +52,7 @@ function dailyOption(w: Water): EChartsOption {
     yAxis: { type: 'value', name: 'mL', axisLabel: { fontSize: 10 } },
     series: groups.map((g) => ({
       type: 'bar', name: TREAT_NAME[g] ?? g, data: w.daily.groups[g], barMaxWidth: 18,
-      itemStyle: { color: trtColor(g, 'fill'), borderColor: trtColor(g, 'ink'), borderWidth: 1, borderRadius: [3, 3, 0, 0] },
+      itemStyle: { color: trtColor(g, 'fill'), borderRadius: [3, 3, 0, 0] },
     })),
   }
 }

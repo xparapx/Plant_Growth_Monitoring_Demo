@@ -5,12 +5,13 @@ type Ctx = { theme: Theme; setTheme: (t: Theme) => void; toggle: () => void }
 const ThemeCtx = createContext<Ctx | null>(null)
 const KEY = 'ph.theme'
 
+/** The navy brand theme (mockup) is the default; a stored choice wins. */
 function read(): Theme {
   try {
     const t = localStorage.getItem(KEY)
     if (t === 'light' || t === 'dark') return t
   } catch { /* private mode */ }
-  return window.matchMedia?.('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+  return 'dark'
 }
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
@@ -18,16 +19,6 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     document.documentElement.dataset.theme = theme
   }, [theme])
-  useEffect(() => {
-    const mq = window.matchMedia?.('(prefers-color-scheme: dark)')
-    if (!mq) return
-    const onChange = () => {
-      try { if (localStorage.getItem(KEY)) return } catch { /* ignore */ }
-      setThemeState(mq.matches ? 'dark' : 'light')
-    }
-    mq.addEventListener('change', onChange)
-    return () => mq.removeEventListener('change', onChange)
-  }, [])
   const setTheme = useCallback((t: Theme) => {
     setThemeState(t)
     try { localStorage.setItem(KEY, t) } catch { /* ignore */ }

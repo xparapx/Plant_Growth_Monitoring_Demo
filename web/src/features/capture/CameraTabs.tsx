@@ -10,7 +10,7 @@ const TABS = [
 export function CameraTabs() {
   const { pathname } = useLocation()
   return (
-    <nav aria-label="카메라 페이지" className="inline-flex rounded-md border border-border-soft bg-sunken p-0.5">
+    <nav aria-label="카메라 페이지" className="inline-flex rounded-full border border-border-soft bg-sunken p-0.5">
       {TABS.map((t) => {
         const on = pathname.replace(/\/$/, '') === t.to
         return (
@@ -18,7 +18,7 @@ export function CameraTabs() {
             key={t.to}
             to={t.to}
             aria-current={on ? 'page' : undefined}
-            className={`inline-flex h-10 items-center rounded-[5px] px-3.5 text-[13px] font-semibold no-underline transition-colors md:h-8 ${on ? 'bg-elev text-ink shadow-1' : 'text-muted hover:text-ink'}`}
+            className={`inline-flex h-9 items-center rounded-full px-3.5 text-[12px] font-medium no-underline transition-colors md:h-8 ${on ? 'bg-ink text-bg' : 'text-muted hover:text-ink'}`}
           >
             {t.label}
           </Link>

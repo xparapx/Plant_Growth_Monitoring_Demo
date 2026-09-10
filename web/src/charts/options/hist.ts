@@ -14,8 +14,9 @@ export function histLegendName(g: string, mu: number, sd: number): string {
   return `${title}  μ=${fmtNum(mu, 1)}  σ=${fmtNum(sd, 1)}`
 }
 
-/** Overlaid probability histograms ρ(w) per treatment group, bars centred on bin midpoints (value x-axis). */
-export function histOption(h: Histogram, mobile = false): EChartsOption {
+/** Overlaid probability histograms ρ(w) per treatment group, bars centred on bin midpoints (value x-axis).
+    `compact` (mockup 3b right column) hides the legend and axis names and draws the "μ 동일" marker. */
+export function histOption(h: Histogram, compact = false): EChartsOption {
   const edges = h.edges ?? []
   const centres = edges.length > 1 ? edges.slice(0, -1).map((e, i) => (e + edges[i + 1]) / 2) : []
   const groups = Object.keys(h.groups ?? {})
@@ -25,18 +26,27 @@ export function histOption(h: Histogram, mobile = false): EChartsOption {
     return {
       type: 'bar', name: names[gi], barGap: '-100%', barCategoryGap: '8%',
       data: centres.map((c, i) => [c, grp.prob[i] ?? 0]),
-      itemStyle: { color: trtColor(g, 'fill'), opacity: OPACITY[g] ?? 0.6, borderColor: trtColor(g, 'ink'), borderWidth: 1 },
+      itemStyle: { color: trtColor(g, 'fill'), opacity: OPACITY[g] ?? 0.6, borderColor: trtColor(g, 'fill'), borderWidth: 1 },
       emphasis: { itemStyle: { opacity: 0.9 } },
       markLine: gi === 0 && h.e_w !== null ? {
         silent: true, symbol: 'none', animation: false,
-        lineStyle: { type: 'dotted', width: 1.5, color: cssVar('--ink') },
-        label: { formatter: 'E[w]', position: 'end', color: cssVar('--ink'), fontSize: 11 },
+        lineStyle: { type: 'dashed', width: 1, color: 'rgba(242,242,242,.35)' },
+        label: { formatter: compact ? 'μ 동일' : 'E[w]', position: 'end', color: cssVar('--ink-muted'), fontSize: 10 },
         data: [{ xAxis: h.e_w }],
       } : undefined,
     }
   })
+  if (compact) {
+    return {
+      grid: { left: 8, right: 8, top: 18, bottom: 18 },
+      tooltip: baseTooltip({ valueFormatter: (v: number) => fmtNum(v, 3) }),
+      xAxis: { type: 'value', min: edges[0] ?? 0, max: edges[edges.length - 1] ?? 100, axisLabel: { fontSize: 9, showMinLabel: true, showMaxLabel: true }, splitLine: { show: false }, axisTick: { show: false } },
+      yAxis: { type: 'value', show: false },
+      series,
+    }
+  }
   return {
-    grid: { left: 48, right: 24, top: mobile ? 44 : 34, bottom: 40 },
+    grid: { left: 48, right: 24, top: 34, bottom: 40 },
     legend: legendTop({ data: names }),
     tooltip: baseTooltip({
       formatter: (ps: unknown) => {

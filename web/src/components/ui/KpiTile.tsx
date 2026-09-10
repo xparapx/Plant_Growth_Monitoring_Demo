@@ -26,7 +26,7 @@ export function KpiTile({ label, value, unit, digits = 1, delta, deltaLabel, del
     <div className="card flex min-w-0 flex-col p-3.5 md:p-4">
       <div className="label truncate">{label}</div>
       <div className="mt-1 flex items-baseline gap-1.5">
-        <span className={`num font-bold leading-none ${size === 'lg' ? 'text-[30px]' : 'text-[24px]'} ${missing ? 'text-faint' : 'text-ink'}`}>
+        <span className={`num font-semibold leading-none ${size === 'lg' ? 'text-[30px]' : 'text-[24px]'} ${missing ? 'text-faint' : 'text-ink'}`}>
           {missing || shown === null ? ko.common.dash : fmtNum(shown, digits, { group })}
         </span>
         {unit && !missing && <span className="text-[12px] text-muted">{unit}</span>}

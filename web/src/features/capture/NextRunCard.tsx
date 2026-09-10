@@ -13,9 +13,9 @@ export function NextRunCard({ schedule }: { schedule: Schedule }) {
     <Card className="xl:col-span-7">
       <SectionHeader title={ko.capture.next} sub={cs.tz(schedule.tz)} />
       <div className="flex flex-wrap items-end gap-x-4 gap-y-2">
-        <Countdown to={schedule.next.at} format="hms" className="text-[40px] font-bold leading-none md:text-[48px]" />
+        <Countdown to={schedule.next.at} format="hms" className="text-[40px] font-semibold leading-none md:text-[48px]" />
         <span className="mb-1 inline-flex items-center gap-2">
-          <span className="rounded-sm bg-info-soft px-2 py-0.5 text-[11px] font-extrabold tracking-wider text-primary">{phaseLabel(schedule.next.phase).toUpperCase()}</span>
+          <span className="rounded-full bg-stable px-2.5 py-0.5 text-[10.5px] font-medium tracking-[.06em] text-stable-on">{phaseLabel(schedule.next.phase).toUpperCase()}</span>
           <span className="num text-[12px] text-muted">{fmtDateTime(schedule.next.at)}</span>
         </span>
       </div>

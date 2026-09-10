@@ -15,7 +15,7 @@ export function BottomTabBar() {
   return (
     <nav
       aria-label="하단 탭"
-      className="fixed inset-x-0 bottom-0 z-30 border-t border-border-soft bg-elev/95 backdrop-blur md:hidden"
+      className="fixed inset-x-0 bottom-0 z-30 border-t border-border-soft bg-sunken/95 backdrop-blur md:hidden"
       style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
     >
       <ul className="grid grid-cols-5">
@@ -26,10 +26,11 @@ export function BottomTabBar() {
               <NavLink
                 to={to}
                 aria-current={active ? 'page' : undefined}
-                className={`flex h-14 flex-col items-center justify-center gap-0.5 text-[10.5px] font-semibold no-underline transition-colors ${active ? 'text-primary' : 'text-muted'}`}
+                className={`relative flex h-14 flex-col items-center justify-center gap-1 text-[9.5px] font-medium uppercase tracking-[.12em] no-underline transition-colors ${active ? 'text-ink' : 'text-muted'}`}
               >
-                <Icon size={20} strokeWidth={active ? 2.4 : 1.8} />
+                <Icon size={19} strokeWidth={active ? 2.2 : 1.7} />
                 {label}
+                {active && <span className="absolute left-1/2 top-0 h-[2px] w-8 -translate-x-1/2 rounded-b bg-accent" aria-hidden="true" />}
               </NavLink>
             </li>
           )

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type PointerEvent as RPointerEvent } from 'react'
 import { MOCK, assetUrl } from '@/api/client'
+import { ko } from '@/i18n/ko'
 import { eventToPreview } from '@/lib/geometry'
 import { MOCK_PREVIEW_SRC } from '@/mock/preview'
 import { useSetup } from './setupCtx'
@@ -48,7 +49,7 @@ export function PreviewStage({ cm, className = '' }: { cm: number; className?: s
 
   const interactive = live && mode !== 'idle' && !disabled
   return (
-    <div className={`relative w-full aspect-[16/9] overflow-hidden rounded-lg bg-black ${className}`}>
+    <div className={`relative w-full aspect-[16/9] overflow-hidden rounded-[16px] bg-sunken ${className}`}>
       <img
         ref={imgRef}
         src={streamSrc}
@@ -73,7 +74,8 @@ export function PreviewStage({ cm, className = '' }: { cm: number; className?: s
         <RoiLayer status={status} mode={mode} />
         <PointsLayer status={status} />
       </svg>
-      {MOCK && <span className="pointer-events-none absolute left-2 top-2 rounded-sm bg-accent px-1.5 py-0.5 text-[10px] font-extrabold tracking-wider text-white">{ss.mockLabel}</span>}
+      {MOCK && <span className="pointer-events-none absolute left-3 top-3 rounded-full bg-dummy-bg px-2 py-0.5 text-[10px] font-bold tracking-wider text-dummy">{ss.mockLabel}</span>}
+      {live && <span className="pointer-events-none absolute right-3 top-3 rounded-full bg-accent/90 px-2.5 py-1 text-[10px] font-medium text-white">{ko.setup.live}</span>}
       {live && <ModeHint status={status} mode={mode} />}
       <StageStatusBar status={status} />
       {!live && <PausedOverlay status={status} />}

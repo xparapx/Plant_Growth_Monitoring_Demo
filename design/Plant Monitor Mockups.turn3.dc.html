@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<!-- Claude Design 프로젝트 "Plant Monitor Mockups" (5e929b1b-ca2a-4b99-bcbe-78284c2346f1) 의
+     Plant Monitor Mockups.dc.html 중 최종 방향(턴 3, 브랜드 팔레트 적용) 섹션을 그대로 옮긴 작업본.
+     턴 1(레이아웃 3안)·턴 2(Colbo 무드)는 design/README.md 에 요약. 원본은 위 프로젝트에서 확인. -->
+</head>
+<body>
+<x-dc>
+<helmet data-dc-atomics>
+<meta name="design_doc_mode" content="canvas">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#e9e4da;font-family:'Space Grotesk',system-ui,sans-serif}
+a{color:#ff5a1f;text-decoration:none}a:hover{color:#d94812}
+.dv-turn{padding:40px 44px 32px;border-bottom:1px solid rgba(0,0,0,.08);scroll-margin-top:16px}
+.dv-thd{display:flex;align-items:baseline;gap:10px;margin:0 0 20px}
+.dv-tid{font:600 10px 'IBM Plex Mono',monospace;padding:3px 7px;background:#1a1a1a;color:#fff;border-radius:4px;text-decoration:none}
+.dv-tname{font:600 13px/1.2 'Space Grotesk',sans-serif;color:#1a1a1a}
+.dv-opts{display:flex;flex-wrap:wrap;gap:36px;align-items:flex-start}
+.dv-opt{flex:none;display:flex;flex-direction:column;gap:12px;scroll-margin-top:16px}
+.dv-oid{font:600 10.5px 'IBM Plex Mono',monospace;padding:3px 7px;background:rgba(0,0,0,.08);color:#1a1a1a;border-radius:5px;text-decoration:none}
+.dv-olabel{display:flex;align-items:baseline;gap:8px;font:400 11.5px/1.3 'Space Grotesk',sans-serif;color:rgba(0,0,0,.6)}
+.dv-card{max-width:100%;background:#fff;border:1px solid rgba(0,0,0,.1);border-radius:10px;box-shadow:0 2px 10px rgba(0,0,0,.08);overflow:hidden}
+.dv-opt:target .dv-oid{background:#ff5a1f;color:#fff}
+.dv-next{margin:24px 0 0;font:12px/1.5 'Space Grotesk',sans-serif;color:rgba(0,0,0,.5)}
+</style>
+</helmet>
+<section class="dv-turn" id="t3">
+<div class="dv-thd"><a class="dv-tid" href="#t3">3</a><span class="dv-tname">브랜드 팔레트 적용(#173046 · #2C5979 · #D84C27 · #F2F2F2 · #C0C0C0) + 환경변수는 Plotly 기본색 · 페이지별 목업 4종</span></div>
+<div class="dv-opts">
+
+<!-- ===== 3a OVERVIEW ===== -->
+<div class="dv-opt" id="3a">
+<div class="dv-olabel"><a class="dv-oid" href="#3a">3a</a>Page 1 · Overview — 니들 게이지(Plotly 색상 구분) + 토양수분 밴드 + 급수 이벤트</div>
+<div class="dv-card" style="width:1240px;background:#173046;border-radius:14px">
+<div style="min-height:780px;display:flex;flex-direction:column;font-variant-numeric:tabular-nums">
+<div style="display:flex;align-items:center;padding:20px 36px;background:#122839;border-bottom:1px solid rgba(242,242,242,.08)">
+<span style="font:600 18px 'Space Grotesk';color:#F2F2F2">plantlab<span style="color:#D84C27">°</span></span>
+<div style="margin-left:44px;display:flex;gap:28px;font:500 11.5px 'Space Grotesk';letter-spacing:.14em;color:#C0C0C0">
+<span style="color:#F2F2F2;border-bottom:2px solid #D84C27;padding-bottom:5px">OVERVIEW</span><span>TREATMENT</span><span>GROWTH</span><span>CAMERA</span>
+</div>
+<span style="margin-left:auto;font:500 11px 'Space Grotesk';color:#C0C0C0;display:flex;align-items:center;gap:7px"><span style="width:7px;height:7px;border-radius:50%;background:#00CC96"></span>4 nodes · Day 14/42 · 18:04 KST</span>
+</div>
+<div style="padding:24px 36px;display:flex;flex-direction:column;gap:18px;flex:1">
+<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:14px">
+<div style="background:#1E3A54;border-radius:16px;padding:16px 16px 12px;display:flex;flex-direction:column;align-items:center">
+<div style="align-self:stretch;display:flex;justify-content:space-between;font:500 11px 'Space Grotesk';color:#C0C0C0;letter-spacing:.1em"><span>온도</span><span>10–40</span></div>
+<svg viewBox="0 0 120 68" style="width:100%;max-width:160px;margin-top:8px">
+<path d="M16 60 A44 44 0 0 1 104 60" fill="none" stroke="rgba(242,242,242,.14)" stroke-width="7" stroke-linecap="round"/>
+<path d="M16 60 A44 44 0 0 1 53.1 16.5" fill="none" stroke="#EF553B" stroke-width="7" stroke-linecap="round"/>
+<line x1="60" y1="60" x2="53.9" y2="21.6" stroke="#F2F2F2" stroke-width="2.5" stroke-linecap="round"/><circle cx="60" cy="60" r="4.5" fill="#F2F2F2"/>
+</svg>
+<div style="font:600 29px 'Space Grotesk';color:#F2F2F2;margin-top:2px">23.4<span style="font:500 13px 'Space Grotesk';color:#C0C0C0"> °C</span></div>
+<div style="font:500 10.5px 'Space Grotesk';color:#EF553B;letter-spacing:.08em;margin-top:2px">OPTIMAL</div>
+</div>
+<div style="background:#1E3A54;border-radius:16px;padding:16px 16px 12px;display:flex;flex-direction:column;align-items:center">
+<div style="align-self:stretch;display:flex;justify-content:space-between;font:500 11px 'Space Grotesk';color:#C0C0C0;letter-spacing:.1em"><span>습도</span><span>0–100</span></div>
+<svg viewBox="0 0 120 68" style="width:100%;max-width:160px;margin-top:8px">
+<path d="M16 60 A44 44 0 0 1 104 60" fill="none" stroke="rgba(242,242,242,.14)" stroke-width="7" stroke-linecap="round"/>
+<path d="M16 60 A44 44 0 0 1 71.0 17.4" fill="none" stroke="#636EFA" stroke-width="7" stroke-linecap="round"/>
+<line x1="60" y1="60" x2="69.7" y2="22.4" stroke="#F2F2F2" stroke-width="2.5" stroke-linecap="round"/><circle cx="60" cy="60" r="4.5" fill="#F2F2F2"/>
+</svg>
+<div style="font:600 29px 'Space Grotesk';color:#F2F2F2;margin-top:2px">58<span style="font:500 13px 'Space Grotesk';color:#C0C0C0"> %</span></div>
+<div style="font:500 10.5px 'Space Grotesk';color:#636EFA;letter-spacing:.08em;margin-top:2px">OPTIMAL</div>
+</div>
+<div style="background:#1E3A54;border-radius:16px;padding:16px 16px 12px;display:flex;flex-direction:column;align-items:center">
+<div style="align-self:stretch;display:flex;justify-content:space-between;font:500 11px 'Space Grotesk';color:#C0C0C0;letter-spacing:.1em"><span>VPD</span><span>0–3</span></div>
+<svg viewBox="0 0 120 68" style="width:100%;max-width:160px;margin-top:8px">
+<path d="M16 60 A44 44 0 0 1 104 60" fill="none" stroke="rgba(242,242,242,.14)" stroke-width="7" stroke-linecap="round"/>
+<path d="M16 60 A44 44 0 0 1 42.8 19.5" fill="none" stroke="#00CC96" stroke-width="7" stroke-linecap="round"/>
+<line x1="60" y1="60" x2="44.8" y2="24.2" stroke="#F2F2F2" stroke-width="2.5" stroke-linecap="round"/><circle cx="60" cy="60" r="4.5" fill="#F2F2F2"/>
+</svg>
+<div style="font:600 29px 'Space Grotesk';color:#F2F2F2;margin-top:2px">1.12<span style="font:500 13px 'Space Grotesk';color:#C0C0C0"> kPa</span></div>
+<div style="font:500 10.5px 'Space Grotesk';color:#00CC96;letter-spacing:.08em;margin-top:2px">OPTIMAL</div>
+</div>
+<div style="background:#1E3A54;border-radius:16px;padding:16px 16px 12px;display:flex;flex-direction:column;align-items:center">
+<div style="align-self:stretch;display:flex;justify-content:space-between;font:500 11px 'Space Grotesk';color:#C0C0C0;letter-spacing:.1em"><span>CO₂</span><span>0.4–2k</span></div>
+<svg viewBox="0 0 120 68" style="width:100%;max-width:160px;margin-top:8px">
+<path d="M16 60 A44 44 0 0 1 104 60" fill="none" stroke="rgba(242,242,242,.14)" stroke-width="7" stroke-linecap="round"/>
+<path d="M16 60 A44 44 0 0 1 20.8 40.0" fill="none" stroke="#AB63FA" stroke-width="7" stroke-linecap="round"/>
+<line x1="60" y1="60" x2="24.9" y2="42.0" stroke="#F2F2F2" stroke-width="2.5" stroke-linecap="round"/><circle cx="60" cy="60" r="4.5" fill="#F2F2F2"/>
+</svg>
+<div style="font:600 29px 'Space Grotesk';color:#F2F2F2;margin-top:2px">642<span style="font:500 13px 'Space Grotesk';color:#C0C0C0"> ppm</span></div>
+<div style="font:500 10.5px 'Space Grotesk';color:#AB63FA;letter-spacing:.08em;margin-top:2px">LOW</div>
+</div>
+<div style="background:#1E3A54;border-radius:16px;padding:16px 16px 12px;display:flex;flex-direction:column;align-items:center">
+<div style="align-self:stretch;display:flex;justify-content:space-between;font:500 11px 'Space Grotesk';color:#C0C0C0;letter-spacing:.1em"><span>조도</span><span>0–60k</span></div>
+<svg viewBox="0 0 120 68" style="width:100%;max-width:160px;margin-top:8px">
+<path d="M16 60 A44 44 0 0 1 104 60" fill="none" stroke="rgba(242,242,242,.14)" stroke-width="7" stroke-linecap="round"/>
+<path d="M16 60 A44 44 0 0 1 35.4 23.5" fill="none" stroke="#FFA15A" stroke-width="7" stroke-linecap="round"/>
+<line x1="60" y1="60" x2="38.7" y2="27.7" stroke="#F2F2F2" stroke-width="2.5" stroke-linecap="round"/><circle cx="60" cy="60" r="4.5" fill="#F2F2F2"/>
+</svg>
+<div style="font:600 29px 'Space Grotesk';color:#F2F2F2;margin-top:2px">18.4<span style="font:500 13px 'Space Grotesk';color:#C0C0C0"> klx</span></div>
+<div style="font:500 10.5px 'Space Grotesk';color:#FFA15A;letter-spacing:.08em;margin-top:2px">OPTIMAL</div>
+</div>
+</div>
+<div style="display:grid;grid-template-columns:2fr 1fr;gap:14px;flex:1">
+<div style="background:#1E3A54;border-radius:16px;padding:18px 22px">
+<div style="display:flex;align-items:baseline;gap:14px;margin-bottom:8px"><span style="font:600 13px 'Space Grotesk';color:#F2F2F2">토양수분 — 처리 밴드</span><span style="font:500 11px 'Space Grotesk';color:#7FB3D8">— stable</span><span style="font:500 11px 'Space Grotesk';color:#D84C27">— fluct</span><span style="margin-left:auto;font:400 11px 'Space Grotesk';color:#C0C0C0">7d · 중심 1920 동일</span></div>
+<svg viewBox="0 0 560 150" style="width:100%;height:180px;display:block">
+<line x1="0" y1="61" x2="560" y2="61" stroke="rgba(242,242,242,.25)" stroke-dasharray="3 4"/>
+<path d="M0 60 C30 54,50 66,80 60 S140 55,170 62 S230 58,260 63 S320 56,350 61 S410 65,440 58 S520 62,560 59" fill="none" stroke="#7FB3D8" stroke-width="2"/>
+<path d="M0 42 C25 70,45 86,75 84 S115 36,145 34 S195 88,225 86 S265 38,295 36 S355 90,385 84 S425 40,455 38 S515 84,560 80" fill="none" stroke="#D84C27" stroke-width="2"/>
+<text x="6" y="20" font-family="Space Grotesk" font-size="10" fill="#C0C0C0">fluct band 2020 / 1820</text>
+<text x="6" y="144" font-family="Space Grotesk" font-size="10" fill="#C0C0C0">stable band 1940 / 1900</text>
+</svg>
+</div>
+<div style="display:flex;flex-direction:column;gap:14px;min-width:0">
+<div style="background:#1E3A54;border-radius:16px;padding:16px 20px;display:flex;flex-direction:column;gap:10px;flex:1">
+<span style="font:600 13px 'Space Grotesk';color:#F2F2F2">Treatment check</span>
+<div style="display:flex;justify-content:space-between;align-items:baseline"><span style="font:400 11.5px 'Space Grotesk';color:#C0C0C0">Δμ 정렬</span><span style="font:600 22px 'Space Grotesk';color:#F2F2F2">0.42 %p <span style="font:500 10px 'Space Grotesk';color:#173046;background:#7FB3D8;padding:2px 8px;border-radius:9px;vertical-align:3px">ALIGNED</span></span></div>
+<div style="display:flex;justify-content:space-between;align-items:baseline"><span style="font:400 11.5px 'Space Grotesk';color:#C0C0C0">σf / σs</span><span style="font:600 22px 'Space Grotesk';color:#F2F2F2">2.31 × <span style="font:500 10px 'Space Grotesk';color:#F2F2F2;background:#D84C27;padding:2px 8px;border-radius:9px;vertical-align:3px">SEPARATED</span></span></div>
+</div>
+<div style="background:#1E3A54;border-radius:16px;padding:16px 20px">
+<div style="font:600 12px 'Space Grotesk';color:#F2F2F2;margin-bottom:8px">급수 이벤트</div>
+<div style="display:flex;flex-direction:column;gap:6px;font:400 11.5px 'Space Grotesk';color:#C0C0C0">
+<div style="display:flex;gap:10px"><span>17:42</span><span style="color:#F2F2F2">P4 fluct</span><span style="margin-left:auto;color:#D84C27">dose 3.2s ✓</span></div>
+<div style="display:flex;gap:10px"><span>16:10</span><span style="color:#F2F2F2">P2 stable</span><span style="margin-left:auto;color:#7FB3D8">dose 1.1s ✓</span></div>
+<div style="display:flex;gap:10px"><span>14:55</span><span style="color:#F2F2F2">P4 fluct</span><span style="margin-left:auto">soak 90s</span></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+
+<!-- ===== 3b TREATMENT ===== -->
+<div class="dv-opt" id="3b">
+<div class="dv-olabel"><a class="dv-oid" href="#3b">3b</a>Page 2 · Treatment — 처리군 분리 검증 (밴드 설정 · 정렬/분리 지표 · 분포)</div>
+<div class="dv-card" style="width:1240px;background:#173046;border-radius:14px">
+<div style="min-height:700px;display:flex;flex-direction:column;font-variant-numeric:tabular-nums">
+<div style="display:flex;align-items:center;padding:20px 36px;background:#122839;border-bottom:1px solid rgba(242,242,242,.08)">
+<span style="font:600 18px 'Space Grotesk';color:#F2F2F2">plantlab<span style="color:#D84C27">°</span></span>
+<div style="margin-left:44px;display:flex;gap:28px;font:500 11.5px 'Space Grotesk';letter-spacing:.14em;color:#C0C0C0">
+<span>OVERVIEW</span><span style="color:#F2F2F2;border-bottom:2px solid #D84C27;padding-bottom:5px">TREATMENT</span><span>GROWTH</span><span>CAMERA</span>
+</div>
+</div>
+<div style="padding:24px 36px;display:flex;flex-direction:column;gap:16px;flex:1">
+<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px">
+<div style="background:#1E3A54;border-radius:16px;padding:20px 24px"><div style="font:500 11px 'Space Grotesk';letter-spacing:.12em;color:#C0C0C0">MEAN ALIGNMENT Δμ = |μs − μf|</div><div style="display:flex;align-items:baseline;gap:10px;margin-top:8px"><span style="font:600 40px 'Space Grotesk';color:#F2F2F2">0.42 %p</span><span style="font:500 10.5px 'Space Grotesk';color:#173046;background:#7FB3D8;padding:3px 10px;border-radius:11px">ALIGNED &lt; 1.0</span></div></div>
+<div style="background:#1E3A54;border-radius:16px;padding:20px 24px"><div style="font:500 11px 'Space Grotesk';letter-spacing:.12em;color:#C0C0C0">VARIANCE RATIO σf / σs</div><div style="display:flex;align-items:baseline;gap:10px;margin-top:8px"><span style="font:600 40px 'Space Grotesk';color:#F2F2F2">2.31 ×</span><span style="font:500 10.5px 'Space Grotesk';color:#F2F2F2;background:#D84C27;padding:3px 10px;border-radius:11px">SEPARATED &gt; 1.5</span></div></div>
+<div style="background:#1E3A54;border-radius:16px;padding:20px 24px"><div style="font:500 11px 'Space Grotesk';letter-spacing:.12em;color:#C0C0C0">총 급수량 (결과값 · 비통제)</div><div style="display:flex;align-items:baseline;gap:16px;margin-top:8px"><span style="font:600 26px 'Space Grotesk';color:#7FB3D8">S 412 mL</span><span style="font:600 26px 'Space Grotesk';color:#D84C27">F 486 mL</span></div></div>
+</div>
+<div style="display:grid;grid-template-columns:1fr 340px;gap:14px;flex:1">
+<div style="background:#1E3A54;border-radius:16px;padding:18px 22px">
+<div style="display:flex;align-items:baseline;gap:14px;margin-bottom:8px"><span style="font:600 13px 'Space Grotesk';color:#F2F2F2">수분 궤적 — 같은 중심, 다른 폭</span><span style="margin-left:auto;font:400 11px 'Space Grotesk';color:#C0C0C0">14d</span></div>
+<svg viewBox="0 0 640 220" style="width:100%;height:250px;display:block">
+<rect x="0" y="88" width="640" height="26" fill="rgba(127,179,216,.12)"/>
+<rect x="0" y="46" width="640" height="110" fill="rgba(216,76,39,.08)"/>
+<line x1="0" y1="101" x2="640" y2="101" stroke="rgba(242,242,242,.3)" stroke-dasharray="3 4"/>
+<path d="M0 100 C40 92,70 110,110 100 S190 92,230 103 S310 96,350 104 S430 93,470 101 S570 106,640 98" fill="none" stroke="#7FB3D8" stroke-width="2.5"/>
+<path d="M0 70 C35 115,60 150,100 146 S160 56,200 52 S270 152,310 148 S370 58,410 54 S490 154,530 146 S600 60,640 56" fill="none" stroke="#D84C27" stroke-width="2.5"/>
+<text x="8" y="30" font-family="Space Grotesk" font-size="11" fill="#C0C0C0">fluct 2020/1820 (폭 200)</text>
+<text x="8" y="212" font-family="Space Grotesk" font-size="11" fill="#C0C0C0">stable 1940/1900 (폭 40) · 중심 1920 동일</text>
+</svg>
+</div>
+<div style="display:flex;flex-direction:column;gap:14px;min-width:0">
+<div style="background:#1E3A54;border-radius:16px;padding:16px 20px">
+<div style="font:600 12.5px 'Space Grotesk';color:#F2F2F2;margin-bottom:10px">밴드 설정 (raw)</div>
+<div style="display:flex;flex-direction:column;gap:8px;font:400 12px 'Space Grotesk';color:#C0C0C0">
+<div style="display:flex"><span style="color:#7FB3D8;width:64px">stable</span><span>ON 1940 · OFF 1900</span><span style="margin-left:auto;color:#F2F2F2">P1 P3 P5</span></div>
+<div style="display:flex"><span style="color:#D84C27;width:64px">fluct</span><span>ON 2020 · OFF 1820</span><span style="margin-left:auto;color:#F2F2F2">P2 P4 P6</span></div>
+<div style="display:flex;border-top:1px solid rgba(242,242,242,.1);padding-top:8px"><span style="width:64px">중심</span><span>(ON+OFF)/2 = 1920 동일</span></div>
+</div>
+</div>
+<div style="background:#1E3A54;border-radius:16px;padding:16px 20px;flex:1">
+<div style="font:600 12.5px 'Space Grotesk';color:#F2F2F2;margin-bottom:8px">수분 분포 (14d)</div>
+<svg viewBox="0 0 280 120" style="width:100%;height:130px">
+<path d="M20 110 C60 108,90 20,140 20 S220 108,260 110" fill="rgba(127,179,216,.25)" stroke="#7FB3D8" stroke-width="2"/>
+<path d="M8 110 C50 104,70 62,140 62 S230 104,272 110" fill="rgba(216,76,39,.18)" stroke="#D84C27" stroke-width="2"/>
+<line x1="140" y1="14" x2="140" y2="112" stroke="rgba(242,242,242,.35)" stroke-dasharray="3 4"/>
+<text x="146" y="24" font-family="Space Grotesk" font-size="10" fill="#C0C0C0">μ 동일</text>
+</svg>
+<div style="font:400 11px/1.6 'Space Grotesk';color:#C0C0C0;margin-top:4px">좁은 산 = stable · 넓은 산 = fluct. 옌센 부등식 검정의 전제 조건.</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+
+<!-- ===== 3c GROWTH ===== -->
+<div class="dv-opt" id="3c">
+<div class="dv-olabel"><a class="dv-oid" href="#3c">3c</a>Page 3 · Growth — 2행 3열, 캐노피 투영 이미지 포함 + RGR 비교</div>
+<div class="dv-card" style="width:1240px;background:#173046;border-radius:14px">
+<div style="min-height:820px;display:flex;flex-direction:column;font-variant-numeric:tabular-nums">
+<div style="display:flex;align-items:center;padding:20px 36px;background:#122839;border-bottom:1px solid rgba(242,242,242,.08)">
+<span style="font:600 18px 'Space Grotesk';color:#F2F2F2">plantlab<span style="color:#D84C27">°</span></span>
+<div style="margin-left:44px;display:flex;gap:28px;font:500 11.5px 'Space Grotesk';letter-spacing:.14em;color:#C0C0C0">
+<span>OVERVIEW</span><span>TREATMENT</span><span style="color:#F2F2F2;border-bottom:2px solid #D84C27;padding-bottom:5px">GROWTH</span><span>CAMERA</span>
+</div>
+<div style="margin-left:auto;display:flex;gap:6px">
+<span style="font:500 10.5px 'Space Grotesk';color:#C0C0C0;background:rgba(242,242,242,.08);padding:5px 12px;border-radius:14px">DAWN 06:00</span>
+<span style="font:500 10.5px 'Space Grotesk';color:#173046;background:#F2F2F2;padding:5px 12px;border-radius:14px">PM 15:00 ✓</span>
+<span style="font:500 10.5px 'Space Grotesk';color:#C0C0C0;background:rgba(242,242,242,.08);padding:5px 12px;border-radius:14px">MASK</span>
+</div>
+</div>
+<div style="padding:24px 36px;display:flex;flex-direction:column;gap:16px;flex:1">
+<!-- 3x2 pot grid with canopy projections -->
+<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px">
+<div style="background:#1E3A54;border-radius:16px;overflow:hidden">
+<svg viewBox="0 0 380 180" style="width:100%;display:block;background:#122839">
+<path d="M190 34 C258 38,296 82,282 124 S224 168,180 158 S104 138,112 92 S130 30,190 34Z" fill="rgba(0,204,150,.16)" stroke="#00CC96" stroke-width="2"/>
+<text x="12" y="168" font-family="Space Grotesk" font-size="10" fill="#C0C0C0">PM 15:00 · ExG+Otsu</text>
+</svg>
+<div style="padding:12px 16px 14px"><div style="display:flex;align-items:baseline"><span style="font:600 14px 'Space Grotesk';color:#F2F2F2">P1</span><span style="font:500 10px 'Space Grotesk';color:#173046;background:#7FB3D8;padding:2px 9px;border-radius:10px;margin-left:8px">STABLE</span><span style="margin-left:auto;font:600 18px 'Space Grotesk';color:#F2F2F2">142.6 cm²</span></div><div style="display:flex;font:400 11px 'Space Grotesk';color:#C0C0C0;margin-top:3px"><span>RGR +4.1 %/d</span><span style="margin-left:auto">soil 41%</span></div></div>
+</div>
+<div style="background:#1E3A54;border-radius:16px;overflow:hidden">
+<svg viewBox="0 0 380 180" style="width:100%;display:block;background:#122839">
+<path d="M190 30 C264 28,308 78,296 122 S238 172,186 162 S96 142,104 90 S120 32,190 30Z" fill="rgba(0,204,150,.16)" stroke="#00CC96" stroke-width="2"/>
+<text x="12" y="168" font-family="Space Grotesk" font-size="10" fill="#C0C0C0">PM 15:00 · ExG+Otsu</text>
+</svg>
+<div style="padding:12px 16px 14px"><div style="display:flex;align-items:baseline"><span style="font:600 14px 'Space Grotesk';color:#F2F2F2">P2</span><span style="font:500 10px 'Space Grotesk';color:#F2F2F2;background:#D84C27;padding:2px 9px;border-radius:10px;margin-left:8px">FLUCT</span><span style="margin-left:auto;font:600 18px 'Space Grotesk';color:#F2F2F2">156.1 cm²</span></div><div style="display:flex;font:400 11px 'Space Grotesk';color:#C0C0C0;margin-top:3px"><span>RGR +4.8 %/d</span><span style="margin-left:auto">soil 37%</span></div></div>
+</div>
+<div style="background:#1E3A54;border-radius:16px;overflow:hidden">
+<svg viewBox="0 0 380 180" style="width:100%;display:block;background:#122839">
+<path d="M190 38 C252 40,290 84,276 122 S218 164,176 154 S110 132,118 92 S134 34,190 38Z" fill="rgba(0,204,150,.16)" stroke="#00CC96" stroke-width="2"/>
+<text x="12" y="168" font-family="Space Grotesk" font-size="10" fill="#C0C0C0">PM 15:00 · ExG+Otsu</text>
+</svg>
+<div style="padding:12px 16px 14px"><div style="display:flex;align-items:baseline"><span style="font:600 14px 'Space Grotesk';color:#F2F2F2">P3</span><span style="font:500 10px 'Space Grotesk';color:#173046;background:#7FB3D8;padding:2px 9px;border-radius:10px;margin-left:8px">STABLE</span><span style="margin-left:auto;font:600 18px 'Space Grotesk';color:#F2F2F2">138.9 cm²</span></div><div style="display:flex;font:400 11px 'Space Grotesk';color:#C0C0C0;margin-top:3px"><span>RGR +3.9 %/d</span><span style="margin-left:auto">soil 42%</span></div></div>
+</div>
+<div style="background:#1E3A54;border-radius:16px;overflow:hidden;outline:1.5px solid #D84C27">
+<svg viewBox="0 0 380 180" style="width:100%;display:block;background:#122839">
+<path d="M190 26 C270 26,314 76,300 124 S240 176,184 166 S90 144,98 88 S114 28,190 26Z" fill="rgba(0,204,150,.16)" stroke="#00CC96" stroke-width="2"/>
+<path d="M190 26 C270 26,314 76,300 124" fill="none" stroke="#D84C27" stroke-width="2" stroke-dasharray="5 5"/>
+<text x="12" y="168" font-family="Space Grotesk" font-size="10" fill="#C0C0C0">PM 15:00 · contour 확대 보기</text>
+</svg>
+<div style="padding:12px 16px 14px"><div style="display:flex;align-items:baseline"><span style="font:600 14px 'Space Grotesk';color:#F2F2F2">P4</span><span style="font:500 10px 'Space Grotesk';color:#F2F2F2;background:#D84C27;padding:2px 9px;border-radius:10px;margin-left:8px">FLUCT</span><span style="margin-left:auto;font:600 18px 'Space Grotesk';color:#F2F2F2">161.3 cm²</span></div><div style="display:flex;font:400 11px 'Space Grotesk';color:#C0C0C0;margin-top:3px"><span>RGR +5.2 %/d · 최대</span><span style="margin-left:auto">soil 35%</span></div></div>
+</div>
+<div style="background:#1E3A54;border-radius:16px;overflow:hidden">
+<svg viewBox="0 0 380 180" style="width:100%;display:block;background:#122839">
+<path d="M190 36 C254 34,294 80,282 120 S226 166,180 156 S106 136,114 94 S132 32,190 36Z" fill="rgba(0,204,150,.16)" stroke="#00CC96" stroke-width="2"/>
+<text x="12" y="168" font-family="Space Grotesk" font-size="10" fill="#C0C0C0">PM 15:00 · ExG+Otsu</text>
+</svg>
+<div style="padding:12px 16px 14px"><div style="display:flex;align-items:baseline"><span style="font:600 14px 'Space Grotesk';color:#F2F2F2">P5</span><span style="font:500 10px 'Space Grotesk';color:#173046;background:#7FB3D8;padding:2px 9px;border-radius:10px;margin-left:8px">STABLE</span><span style="margin-left:auto;font:600 18px 'Space Grotesk';color:#F2F2F2">145.2 cm²</span></div><div style="display:flex;font:400 11px 'Space Grotesk';color:#C0C0C0;margin-top:3px"><span>RGR +4.2 %/d</span><span style="margin-left:auto">soil 40%</span></div></div>
+</div>
+<div style="background:#1E3A54;border-radius:16px;overflow:hidden">
+<svg viewBox="0 0 380 180" style="width:100%;display:block;background:#122839">
+<path d="M190 32 C260 30,302 80,290 122 S232 170,182 160 S98 140,106 90 S118 30,190 32Z" fill="rgba(0,204,150,.16)" stroke="#00CC96" stroke-width="2"/>
+<text x="12" y="168" font-family="Space Grotesk" font-size="10" fill="#C0C0C0">PM 15:00 · ExG+Otsu</text>
+</svg>
+<div style="padding:12px 16px 14px"><div style="display:flex;align-items:baseline"><span style="font:600 14px 'Space Grotesk';color:#F2F2F2">P6</span><span style="font:500 10px 'Space Grotesk';color:#F2F2F2;background:#D84C27;padding:2px 9px;border-radius:10px;margin-left:8px">FLUCT</span><span style="margin-left:auto;font:600 18px 'Space Grotesk';color:#F2F2F2">150.7 cm²</span></div><div style="display:flex;font:400 11px 'Space Grotesk';color:#C0C0C0;margin-top:3px"><span>RGR +4.6 %/d</span><span style="margin-left:auto">soil 35%</span></div></div>
+</div>
+</div>
+<!-- RGR comparison -->
+<div style="display:grid;grid-template-columns:1fr 340px;gap:14px">
+<div style="background:#1E3A54;border-radius:16px;padding:16px 22px">
+<div style="display:flex;align-items:baseline;margin-bottom:8px"><span style="font:600 13px 'Space Grotesk';color:#F2F2F2">RGR 추이 — 처리군 평균</span><span style="margin-left:auto;font:400 11px 'Space Grotesk';color:#C0C0C0">(ln A₂ − ln A₁)/Δt · 14d</span></div>
+<svg viewBox="0 0 620 110" style="width:100%;height:120px;display:block">
+<path d="M0 74 C60 70,120 66,180 62 S320 56,400 50 S560 44,620 40" fill="none" stroke="#7FB3D8" stroke-width="2.5"/>
+<path d="M0 78 C60 72,120 62,180 56 S320 46,400 38 S560 30,620 24" fill="none" stroke="#D84C27" stroke-width="2.5"/>
+<text x="560" y="18" font-family="Space Grotesk" font-size="10" fill="#D84C27">fluct</text>
+<text x="560" y="58" font-family="Space Grotesk" font-size="10" fill="#7FB3D8">stable</text>
+</svg>
+</div>
+<div style="background:#1E3A54;border-radius:16px;padding:16px 20px;display:flex;flex-direction:column;justify-content:center;gap:8px">
+<div style="font:500 11px 'Space Grotesk';letter-spacing:.12em;color:#C0C0C0">ΔRGR (F − S)</div>
+<div style="font:600 34px 'Space Grotesk';color:#F2F2F2">+0.80 <span style="font-size:15px;color:#C0C0C0">%/d</span></div>
+<div style="font:400 11.5px/1.6 'Space Grotesk';color:#C0C0C0">효과크기 d 0.62 · 사전등록 기준(n=6) 판정은 6주 종료 시.</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+
+<!-- ===== 3d CAMERA ===== -->
+<div class="dv-opt" id="3d">
+<div class="dv-olabel"><a class="dv-oid" href="#3d">3d</a>Page 4 · Camera Setup — 프리뷰 + 5단계 컨트롤, 동일 팔레트</div>
+<div class="dv-card" style="width:1240px;background:#173046;border-radius:14px">
+<div style="min-height:720px;display:flex;flex-direction:column;font-variant-numeric:tabular-nums">
+<div style="display:flex;align-items:center;padding:20px 36px;background:#122839;border-bottom:1px solid rgba(242,242,242,.08)">
+<span style="font:600 18px 'Space Grotesk';color:#F2F2F2">plantlab<span style="color:#D84C27">°</span></span>
+<div style="margin-left:44px;display:flex;gap:28px;font:500 11.5px 'Space Grotesk';letter-spacing:.14em;color:#C0C0C0">
+<span>OVERVIEW</span><span>TREATMENT</span><span>GROWTH</span><span style="color:#F2F2F2;border-bottom:2px solid #D84C27;padding-bottom:5px">CAMERA</span>
+</div>
+<button style="margin-left:auto;font:600 12px 'Space Grotesk';color:#F2F2F2;background:#D84C27;border:none;border-radius:9px;padding:10px 22px;cursor:pointer">저장 → config.json</button>
+</div>
+<div style="padding:24px 36px;display:grid;grid-template-columns:1fr 320px;gap:16px;flex:1">
+<div style="background:#122839;border-radius:16px;position:relative;overflow:hidden;min-height:560px">
+<svg viewBox="0 0 880 560" style="width:100%;height:100%;display:block">
+<defs><pattern id="g3d" width="48" height="48" patternUnits="userSpaceOnUse"><path d="M48 0H0V48" fill="none" stroke="rgba(242,242,242,.05)"/></pattern></defs>
+<rect width="880" height="560" fill="url(#g3d)"/>
+<rect x="66" y="70" width="220" height="170" rx="4" fill="none" stroke="#7FB3D8" stroke-width="1.5"/><text x="74" y="90" font-family="Space Grotesk" font-size="11" fill="#7FB3D8">P1 · stable</text>
+<rect x="330" y="70" width="220" height="170" rx="4" fill="none" stroke="#D84C27" stroke-width="1.5"/><text x="338" y="90" font-family="Space Grotesk" font-size="11" fill="#D84C27">P2 · fluct</text>
+<rect x="594" y="70" width="220" height="170" rx="4" fill="none" stroke="#7FB3D8" stroke-width="1.5"/><text x="602" y="90" font-family="Space Grotesk" font-size="11" fill="#7FB3D8">P3 · stable</text>
+<rect x="66" y="300" width="220" height="170" rx="4" fill="none" stroke="#D84C27" stroke-width="2.5" stroke-dasharray="7 5"/><text x="74" y="320" font-family="Space Grotesk" font-size="11" fill="#D84C27">P4 · 선택됨 — 드래그로 조정</text>
+<rect x="330" y="300" width="220" height="170" rx="4" fill="none" stroke="#7FB3D8" stroke-width="1.5"/><text x="338" y="320" font-family="Space Grotesk" font-size="11" fill="#7FB3D8">P5 · stable</text>
+<rect x="594" y="300" width="220" height="170" rx="4" fill="none" stroke="#D84C27" stroke-width="1.5"/><text x="602" y="320" font-family="Space Grotesk" font-size="11" fill="#D84C27">P6 · fluct</text>
+<rect x="420" y="508" width="24" height="24" fill="#F2F2F2"/><text x="452" y="525" font-family="Space Grotesk" font-size="10" fill="#C0C0C0">ArUco · 50.0 mm · px/cm 21.44 ✓</text>
+<text x="16" y="546" font-family="Space Grotesk" font-size="10" fill="#C0C0C0">LIVE 4608×2592 · AE/AF/AWB LOCKED · drift Δ(1.2, −0.8)px</text>
+</svg>
+<span style="position:absolute;top:12px;right:12px;font:500 10px 'Space Grotesk';color:#F2F2F2;background:rgba(216,76,39,.9);padding:4px 10px;border-radius:12px">● LIVE PREVIEW</span>
+</div>
+<div style="display:flex;flex-direction:column;gap:12px;min-width:0">
+<div style="background:#1E3A54;border-radius:14px;padding:13px 16px;display:flex;align-items:center;gap:10px"><span style="width:22px;height:22px;border-radius:50%;background:#7FB3D8;color:#173046;display:grid;place-items:center;font:700 11px 'Space Grotesk'">✓</span><span style="font:500 12px 'Space Grotesk';color:#F2F2F2">1 · 노출 · 초점</span><span style="margin-left:auto;font:400 10.5px 'Space Grotesk';color:#C0C0C0">20000µs · 1.82 · g2.0</span></div>
+<div style="background:#1E3A54;border-radius:14px;padding:13px 16px;display:flex;align-items:center;gap:10px"><span style="width:22px;height:22px;border-radius:50%;background:#7FB3D8;color:#173046;display:grid;place-items:center;font:700 11px 'Space Grotesk'">✓</span><span style="font:500 12px 'Space Grotesk';color:#F2F2F2">2 · 스케일 마커</span><span style="margin-left:auto;font:400 10.5px 'Space Grotesk';color:#C0C0C0">50mm → 21.44 px/cm</span></div>
+<div style="background:#1E3A54;border-radius:14px;padding:16px;outline:1.5px solid #D84C27">
+<div style="display:flex;align-items:center;gap:10px"><span style="width:22px;height:22px;border-radius:50%;background:#D84C27;color:#F2F2F2;display:grid;place-items:center;font:700 11px 'Space Grotesk'">3</span><span style="font:600 12.5px 'Space Grotesk';color:#F2F2F2">ROI 잡기 — 3×2</span><span style="margin-left:auto;font:400 10px 'Space Grotesk';color:#D84C27">진행 중</span></div>
+<div style="display:flex;gap:8px;margin-top:12px"><button style="flex:1;font:500 11px 'Space Grotesk';color:#173046;background:#F2F2F2;border:none;border-radius:8px;padding:9px 0;cursor:pointer">AUTO ROI</button><button style="flex:1;font:500 11px 'Space Grotesk';color:#F2F2F2;background:#2C5979;border:none;border-radius:8px;padding:9px 0;cursor:pointer">FIND LEAF</button></div>
+<div style="font:400 10.5px 'Space Grotesk';color:#C0C0C0;margin-top:9px">pot 15 cm · gap 20 cm · margin 4%</div>
+</div>
+<div style="background:#1E3A54;border-radius:14px;padding:16px">
+<div style="display:flex;align-items:center;gap:10px"><span style="width:22px;height:22px;border-radius:50%;border:1.5px solid #C0C0C0;color:#C0C0C0;display:grid;place-items:center;font:600 11px 'Space Grotesk'">4</span><span style="font:500 12px 'Space Grotesk';color:#F2F2F2">처리군 배정</span><button style="margin-left:auto;font:500 10px 'Space Grotesk';color:#D84C27;background:rgba(216,76,39,.12);border:1px solid rgba(216,76,39,.4);border-radius:7px;padding:3px 10px;cursor:pointer">SHUFFLE</button></div>
+<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:10px">
+<span style="font:500 10px 'Space Grotesk';text-align:center;padding:6px 0;border-radius:7px;background:rgba(127,179,216,.15);color:#7FB3D8">P1 S</span>
+<span style="font:500 10px 'Space Grotesk';text-align:center;padding:6px 0;border-radius:7px;background:rgba(216,76,39,.15);color:#E88A6C">P2 F</span>
+<span style="font:500 10px 'Space Grotesk';text-align:center;padding:6px 0;border-radius:7px;background:rgba(127,179,216,.15);color:#7FB3D8">P3 S</span>
+<span style="font:500 10px 'Space Grotesk';text-align:center;padding:6px 0;border-radius:7px;background:rgba(216,76,39,.15);color:#E88A6C">P4 F</span>
+<span style="font:500 10px 'Space Grotesk';text-align:center;padding:6px 0;border-radius:7px;background:rgba(127,179,216,.15);color:#7FB3D8">P5 S</span>
+<span style="font:500 10px 'Space Grotesk';text-align:center;padding:6px 0;border-radius:7px;background:rgba(216,76,39,.15);color:#E88A6C">P6 F</span>
+</div>
+</div>
+<button style="font:600 13px 'Space Grotesk';color:#F2F2F2;background:#2C5979;border:none;border-radius:10px;padding:13px 0;cursor:pointer">5 · 기준사진 촬영 (calib.jpg)</button>
+</div>
+</div>
+</div>
+</div>
+</div>
+
+</div>
+<p class="dv-next">Try next: "이 팔레트로 4페이지 인터랙티브 프로토타입 만들어줘" · "<a class="dv-oid" href="#3c">3c</a> 캐노피 카드에 dawn/pm 비교 슬라이더" · "모바일 버전"</p>
+</section>
+</x-dc>
+</body>
+</html>

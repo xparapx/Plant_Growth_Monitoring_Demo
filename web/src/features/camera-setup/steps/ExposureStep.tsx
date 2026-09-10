@@ -14,7 +14,7 @@ export function ExposureStep(_p: StepProps) {
   const gainTone = c.gain > 4 ? 'bad' : c.gain > 2 ? 'warn' : null
   return (
     <div className="flex flex-col gap-3">
-      <Button onClick={() => run('auto')} busy={busy} disabled={disabled} className="w-full md:w-auto">
+      <Button variant="alt" size="sm" onClick={() => run('auto')} busy={busy} disabled={disabled} className="min-h-10 w-full md:min-h-9">
         {busy ? ko.setup.converging : ko.setup.auto}
       </Button>
       <KeyValue

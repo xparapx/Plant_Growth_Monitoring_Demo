@@ -30,9 +30,9 @@ export function sawtoothGridOption(soil: SoilSeries, groups: Record<string, stri
       const p = byPot.get(pid)
       series.push({
         type: 'line', name: pid.toUpperCase(), xAxisIndex: idx, yAxisIndex: idx, showSymbol: false, sampling: 'lttb',
-        lineStyle: { width: 2.2, color: trtColor(treat, 'ink') }, itemStyle: { color: trtColor(treat, 'ink') },
+        lineStyle: { width: 2, color: trtColor(treat, 'fill') }, itemStyle: { color: trtColor(treat, 'fill') },
         data: p ? p.ts.map((t, i) => [t, p.pct[i]]) : [],
-        markArea: band ? { silent: true, itemStyle: { color: trtColor(treat, 'ink'), opacity: 0.10 }, data: [[{ yAxis: band[0] }, { yAxis: band[1] }]] } : undefined,
+        markArea: band ? { silent: true, itemStyle: { color: trtColor(treat, 'fill'), opacity: 0.10 }, data: [[{ yAxis: band[0] }, { yAxis: band[1] }]] } : undefined,
       })
       idx++
     })
@@ -58,10 +58,10 @@ export function sawtoothSingleOption(soil: SoilSeries, pid: string, treat: strin
     tooltip: baseTooltip({ valueFormatter: (v: number) => `${Number(v).toFixed(1)} %` }),
     series: [{
       type: 'line', name: pid.toUpperCase(), showSymbol: false, sampling: 'lttb',
-      lineStyle: { width: 2.2, color: trtColor(treat, 'ink') }, itemStyle: { color: trtColor(treat, 'ink') },
+      lineStyle: { width: 2, color: trtColor(treat, 'fill') }, itemStyle: { color: trtColor(treat, 'fill') },
       areaStyle: { color: trtColor(treat, 'fill'), opacity: 0.08 },
       data: p ? p.ts.map((t, i) => [t, p.pct[i]]) : [],
-      markArea: band ? { silent: true, itemStyle: { color: trtColor(treat, 'ink'), opacity: 0.10 }, data: [[{ yAxis: band[0] }, { yAxis: band[1] }]] } : undefined,
+      markArea: band ? { silent: true, itemStyle: { color: trtColor(treat, 'fill'), opacity: 0.10 }, data: [[{ yAxis: band[0] }, { yAxis: band[1] }]] } : undefined,
     }],
     backgroundColor: 'transparent',
     textStyle: { color: cssVar('--ink') },

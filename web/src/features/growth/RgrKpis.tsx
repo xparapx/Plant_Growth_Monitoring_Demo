@@ -20,7 +20,7 @@ export function RgrKpis({ q }: { q: UseQueryResult<Rgr> }) {
         return (
           <div className="flex flex-col gap-3">
             {!r.comparable && <AlertBanner level="info">{ko.rgr.oneGroup}</AlertBanner>}
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+            <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-3">
               {groups.map((g) => {
                 const v = r.groups[g]
                 return <KpiTile key={g} label={LABEL[g] ?? `RGR ${g}`} value={v.mean} unit="/d" digits={4} deltaLabel={`sd ${fmtNum(v.sd, 4)} · n=${v.n}`} />

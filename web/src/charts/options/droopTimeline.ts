@@ -15,7 +15,7 @@ export function droopTimelineOption(t: DroopTimeline): EChartsOption {
     yAxis: { type: 'value', name: '%', nameGap: 8, axisLabel: { fontSize: 10 } },
     series: pots.map((p) => ({
       type: 'line', name: p.plant_id.toUpperCase(), data: (p.droop_pct ?? []).map((v) => v ?? null), connectNulls: false,
-      symbol: 'circle', symbolSize: 4, lineStyle: { width: 2.2, color: trtColor(p.treat, 'ink') }, itemStyle: { color: trtColor(p.treat, 'ink') },
+      symbol: 'circle', symbolSize: 4, lineStyle: { width: 2, color: trtColor(p.treat, 'fill') }, itemStyle: { color: trtColor(p.treat, 'fill') },
     })),
   }
 }

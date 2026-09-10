@@ -15,7 +15,7 @@ export function alignTrendOption(t: AlignmentTrend): EChartsOption {
     yAxis: { type: 'value', name: 'μ (%)', scale: true, axisLabel: { fontSize: 10, formatter: (v: number) => fmtNum(v, 0) } },
     series: groups.map((g) => ({
       type: 'line', name: TREAT_NAME[g] ?? g, data: (t.groups[g] ?? []).map((v) => v ?? null), connectNulls: false,
-      symbol: 'circle', symbolSize: 8, lineStyle: { width: 3, color: trtColor(g, 'ink') }, itemStyle: { color: trtColor(g, 'ink') },
+      symbol: 'circle', symbolSize: 7, lineStyle: { width: 2.5, color: trtColor(g, 'fill') }, itemStyle: { color: trtColor(g, 'fill') },
     })),
   }
 }

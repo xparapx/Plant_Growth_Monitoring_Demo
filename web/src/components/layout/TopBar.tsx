@@ -4,7 +4,7 @@ import { useTheme } from '@/app/theme'
 import { ko } from '@/i18n/ko'
 import { LiveDot } from '@/components/ui/LiveDot'
 import { useSummary } from '@/api/queries'
-import { fmtTimeLocal } from '@/lib/format'
+import { useRunStatus } from '@/hooks/useRunStatus'
 
 const NAV = [
   { to: '/overview', label: ko.nav.overview },
@@ -14,42 +14,38 @@ const NAV = [
   { to: '/system', label: ko.nav.system },
 ]
 
+/** Mockup header: sunken navy bar, `plantlab°` wordmark, tracked uppercase tabs with an accent underline,
+    and the run status ("● 4 nodes · Day 14/42 · 18:04 KST") on the right. */
 export function TopBar() {
   const { theme, toggle } = useTheme()
-  const { data, dataUpdatedAt } = useSummary()
+  const { data } = useSummary()
+  const run = useRunStatus(data)
   return (
-    <header className="sticky top-0 z-30 border-b border-border-soft bg-elev/85 backdrop-blur supports-[backdrop-filter]:bg-elev/70">
-      <div className="mx-auto flex h-14 max-w-[1440px] items-center gap-4 px-4 md:px-6">
-        <NavLink to="/overview" className="flex items-center gap-2.5 text-ink no-underline">
-          <BrandMark />
-          <span className="text-[15px] font-800 tracking-tight" style={{ fontWeight: 800 }}>{ko.app}</span>
+    <header className="sticky top-0 z-30 border-b border-border-soft bg-sunken/92 backdrop-blur supports-[backdrop-filter]:bg-sunken/85">
+      <div className="mx-auto flex h-14 max-w-[1440px] items-center gap-4 px-4 md:h-16 md:px-9">
+        <NavLink to="/overview" className="flex items-center gap-2 text-ink no-underline" aria-label={ko.app}>
+          <Wordmark />
           {data?.capture?.driver === 'fake' && <span className="badge-dummy">FAKE CAM</span>}
         </NavLink>
-        <nav aria-label="주 메뉴" className="ml-4 hidden items-center gap-1 md:flex">
+        <nav aria-label="주 메뉴" className="ml-4 hidden h-full items-center gap-7 md:flex">
           {NAV.map((n) => (
-            <NavLink
-              key={n.to}
-              to={n.to}
-              className={({ isActive }) =>
-                `rounded-md px-3 py-1.5 text-[13px] font-semibold no-underline transition-colors duration-[var(--dur-fast)] ` +
-                (isActive ? 'bg-primary text-primary-ink' : 'text-muted hover:bg-sunken hover:text-ink')
-              }
-            >
-              {n.label}
-            </NavLink>
+            <NavLink key={n.to} to={n.to} className="nav-item">{n.label}</NavLink>
           ))}
         </nav>
-        <div className="ml-auto flex items-center gap-3">
-          {dataUpdatedAt > 0 && <span className="num hidden text-[11px] text-muted sm:inline">{ko.updated(fmtTimeLocal(new Date(dataUpdatedAt)))}</span>}
+        <div className="ml-auto flex items-center gap-3 md:gap-4">
+          <span className="hidden items-center gap-2 whitespace-nowrap text-[11px] font-medium text-muted md:flex" title={run.title}>
+            <span className="inline-block h-[7px] w-[7px] rounded-full" style={{ background: run.online > 0 ? 'var(--live)' : 'var(--ink-faint)' }} aria-hidden="true" />
+            <span className="num">{run.text}</span>
+          </span>
           <LiveDot />
           <button
             type="button"
             onClick={toggle}
             aria-label={ko.theme.toggle}
             title={theme === 'dark' ? ko.theme.light : ko.theme.dark}
-            className="grid h-9 w-9 place-items-center rounded-md border border-border-soft bg-elev text-muted hover:text-ink"
+            className="grid h-8 w-8 place-items-center rounded-full border border-border-soft text-muted hover:text-ink"
           >
-            {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
+            {theme === 'dark' ? <Sun size={14} /> : <Moon size={14} />}
           </button>
         </div>
       </div>
@@ -57,13 +53,10 @@ export function TopBar() {
   )
 }
 
-function BrandMark() {
+export function Wordmark({ size = 18 }: { size?: number }) {
   return (
-    <svg width="26" height="26" viewBox="0 0 64 64" aria-hidden="true">
-      <rect width="64" height="64" rx="14" fill="var(--ink)" />
-      <path d="M32 50c0-14 6-24 18-30-2 14-8 24-18 30z" fill="var(--bg)" />
-      <path d="M32 50c0-10-5-18-16-24 2 12 6 20 16 24z" fill="var(--primary)" />
-      <circle cx="32" cy="50" r="3.2" fill="var(--accent)" />
-    </svg>
+    <span className="font-semibold leading-none text-ink" style={{ fontSize: size }}>
+      {ko.app}<span className="text-accent">°</span>
+    </span>
   )
 }

@@ -13,7 +13,7 @@ import { cs } from './strings'
 
 export function Badge({ tone, children }: { tone: 'ok' | 'warn' | 'bad' | 'muted' | 'accent'; children: string }) {
   const cls = { ok: 'bg-ok-soft text-ok-ink', warn: 'bg-warn-soft text-warn-ink', bad: 'bg-bad-soft text-bad-ink', muted: 'bg-sunken text-muted', accent: 'bg-accent-soft text-accent-ink' }[tone]
-  return <span className={`rounded-sm px-2 py-0.5 text-[10.5px] font-extrabold tracking-wider ${cls}`}>{children}</span>
+  return <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium tracking-[.04em] ${cls}`}>{children}</span>
 }
 
 export function LastRunCard({ last }: { last: Job | null }) {

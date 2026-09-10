@@ -1,10 +1,13 @@
 /* ------------------------------------------------------------------
    Design tokens — the single source for Tailwind utilities, ECharts
-   theme and inline SVG.  Brand: #173046 · #2C5979 · #D84C27 · #F2F2F2 ·
-   #C0C0C0.  Environment series use the Plotly default palette.
-   Treatment pair: PROVISIONAL until the Claude Design mockup review
-   (stable = cool blue, fluct = gold — gold sits far from the brand
-   accent and from Plotly Temp red, so it never reads as an alert).
+   theme and inline SVG.  Values lifted from the approved Claude Design
+   mockup (design/Plant Monitor Mockups.turn3.dc.html, "3a–3d"):
+     canvas #173046 · header/preview #122839 · card #1E3A54
+     ink #F2F2F2 · muted #C0C0C0 · accent #D84C27 · button #2C5979
+     stable #7FB3D8 (ink #173046 on chip) · fluct #D84C27 (#E88A6C as text)
+     env series = Plotly default palette · Space Grotesk, tabular-nums
+   The dark palette IS the brand look and is the default; light is an
+   alternative that keeps the same hue relationships on #F2F2F2.
    ------------------------------------------------------------------ */
 @import "tailwindcss";
 
@@ -12,14 +15,18 @@
   color-scheme: light;
   --bg: #F2F2F2;
   --bg-elev: #FFFFFF;
-  --bg-sunken: #E9ECEF;
+  --bg-sunken: #E4E8EC;
   --border: #C0C0C0;
-  --border-soft: #D9DDE2;
+  --border-soft: #DCE1E6;
   --ink: #173046;
-  --ink-muted: #5A6B7D;
+  --ink-muted: #56687A;
   --ink-faint: #8A96A3;
-  --primary: #2C5979;
+  --primary: #2C5979;          /* links, active text, focus */
   --primary-ink: #FFFFFF;
+  --btn: #2C5979;              /* filled button background */
+  --btn-ink: #F2F2F2;
+  --btn-alt: #173046;          /* "AUTO ROI" style inverted button */
+  --btn-alt-ink: #F2F2F2;
   --accent: #D84C27;
   --accent-ink: #B23A17;
   --accent-soft: #FBE7E0;
@@ -29,49 +36,55 @@
   --info-soft: #E4EEF5;
   --focus: #2C5979;
   --dummy: #8A6508;   --dummy-bg: #FBF1C7;
+  --live: #00CC96;
 
-  --stable: #3A8FB7;  --stable-ink: #1F6E8F;
-  --fluct:  #D4AF37;  --fluct-ink:  #8A6508;
-  --leaf: #5B8C4A;
+  --stable: #7FB3D8;  --stable-ink: #1F6E8F; --stable-on: #173046;
+  --fluct:  #D84C27;  --fluct-ink:  #B23A17; --fluct-on:  #F2F2F2;
+  --leaf: #00CC96;
 
   --env-vpd: #636EFA; --env-temp: #EF553B; --env-hum: #00CC96; --env-co2: #AB63FA; --env-lux: #FFA15A;
-  --overlay-roi: #FFAA00; --overlay-bad: #FF3B30; --overlay-pt: #FFE04D;
+  --overlay-bad: #FF3B30; --overlay-pt: #FFE04D;
 
-  --font-sans: "Pretendard Variable", Pretendard, "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
-  --font-num: "JetBrains Mono Variable", "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  --font-sans: "Space Grotesk Variable", "Space Grotesk", "Pretendard Variable", Pretendard, "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+  --font-num: "Space Grotesk Variable", "Space Grotesk", "Pretendard Variable", Pretendard, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono Variable", "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
 
-  --r-sm: 4px; --r-md: 8px; --r-lg: 12px; --r-pill: 999px;
+  --r-sm: 7px; --r-md: 10px; --r-lg: 16px; --r-pill: 999px;
   --sh-1: 0 1px 2px rgba(23, 48, 70, .06), 0 1px 6px rgba(23, 48, 70, .06);
   --sh-2: 0 4px 16px rgba(23, 48, 70, .10);
-  --lw-trace: 2.2; --lw-growth: 3; --lw-spark: 2.2; --lw-outline: 2.6;
+  --lw-trace: 2; --lw-growth: 2.5; --lw-spark: 2; --lw-outline: 2;
   --dur-fast: 120ms; --dur-base: 200ms; --dur-slow: 320ms;
   --ease-out: cubic-bezier(.2, .8, .2, 1);
 }
 
 :root[data-theme="dark"] {
   color-scheme: dark;
-  --bg: #0F1F2E;
-  --bg-elev: #173046;
-  --bg-sunken: #0B1826;
+  --bg: #173046;
+  --bg-elev: #1E3A54;
+  --bg-sunken: #122839;
   --border: #2C5979;
-  --border-soft: #22455F;
+  --border-soft: rgba(242, 242, 242, .10);
   --ink: #F2F2F2;
-  --ink-muted: #9AA8B8;
-  --ink-faint: #5F7386;
-  --primary: #7CC4E8;
-  --primary-ink: #0F1F2E;
+  --ink-muted: #C0C0C0;
+  --ink-faint: #7E8E9E;
+  --primary: #7FB3D8;
+  --primary-ink: #173046;
+  --btn: #2C5979;
+  --btn-ink: #F2F2F2;
+  --btn-alt: #F2F2F2;
+  --btn-alt-ink: #173046;
   --accent: #D84C27;
-  --accent-ink: #FF8A66;
-  --accent-soft: #3A2119;
-  --ok: #4ADE80;      --ok-ink: #4ADE80;   --ok-soft: #14302A;
-  --warn: #F4B740;    --warn-ink: #F4B740; --warn-soft: #3A2E12;
-  --bad: #FB7185;     --bad-ink: #FB7185;  --bad-soft: #3A1B22;
-  --info-soft: #1B3448;
-  --focus: #7CC4E8;
-  --dummy: #E8C547;   --dummy-bg: #2A2415;
-  --stable: #3A8FB7;  --stable-ink: #7CC4E8;
-  --fluct:  #C9A227;  --fluct-ink:  #E8C547;
-  --leaf: #A8BA72;
+  --accent-ink: #E88A6C;
+  --accent-soft: rgba(216, 76, 39, .14);
+  --ok: #00CC96;      --ok-ink: #00CC96;   --ok-soft: rgba(0, 204, 150, .14);
+  --warn: #FFA15A;    --warn-ink: #FFA15A; --warn-soft: rgba(255, 161, 90, .14);
+  --bad: #D84C27;     --bad-ink: #E88A6C;  --bad-soft: rgba(216, 76, 39, .16);
+  --info-soft: rgba(127, 179, 216, .12);
+  --focus: #7FB3D8;
+  --dummy: #E8C547;   --dummy-bg: rgba(232, 197, 71, .12);
+  --stable: #7FB3D8;  --stable-ink: #7FB3D8; --stable-on: #173046;
+  --fluct:  #D84C27;  --fluct-ink:  #E88A6C; --fluct-on:  #F2F2F2;
+  --leaf: #00CC96;
   --sh-1: none; --sh-2: none;
 }
 
@@ -90,6 +103,8 @@
   --color-faint: var(--ink-faint);
   --color-primary: var(--primary);
   --color-primary-ink: var(--primary-ink);
+  --color-btn: var(--btn); --color-btn-ink: var(--btn-ink);
+  --color-btn-alt: var(--btn-alt); --color-btn-alt-ink: var(--btn-alt-ink);
   --color-accent: var(--accent);
   --color-accent-ink: var(--accent-ink);
   --color-accent-soft: var(--accent-soft);
@@ -98,12 +113,14 @@
   --color-bad: var(--bad); --color-bad-ink: var(--bad-ink); --color-bad-soft: var(--bad-soft);
   --color-info-soft: var(--info-soft);
   --color-focus: var(--focus);
+  --color-live: var(--live);
   --color-dummy: var(--dummy); --color-dummy-bg: var(--dummy-bg);
-  --color-stable: var(--stable); --color-stable-ink: var(--stable-ink);
-  --color-fluct: var(--fluct); --color-fluct-ink: var(--fluct-ink);
+  --color-stable: var(--stable); --color-stable-ink: var(--stable-ink); --color-stable-on: var(--stable-on);
+  --color-fluct: var(--fluct); --color-fluct-ink: var(--fluct-ink); --color-fluct-on: var(--fluct-on);
   --color-leaf: var(--leaf);
   --font-sans: var(--font-sans);
   --font-num: var(--font-num);
+  --font-mono: var(--font-mono);
   --radius-sm: var(--r-sm); --radius-md: var(--r-md); --radius-lg: var(--r-lg);
   --shadow-1: var(--sh-1); --shadow-2: var(--sh-2);
 }
