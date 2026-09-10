@@ -1,0 +1,21 @@
+[Unit]
+Description=Plant capture catch-up after an unplanned reboot (no-op if today's phase already exists)
+# Persistent=true stamps the timer when it FIRES, so a power loss during the warm-up would lose the day.
+After=network-online.target time-sync.target plantsvc.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=${PLANT_USER}
+SupplementaryGroups=video gpio
+WorkingDirectory=${PLANT_DIR}
+Environment=PLANT_DATA_DIR=${PLANT_DATA_DIR}
+Environment=PLANT_PORT=${PLANT_PORT}
+Environment=PYTHONUNBUFFERED=1
+Environment=GPIOZERO_PIN_FACTORY=lgpio
+ExecStart=${PLANT_DIR}/.venv/bin/plantsvc capture --phase auto --if-missing
+ExecStopPost=-${PLANT_DIR}/.venv/bin/plantsvc led off
+TimeoutStartSec=${SNAP_TIMEOUT_S}
+
+[Install]
+WantedBy=multi-user.target

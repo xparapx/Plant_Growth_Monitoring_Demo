@@ -38,4 +38,8 @@ def test_render_units(paths, tmp_path):
     assert files
     for f in files:
         txt = f.read_text(encoding="utf-8")
-        assert "${" not in txt and "plantqa" in txt and "\r\n" not in txt
+        assert "${" not in txt and "\r\n" not in txt, f.name
+        if f.suffix == ".service":
+            assert "User=plantqa" in txt, f.name
+    timer = (out / "plantsnap.timer").read_text(encoding="utf-8")
+    assert "OnCalendar=*-*-* 05:50:00" in timer and "AccuracySec=1s" in timer

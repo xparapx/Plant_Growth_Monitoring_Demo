@@ -175,14 +175,22 @@ def cmd_render_units(args) -> int:
     from .config_store import ConfigStore
     s = _settings(args)
     p = s.paths
-    root = Path(args.root or p.repo_root).resolve()
+    # --root is the checkout path ON THE TARGET (goes into the units verbatim); templates always
+    # come from this repo. Never Path.resolve() it: on Windows that turns /home/x into C:\home\x.
+    plant_dir = args.root.rstrip("/\\") if args.root else str(p.repo_root)
+    if args.data_dir:
+        data_dir = args.data_dir
+    elif args.root:
+        data_dir = f"{plant_dir}/data"
+    else:
+        data_dir = str(p.data_dir)
     user = args.user or os.environ.get("USER") or os.environ.get("USERNAME") or "pi"
     cfg = ConfigStore(p.config, example=p.example_config).get()
     warm = cfg.led.warmup_s if cfg.led.enabled else 0
-    values = {"PLANT_USER": user, "PLANT_DIR": str(root), "PLANT_DATA_DIR": str(Path(args.data_dir or p.data_dir).resolve()),
+    values = {"PLANT_USER": user, "PLANT_DIR": plant_dir, "PLANT_DATA_DIR": data_dir,
               "DAWN_TIME": cfg.schedule.dawn, "PM_TIME": cfg.schedule.pm, "LED_WARMUP_S": str(warm),
               "SNAP_TIMEOUT_S": str(max(900, warm + 600)), "PLANT_PORT": str(s.port)}
-    tdir = root / "deploy" / "systemd"
+    tdir = p.repo_root / "deploy" / "systemd"
     out = Path(args.out) if args.out else tdir / "rendered"
     out.mkdir(parents=True, exist_ok=True)
     n = 0
@@ -279,7 +287,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     ru = sub.add_parser("render-units")
     ru.add_argument("--user")
-    ru.add_argument("--root")
+    ru.add_argument("--root", help="checkout path on the target host (default: this repo)")
     ru.add_argument("--out")
     ru.set_defaults(fn=cmd_render_units)
 

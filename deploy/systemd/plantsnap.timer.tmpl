@@ -1,0 +1,12 @@
+[Unit]
+Description=Plant capture schedule - dawn ${DAWN_TIME}, pm ${PM_TIME} (local time; set the timezone with timedatectl)
+
+[Timer]
+OnCalendar=*-*-* ${DAWN_TIME}:00
+OnCalendar=*-*-* ${PM_TIME}:00
+Persistent=true
+AccuracySec=1s
+Unit=plantsnap.service
+
+[Install]
+WantedBy=timers.target

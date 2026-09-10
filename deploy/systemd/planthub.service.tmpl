@@ -1,0 +1,18 @@
+[Unit]
+Description=Plant hub - MQTT to SQLite (sole writer of plant.db)
+After=network-online.target mosquitto.service
+Wants=network-online.target
+Requires=mosquitto.service
+
+[Service]
+Type=simple
+User=${PLANT_USER}
+WorkingDirectory=${PLANT_DIR}
+Environment=PLANT_DATA_DIR=${PLANT_DATA_DIR}
+Environment=PYTHONUNBUFFERED=1
+ExecStart=${PLANT_DIR}/.venv/bin/python hub/run_collector.py
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,16 @@
+[Unit]
+Description=Plant camera setup preview - setup_camera.py :8000 (LEGACY; installed disabled)
+After=network-online.target
+Conflicts=plantsvc.service
+
+[Service]
+Type=simple
+User=${PLANT_USER}
+SupplementaryGroups=video
+WorkingDirectory=${PLANT_DATA_DIR}
+ExecStart=${PLANT_DIR}/.venv/bin/python ${PLANT_DIR}/hub/setup_camera.py
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

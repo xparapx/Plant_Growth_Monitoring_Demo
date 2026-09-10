@@ -1,0 +1,16 @@
+[Unit]
+Description=Plant dashboard - Streamlit (LEGACY, one-release rollback path; installed disabled)
+After=network-online.target planthub.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=${PLANT_USER}
+WorkingDirectory=${PLANT_DATA_DIR}
+Environment=PLANT_DATA_DIR=${PLANT_DATA_DIR}
+ExecStart=${PLANT_DIR}/.venv/bin/streamlit run ${PLANT_DIR}/hub/dashboard.py --server.address 0.0.0.0 --server.port 8501 --server.headless true
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
