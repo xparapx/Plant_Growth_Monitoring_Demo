@@ -177,14 +177,6 @@ uv run pytest                                    # 31 tests, no hardware
 
 ---
 
-## 작업 로그
-
-- **2026-07**: 3대 예비 데모 초기 공개 — 환경 노드 · 급수 노드 · Pi 카메라 관통 구축
-- **2026-07**: 폐루프 급수 상태기계 · 카메라 계측 파이프라인(ExG+Otsu) · 수분 변동성 실험 설계 · 허브 플랫폼 무관화
-- **2026-07-26**: 매뉴얼 대규모 개정 — `setup_`/`check_`/`run_` 체계, frame_align 밀림 보정, systemd 무인 운용
-- **2026-08**: 급수 노드 MQTT 보고·적응 도즈 학습, 미리보기·촬영 화각 통일(lores), center_roi
-- **2026-09**: **웹 UI 통합** — Streamlit·setup_camera 를 FastAPI + React 앱(:8080) 으로 대체, LED 촬영 루틴 자리, 더미 데이터 모드, 클론 그대로 설치되는 `install.sh` 와 사용자 무관 systemd 템플릿, GitHub Actions(CI·릴리스·Pages 데모)
-
----
+> 작업 이력은 [docs/WORKLOG.md](docs/WORKLOG.md), 작업 규칙·현재 상태는 [CLAUDE.md](CLAUDE.md) 참고.
 
 *Maintainer: xparapx*
