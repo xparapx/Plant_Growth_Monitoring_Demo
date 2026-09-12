@@ -1,14 +1,18 @@
-# 개발 인수인계 노트 (feat/web-ui)
+# 개발 인수인계 노트
 
 > 다른 PC(학교)에서 이어서 작업할 때 먼저 읽는 파일. 대화 컨텍스트가 없어도 여기만 보고 이어갈 수 있게 유지한다.
-> 마지막 갱신: 2026-09-11 (PC 야간 작업 후)
+> 마지막 갱신: 2026-09-12 (main 머지 완료, 운영 구조 확정)
+
+## 운영 구조 (확정)
+
+- 개발 메인은 **로컬 PC 작업 폴더**. 다른 PC 에서는 Claude Code 원격제어로 이 PC 세션에 접속해 작업한다(파이에서 직접 편집 금지).
+- 배포: 로컬 커밋 → `git push` → 파이가 `git pull --ff-only` — 전 과정은 `scripts/deploy.ps1` 한 번으로 수행(푸시 + 파이 pull + install + 헬스체크).
+- 파이 작업트리는 항상 clean 유지. Mealboard 프로젝트도 같은 구조.
 
 ## 지금 상태
 
-- 브랜치 `feat/web-ui` 가 전체 작업 내용. `main` 은 아직 예전(Streamlit) 상태 → **PR 을 열어 머지해야 함**:
-  https://github.com/xparapx/Plant_Growth_Monitoring_Demo/pull/new/feat/web-ui (또는 Claude 앱 상단 "PR 생성" 버튼).
-  머지 후 GitHub Settings → Pages → Source = **GitHub Actions** 로 바꿔야 데모 페이지(`/app`, 목 데이터)가 올라간다.
-- 파이(`jh@raspi`, Tailscale `100.80.188.63`, `~/plant`)는 `feat/web-ui` 최신 커밋으로 배포돼 있고 서비스 4개(mosquitto · planthub · plantsvc · plantsnap.timer) 모두 active.
+- `feat/web-ui` 는 **main 에 머지 완료**(376df62), 로컬 브랜치 삭제됨. GitHub Pages 도 Actions 소스로 배포 중(`/`, `/app` 모두 200).
+- 파이(`jh@raspi`, Tailscale `100.80.188.63`, `~/plant`)는 `main` 최신 커밋으로 배포돼 있고 서비스 4개(mosquitto · planthub · plantsvc · plantsnap.timer) 모두 active.
   UI: http://raspi:8080 (같은 Tailscale 계정 기기 어디서나).
 - 실험 장비(노드·LED)는 아직 없음 → 화면은 전부 **DUMMY DATA** 배지 상태. 실제 MQTT 행이 들어오는 테이블부터 자동으로 실데이터로 바뀐다(`analysis.dummy_fill=auto`).
 - 파이 카메라(imx708)는 실물이 붙어 있음. **카메라 세팅 5단계**(http://raspi:8080/camera/setup)는 아직 안 했음 → ROI/px_per_cm 이 없어 촬영이 ok=0 으로 끝난다. 이건 실물 트레이를 보며 직접 해야 하는 일.
@@ -41,8 +45,7 @@ cd web && npm run lint && npm run build
 
 ## 남은 일 (우선순위)
 
-1. PR 머지 + Pages 소스 전환.
-2. 파이에서 카메라 세팅 5단계 → calib.jpg 생성 → `sudo systemctl start plantsnap.service` 로 수동 촬영 1회 확인(journal 에 `LED skipped` → `shot` → `published`).
+1. 파이에서 카메라 세팅 5단계 → calib.jpg 생성 → `sudo systemctl start plantsnap.service` 로 수동 촬영 1회 확인(journal 에 `LED skipped` → `shot` → `published`).
 3. 노드(ESP32) 연결 후 DUMMY 배지가 테이블별로 꺼지는지 확인.
 4. LED 하드웨어 설치 시 §9-5(계획 파일) 절차.
 5. 선택: 모바일 화분 카드 2열, 라이트 테마 대비 재점검, GitHub Pages 데모 스크린샷을 README 에.
