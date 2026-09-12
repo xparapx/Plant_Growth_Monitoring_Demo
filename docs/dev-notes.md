@@ -46,9 +46,9 @@ cd web && npm run lint && npm run build
 ## 남은 일 (우선순위)
 
 1. 파이에서 카메라 세팅 5단계 → calib.jpg 생성 → `sudo systemctl start plantsnap.service` 로 수동 촬영 1회 확인(journal 에 `LED skipped` → `shot` → `published`).
-3. 노드(ESP32) 연결 후 DUMMY 배지가 테이블별로 꺼지는지 확인.
-4. LED 하드웨어 설치 시 §9-5(계획 파일) 절차.
-5. 선택: 모바일 화분 카드 2열, 라이트 테마 대비 재점검, GitHub Pages 데모 스크린샷을 README 에.
+2. 노드(ESP32) 연결 후 DUMMY 배지가 테이블별로 꺼지는지 확인.
+3. LED 하드웨어 설치 시 §9-5(계획 파일) 절차.
+4. 선택: 모바일 화분 카드 2열, 라이트 테마 대비 재점검, GitHub Pages 데모 스크린샷을 README 에.
 
 ## 알아둘 것
 
