@@ -29,4 +29,4 @@ cd web && npm run lint && npm run build
 
 - `main` 이 유일한 브랜치. 웹 UI 통합 완료, GitHub Pages(개요·매뉴얼·`/app` 데모) 배포 중.
 - 파이는 main 최신으로 배포, 서비스 4개 active. 실험 장비(노드·LED)는 미설치 → 화면은 DUMMY DATA 배지 상태(실데이터 유입 시 테이블별 자동 전환).
-- 남은 일: ① 카메라 세팅 5단계(http://raspi:8080/camera/setup, 실물 트레이 필요) → 수동 촬영 1회 확인 ② 노드(ESP32) 연결 후 DUMMY 배지 꺼짐 확인 ③ LED 설치 시 매뉴얼 §9-5 절차 ④ 선택: 모바일 화분 카드 2열, 라이트 테마 대비 재점검, README 에 데모 스크린샷.
+- 남은 일: ① 카메라 세팅 5단계(http://raspi:8080/camera/setup, 실물 트레이 필요) → 수동 촬영 1회 확인 ② 노드(ESP32) 연결 후 DUMMY 배지 꺼짐 확인 ③ LED: Grove RGB 스틱(5구)×2 를 환경노드 D4·D5 에 설치 → `USE_LIGHT=1` 펌웨어 업로드 → 새벽 시험 촬영으로 ExG 안정 확인(매뉴얼 패널 19) ④ 선택: 모바일 화분 카드 2열, 라이트 테마 대비 재점검, README 에 데모 스크린샷.

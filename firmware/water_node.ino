@@ -2,11 +2,14 @@
   water_node.ino — 급수 노드 폐루프 (2화분 데모)
   M5Stack Core S3 + Watering Unit U101      PUMP = G9 · SOIL = G8
 
-  ■ 펄스 급수 — 연속 급수를 하지 않는 이유 셋
+  ■ 펄스 급수 — 연속 급수를 하지 않는 이유 넷
       ① 넘침        700mL 화분은 한 번에 부으면 표면에 고입니다
       ② 편류        마른 배양토는 발수성이 있어 벽면 따라 바닥으로 빠집니다
       ③ 센서 지연   물이 전극까지 퍼지는 데 3~10분. 즉시 재면 과급수합니다
-    -> 도즈(짧게) → 대기 → 재측정 → 필요하면 반복
+      ④ 물튐        드로퍼가 길게 틀면 표면에서 튀어 잎·센서를 적십니다
+    -> 도즈를 0.2초 펄스로 쪼갬: 펄스 → 2.5초 스며듦+측정 → 펄스 → …
+       (목표 raw 도달 시 즉시 중지) → 다 주면 3분 침투 검증 → 필요하면 반복
+       0.2초/2.5초는 dry_probe 주기 측정 경험(2026-09)에서 온 값입니다.
 
   ■ 노드마다 고칠 곳은 맨 위 두 줄(TREAT_FLUCT / PLANT_ID)뿐입니다.
 */
@@ -72,8 +75,18 @@ const int BAND_CENTER = (RAW_ON + RAW_OFF) / 2;   // 두 노드가 같은지 부
 //   · 배운 값이 없으면 DOSE_SEED 로 시작합니다
 const float APPROACH   = 1.00f;     // 남은 양만큼 채우기 (배운 값이 맞으면 한 번에 도달)
 const float LEARN_RATE = 0.35f;     // 학습 반영률 (EMA)
-const int   DOSE_MIN   = 300;       // 너무 짧으면 펌프가 물을 못 밀어냅니다
-const int   DOSE_MAX   = 2000;      // 20mL — 700mL 화분에 한 번에 줄 수 있는 상한
+const int   DOSE_MIN   = 200;       // 한 펄스(=최소 공급 단위)보다 작으면 주지 않습니다
+const int   DOSE_MAX   = 2000;      // 20mL — 한 사이클 도즈 예산 상한
+
+// ── 펄스 분할 (dry_probe 경험 반영, 2026-09) ──────────────
+// 도즈 예산을 0.2초 펄스로 쪼개서 줍니다. 펄스 사이에 물이 스며들 틈을 주고
+// 그때 측정해서, 목표(RAW_OFF)에 닿으면 예산이 남아도 즉시 멈춥니다.
+//   · 0.2초 단위 공급 -> 드로퍼 물튐 방지, 표면 고임 없이 스며듦
+//   · 간격마다 측정   -> 센서가 따라오는 만큼만 주므로 과급수 여지 축소
+// 펄스열이 끝난 뒤의 3분 침투 검증(SETTLE)은 그대로 둡니다 — 2.5초 측정은
+// 조기 중지용 참고일 뿐, 학습·고장 판정은 여전히 침투가 끝난 값으로 합니다.
+const int           PULSE_MS     = 200;      // 펌프 1펄스 ON 시간
+const unsigned long PULSE_GAP_MS = 2500UL;   // 펄스 사이 스며듦+측정 간격 (2~3초)
 
 // 실측 유량 (PRIME 10초에 100mL) — 화면에 mL 로 보여 주기 위한 값입니다.
 // 제어에는 쓰지 않습니다. 펌프나 튜브를 바꾸면 다시 재서 고치세요.
@@ -100,16 +113,18 @@ const int            PIN_PUMP    = 9;
 const int            PIN_SOIL    = 8;
 
 // ══════════════ 상태 ══════════════
-enum State { S_SAFE, S_IDLE, S_DOSING, S_SETTLE, S_FAULT };
+enum State { S_SAFE, S_IDLE, S_DOSING, S_GAP, S_SETTLE, S_FAULT };
 State st = S_SAFE;                      // 부팅 직후엔 절대 급수하지 않습니다
+                                        // S_DOSING = 펄스 ON · S_GAP = 펄스 사이 스며듦+측정
 
 int   rawSoil = 0, rawBefore = 0, rawCycleStart = 0;
 int   shots = 0;
-int   doseMs = 0;                   // 이번에 실제로 튼 시간
+int   doseBudget = 0;               // 이번 도즈로 주기로 한 총 ON 시간(planDose)
+int   doseMs = 0;                   // 이번에 실제로 튼 누적 ON 시간 (펄스 합)
 int   noRise = 0;                   // 연속으로 "안 올랐다" 가 나온 횟수
 float kPerMs = 0.0f;                // 학습값: 1ms 당 내려가는 counts
 bool pumpOn = false;
-unsigned long tPump = 0, tSettle = 0, tSoakLog = 0, tFault = 0, tDraw = 0;
+unsigned long tPump = 0, tGap = 0, tSettle = 0, tSoakLog = 0, tFault = 0, tDraw = 0;
 const char* faultMsg = "";
 bool primeLatch = false;
 
@@ -284,6 +299,7 @@ void drawUI(){
     case S_SAFE:   sn = "SAFE (not armed)"; sc = DARKGREY; break;
     case S_IDLE:   sn = "watching";         sc = GREEN;    break;
     case S_DOSING: sn = "DOSING";           sc = RED;      break;
+    case S_GAP:    sn = "soaking";          sc = ORANGE;   break;
     case S_SETTLE: sn = "settling";         sc = YELLOW;   break;
     case S_FAULT:  sn = faultMsg;           sc = RED;      break;
   }
@@ -301,8 +317,8 @@ void drawUI(){
     if (left < 0) left = 0;
     M5.Display.printf("cooldown %3lds     ", left);
   } else {
-    M5.Display.printf("shot %d/%d  %dms=%.1fmL  k%.2f",
-                      shots, MAX_SHOTS, doseMs, doseMs / 1000.0f * ML_PER_SEC, kPerMs);
+    M5.Display.printf("shot %d/%d  %d/%dms=%.1fmL  k%.2f",
+                      shots, MAX_SHOTS, doseMs, doseBudget, doseMs / 1000.0f * ML_PER_SEC, kPerMs);
   }
 
   M5.Display.fillRoundRect(AX, AY, AW, AH, 8, st == S_SAFE ? NAVY : DARKGREEN);
@@ -340,6 +356,8 @@ void setup(){
   Serial.printf("[BOOT] 첫 도즈 %d ms (%.1f mL) · 대기 %lu s · 최대 %d회 · 도즈 %d~%d ms\n",
                 DOSE_SEED, DOSE_SEED / 1000.0f * ML_PER_SEC,
                 SETTLE_MS / 1000, MAX_SHOTS, DOSE_MIN, DOSE_MAX);
+  Serial.printf("[BOOT] 펄스 분할: %d ms ON + %lu ms 스며듦(측정·조기중지)\n",
+                PULSE_MS, PULSE_GAP_MS);
   if (RAW_ON - RAW_OFF < 20)
     Serial.println("[WARN] 밴드가 raw 20카운트 미만입니다 — 노이즈와 구분이 어렵습니다");
   Serial.println("[BOOT] SAFE 상태. 초기 젖음을 끝낸 뒤 ARM 을 누르세요.");
@@ -384,15 +402,28 @@ void loop(){
       rawSoil = readSoil();
       if (rawSoil >= RAW_ON){                 // raw 가 크다 = 말랐다
         rawCycleStart = rawSoil; shots = 0;
-        rawBefore = rawSoil; doseMs = planDose(rawSoil);
-        if (doseMs > 0){ setPump(true); st = S_DOSING; }
+        rawBefore = rawSoil; doseBudget = planDose(rawSoil); doseMs = 0;
+        if (doseBudget > 0){ setPump(true); st = S_DOSING; }
       }
       break;
 
-    case S_DOSING:
-      if (now - tPump >= (unsigned long)doseMs){
-        setPump(false); shots++;
-        st = S_SETTLE; tSettle = now; tSoakLog = now;
+    case S_DOSING: {                          // 펄스 ON — 한 번에 PULSE_MS 만
+      int on = min(PULSE_MS, doseBudget - doseMs);
+      if (now - tPump >= (unsigned long)on){
+        setPump(false); doseMs += on;
+        if (doseMs >= doseBudget){            // 예산 소진 -> 침투 검증으로
+          shots++; st = S_SETTLE; tSettle = now; tSoakLog = now;
+        } else { st = S_GAP; tGap = now; }    // 다음 펄스 전 스며듦
+      }
+      break;
+    }
+
+    case S_GAP:                               // 스며듦 2.5초 + 측정 — 목표면 조기 중지
+      if (now - tGap >= PULSE_GAP_MS){
+        rawSoil = readSoil();
+        if (rawSoil <= RAW_OFF){              // 이미 목표에 닿음 -> 남은 예산 버림
+          shots++; st = S_SETTLE; tSettle = now; tSoakLog = now;
+        } else { setPump(true); st = S_DOSING; }
       }
       break;
 
@@ -423,8 +454,8 @@ void loop(){
         } else if (shots >= MAX_SHOTS){        // 너무 여러 번
           toFault("verify fail");
         } else {
-          rawBefore = rawSoil; doseMs = planDose(rawSoil);
-          if (doseMs > 0){ setPump(true); st = S_DOSING; }
+          rawBefore = rawSoil; doseBudget = planDose(rawSoil); doseMs = 0;
+          if (doseBudget > 0){ setPump(true); st = S_DOSING; }
           else {                                 // 한 방울이면 넘칩니다 — 여기서 끝
             logEvent("filled", rawCycleStart, rawSoil, 0);
             shots = 0; st = S_IDLE;

@@ -4,6 +4,9 @@
 
 ## 2026-09
 
+- **09-18 환경노드 개정** — `plant_env_r4wifi.ino`: 블로킹 재접속(최대 85초 루프 정지) 제거 → water_node 식 논블로킹 `netReady()`(10초 간격 1회 시도), 발행 실패 유실 → 오프라인 큐 8건(payload 에 버킷 시각 포함이라 늦게 발행돼도 시각 정확), String → 정적 버퍼, WDT 5초, NTP 하루 1회 재동기화, 네오픽셀 시간 점등 구현(`USE_LIGHT=1` — Grove RGB 스틱 5구×2, D4·D5, 밝기 80/255 고정, KST 05:45~06:15, 창 밖·NTP 실패 시 무조건 소등).
+- **09-18 급수 펄스 분할** — dry_probe 주기 측정 경험을 반영해 `water_node.ino` 도즈를 **0.2초 펄스 + 2.5초 스며듦·측정** 열로 분할(새 상태 `S_GAP`). 간격 측정에서 목표(RAW_OFF) 도달 시 남은 예산을 버리고 조기 중지 — 드로퍼 물튐·과급수 방지. 학습(kPerMs)·3분 침투 검증·no-rise/MAX_SHOTS 고장 판정은 그대로(2.5초 측정은 조기 중지용 참고). `dry_probe.ino`를 `firmware/tools/`에 수록.
+- **09-18 LED 방식 변경** — 파이 GPIO + 릴레이/MOSFET 계획을 폐기하고 **환경노드(R4 WiFi) 네오픽셀 스트립의 시간 기반 독립 점등**(NTP, 05:45 점등/06:15 소등, 촬영 05:50 유지)으로 확정. 스위칭 소자·MQTT 명령 불요, 파이는 hub 역할만. 스트립 종류(RGBW 권장)·펌웨어 로직은 추후. 매뉴얼 패널 19·README·CLAUDE.md 반영. hub `led.*` 훅은 noop 그대로 존치.
 - **09-12 운영 구조 확정·문서 재편** — ssh 원격 편집 시도를 롤백하고 "로컬 PC 개발 → push → 파이 pull(--ff-only)" 구조 확정(`scripts/deploy.ps1` 한 번으로 배포). README 작업 로그·dev-notes 를 WORKLOG/CLAUDE.md 로 재편.
 - **09-12 main 머지 완료** — `feat/web-ui` 전체가 main 에 머지(376df62). GitHub Pages(Actions 소스)로 개요·매뉴얼·웹 데모(`/app`) 배포 확인. 파이도 main 최신으로 배포, 서비스 4개(mosquitto · planthub · plantsvc · plantsnap.timer) 모두 active.
 - **09-11 디자인 반영** — Claude Design 목업(턴 3, plantlab 네이비 팔레트)을 웹 UI 에 반영: 네이비 다크 기본 테마, Space Grotesk, `plantlab°` 워드마크, 니들 게이지 5종, Overview 우측 Treatment check/급수 이벤트, KPI·수분 궤적·밴드 설정·분포, 화분 카드 3×2·RGR 추이·ΔRGR, 카메라 세팅 프리뷰+5단계 레일. 원본은 `design/Plant Monitor Mockups.turn3.dc.html`, 매핑표는 `design/README.md`. Overview 하단에 관수 기록(`WaterCard`)·촬영 일지(`CaptureLogCard`) 추가. xl 12열 그리드에서 카드가 1열로 눌리던 문제 수정.

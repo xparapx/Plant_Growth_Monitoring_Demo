@@ -78,7 +78,7 @@ Streamlit 대시보드(:8501)와 `setup_camera.py`(:8000)를 **하나의 앱(:80
 
 **더미 데이터 모드** — 노드·카메라가 아직 없어도 전 화면이 돌아갑니다. 비어 있는 테이블은 합성 데이터로 채우고 그 섹션에 `DUMMY DATA` 배지를 붙입니다(`analysis.dummy_fill: auto`). 실제 메시지가 들어온 테이블부터 실측으로 바뀝니다. 카메라가 없으면 가짜 카메라(`PLANT_FAKE_HW=1`)로 세팅 5단계와 촬영 루틴까지 시험할 수 있고, 가짜 프레임의 측정값은 **절대 발행되지 않습니다**.
 
-**LED 촬영 루틴(자리)** — 촬영은 `LED 점등 → 워밍업 → 촬영 → 소등` 순서로 짜여 있습니다. 하드웨어는 아직 없으므로 기본값은 `led.enabled=false`(noop). 릴레이 모듈을 GPIO(BCM 17)에 달고 `data/config.json` 에서 `led.enabled=true, led.driver="gpiozero"` 로 바꾸면 05:50 점등 → 05:55 촬영이 됩니다.
+**LED 촬영 조명(자리)** — 새벽 촬영 조명은 환경노드(UNO R4 WiFi)의 네오픽셀 스트립이 **시간 기반으로 독립 운용**할 계획입니다(NTP 동기화, 05:45 점등 → 06:15 소등; 촬영은 그 창 안 05:50). 스위칭 소자·MQTT 명령·파이 GPIO 모두 쓰지 않고, 파이는 hub(영상 처리·백엔드·프론트) 역할만 합니다. 스트립 종류·펌웨어 로직은 추후 확정. hub 쪽 `led.*` 훅은 코드에 남아 있지만 기본값 `enabled=false`(noop) 그대로 둡니다.
 
 ---
 
@@ -153,7 +153,7 @@ uv run pytest                                    # 31 tests, no hardware
 - **급수 노드**: **M5Stack Core S3** + **Watering Unit (U101)** — Port B(G8=수분 / G9=PUMP_EN). 화분 1개당 노드 1개.
 - **허브**: **Raspberry Pi 5** — mosquitto · run_collector.py · plantsvc.
 - **카메라**: Raspberry Pi **Camera Module 3 — Standard(75°)**.
-- **LED(추후)**: 백색 촬영등 + 릴레이/MOSFET 모듈 ← GPIO BCM 17.
+- **LED**: Grove RGB LED 스틱(5구, WS2813) × 2 ← 환경노드 Base Shield D4·D5 직결, 시간 기반 독립 점등(05:45~06:15, `USE_LIGHT=1`).
 - 공통: 노드·허브 모두 **같은 WiFi**(2.4GHz).
 
 > ⚠️ **오토포커스·자동노출·자동화이트밸런스는 반드시 끄세요** — 6주간 고정값(`config.json`)을 유지해야 면적이 왜곡되지 않습니다. 웹 UI 의 [자동 측정 → 고정] 이 한 번 재고 잠급니다.

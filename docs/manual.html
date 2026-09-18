@@ -2855,7 +2855,7 @@ sudo systemctl enable --now mosquitto</pre>
     <table>
       <tr><th>유닛</th><th>하는 일</th><th>비고</th></tr>
       <tr><td><b>planthub.service</b></td><td><code class="in">hub/run_collector.py</code> — MQTT → SQLite</td><td><b>plant.db 의 유일한 writer.</b> <code class="in">Requires=mosquitto</code></td></tr>
-      <tr><td><b>plantsvc.service</b></td><td><code class="in">plantsvc serve</code> — 웹 UI · API · 카메라 미리보기 (:8080)</td><td>부팅·종료 때 <code class="in">plantsvc led off</code> 를 한 번씩 (릴레이 부동 방지)</td></tr>
+      <tr><td><b>plantsvc.service</b></td><td><code class="in">plantsvc serve</code> — 웹 UI · API · 카메라 미리보기 (:8080)</td><td>부팅·종료 때 <code class="in">plantsvc led off</code> 를 한 번씩 (소등 상태 보증 — GPIO 드라이버를 쓸 때만 의미)</td></tr>
       <tr><td><b>plantsnap.timer</b></td><td>05:50 · 15:00 에 plantsnap.service 를 부름</td><td><code class="in">Persistent=true</code> · <code class="in">AccuracySec=1s</code> — 시스템 시간대 기준</td></tr>
       <tr><td><b>plantsnap.service</b></td><td><code class="in">plantsvc capture --phase auto</code> — LED → 촬영 → 측정 → 발행</td><td><code class="in">ExecStopPost=plantsvc led off</code> — 실패·타임아웃이어도 램프는 꺼짐</td></tr>
       <tr><td><b>plantsnap-catchup.service</b></td><td>부팅 때 <code class="in">capture --if-missing</code></td><td>워밍업 중 정전으로 놓친 그날 phase 만 보충 (패널 19)</td></tr>
@@ -5215,7 +5215,7 @@ python3 -m http.server 8080</pre>
       Otsu 임계값이 올라가 마스크가 <b>잎 안쪽으로 파고듭니다.</b><br><br>
       더 나쁜 것은 이게 <b>날마다 조금씩 다르다</b>는 점입니다 — 흐린 날·맑은 날, 계절에 따라
       일출 시각까지 밀립니다. 생장 곡선에 <b>날씨가 섞여 들어옵니다.</b><br><br>
-      <b>백색 LED 를 촬영 루틴이 05:50·15:00 에 켜게</b>(패널 19 — 릴레이 모듈을 달면 <code class="in">led.enabled=true</code>) 하고 그 아래서 찍으세요.
+      <b>새벽 촬영 시각에 백색 LED 가 켜져 있게</b>(패널 19 — 환경노드가 05:45~06:15 시간 기반으로 네오픽셀 스트립을 점등) 하고 그 아래서 찍으세요.
       촬영 시각을 고정하는 것보다 <b>조명을 고정하는 것</b>이 확실합니다.
       보라색 재배등은 안 됩니다 — G 성분이 없어 ExG 가 작동하지 않습니다.
     </div>
@@ -7122,18 +7122,29 @@ uv run plantsvc seed --days 14               <span class="c"># 통째로 더미�
 
   <!-- ════════ sL ════════ -->
   <section class="panel" id="sL">
-    <h2 class="title"><span class="badge">19</span>LED 촬영 루틴 (자리)</h2>
-    <p class="lead">촬영은 <b>LED 점등 → 워밍업 → 촬영 → 소등</b> 순서로 짜여 있습니다. <b>램프 하드웨어는 아직 없습니다</b> —
-    그래서 기본값은 &ldquo;꺼짐·noop&rdquo;이고, 루틴은 램프가 없는 것처럼 돌면서 <b>자리만 비워 둡니다.</b> 램프를 달 때 이 패널만 보면 되게 써 두었습니다.</p>
+    <h2 class="title"><span class="badge">19</span>LED 촬영 조명 (자리)</h2>
+    <p class="lead">새벽 촬영 조명은 <b>환경노드(UNO R4 WiFi)의 Grove RGB LED 스틱(5구, WS2813) × 2</b>(D4·D5 포트)가 맡습니다 — 노드가 자체 타이머로
+    <b>05:45 점등 → 06:15 소등</b> 하고, 파이는 그 창 안(05:50)에서 평소처럼 찍기만 합니다. 펌웨어는 <code class="in">plant_env_r4wifi.ino</code> 의
+    <code class="in">USE_LIGHT=1</code> 블록(<code class="in">lightTick</code>)에 들어 있습니다.
+    hub 쪽 LED 훅(<code class="in">led.*</code>)은 코드에 남아 있지만 기본값 &ldquo;꺼짐·noop&rdquo; 그대로 두고 쓰지 않습니다.</p>
 
     <div class="box warn">
-      <span class="lbl">왜 조명을 루틴에 넣나 — 패널 11 의 &ldquo;날씨가 섞이는&rdquo; 문제</span>
+      <span class="lbl">왜 조명이 필요한가 — 패널 11 의 &ldquo;날씨가 섞이는&rdquo; 문제</span>
       노출을 고정했으니 어두운 아침엔 사진이 어둡고, Otsu 임계값이 올라 마스크가 잎 안쪽으로 파고듭니다(같은 잎이 −18%).
-      촬영 시각을 고정하는 것보다 <b>조명을 고정하는 것</b>이 확실합니다. 백색 LED 를 <b>찍기 직전에만</b> 켜면 6주 내내 같은 빛으로 찍힙니다.
-      보라색 재배등은 안 됩니다 — G 성분이 없어 ExG 가 작동하지 않습니다.
+      촬영 시각을 고정하는 것보다 <b>조명을 고정하는 것</b>이 확실합니다. 새벽 촬영 시각에 백색 LED 가 켜져 있으면 6주 내내 같은 빛으로 찍힙니다.
+      보라색 재배등은 안 됩니다 — G 성분이 없어 ExG 가 작동하지 않습니다. Grove 스틱은 <b>RGB(백색 칩 없음)</b>라 합성 백색의 스펙트럼이 뾰족합니다 —
+      설치 후 새벽 시험 촬영으로 ExG 마스크가 안정한지 반드시 확인하고, 문제가 보이면 RGBW 스트립으로 교체를 검토합니다.
     </div>
 
-    <h3>1) 순서 — 한 번의 촬영 안에서</h3>
+    <div class="box tip">
+      <span class="lbl">설계 변경 (2026-09) — 파이 GPIO + 릴레이 → 환경노드 네오픽셀 독립 운용</span>
+      처음 계획은 파이 GPIO(BCM 17) + 릴레이/MOSFET 모듈로 촬영 루틴이 직접 켜고 끄는 것이었습니다. 네오픽셀은 LED 마다 드라이버가 내장되어
+      <b>스위칭 소자(릴레이/MOSFET)가 필요 없고</b>, 환경노드 Grove 실드에 데이터 핀 직결이 됩니다. 그래서 조명을 노드로 옮기고
+      <b>MQTT 명령도 쓰지 않습니다</b> — 노드가 NTP 로 시계를 맞추고 시간 기반으로 독립 운용합니다. 파이는 영상 처리·백엔드·프론트엔드 hub 역할만 합니다.
+      대가: 부팅 보충 촬영(패널 19-5)과 수동 촬영은 점등 창 밖이면 조명 없이 찍힙니다 — 그날 데이터는 메타데이터로 걸러냅니다.
+    </div>
+
+    <h3>1) 순서 — hub 훅 (지금은 noop 으로 통과)</h3>
     <div class="diagram">
       <div class="dbox"><div class="t">① 카메라 확보</div><div class="d">release 요청 →<br>camera.lock</div></div>
       <div class="arrow"><div class="a">→</div></div>
@@ -7147,53 +7158,51 @@ uv run plantsvc seed --days 14               <span class="c"># 통째로 더미�
       <div class="arrow"><div class="a">→</div></div>
       <div class="dbox"><div class="t">⑥ 측정·발행</div><div class="d">jsonl 먼저<br>MQTT qos=1</div></div>
     </div>
-    <p>램프가 켜진 채로 남을 수 있는 길을 <b>세 겹</b>으로 막습니다 — 코드의 <code class="in">finally</code>, 유닛의 <code class="in">ExecStopPost=plantsvc led off</code>(타임아웃으로 SIGKILL 돼도 실행),
-    그리고 드라이버의 <b>watchdog</b>(<code class="in">led.max_on_s</code>, 기본 1200 s 뒤 무조건 소등). plantsvc.service 도 시작·종료 때 <code class="in">led off</code> 를 한 번씩 합니다 —
-    릴레이 보드는 커널 초기화 중 핀이 떠서 켜질 수 있기 때문입니다.</p>
+    <p>이 훅은 hub 가 GPIO 드라이버로 직접 켤 때를 위한 것으로, 코드의 <code class="in">finally</code> · 유닛의 <code class="in">ExecStopPost=plantsvc led off</code> ·
+    드라이버 <b>watchdog</b>(<code class="in">led.max_on_s</code>) 세 겹의 소등 보증이 들어 있습니다. <b>노드 독립 운용 방식에서는 이 훅을 쓰지 않고</b>(<code class="in">enabled=false</code>),
+    소등 보증은 노드 펌웨어의 자체 타이머(점등 창이 지나면 무조건 소등)가 맡게 됩니다 — 펌웨어 작성 시 반영할 것.</p>
 
-    <h3>2) config.json <code class="in">led</code> 절</h3>
+    <h3>2) config.json <code class="in">led</code> 절 — 노드 독립 운용에서는 <code class="in">enabled=false</code> 그대로</h3>
     <table>
       <tr><th>키</th><th>기본값</th><th>뜻</th></tr>
       <tr><td><code class="in">enabled</code></td><td><code class="in">false</code></td><td>램프 사용 여부. false 면 루틴이 <code class="in">[LED] skipped — not installed</code> 를 남기고 워밍업 0 초</td></tr>
       <tr><td><code class="in">driver</code></td><td><code class="in">"noop"</code></td><td><code class="in">noop</code> = 아무것도 안 함 · <code class="in">gpiozero</code> = <code class="in">gpiozero.OutputDevice</code>(apt python3-gpiozero + lgpio) · <code class="in">auto</code> = 있으면 gpiozero, 없으면 noop</td></tr>
-      <tr><td><code class="in">pin</code></td><td><code class="in">17</code></td><td>BCM 번호(물리 11번 핀). 릴레이/MOSFET 모듈의 IN</td></tr>
-      <tr><td><code class="in">active_high</code></td><td><code class="in">true</code></td><td>HIGH 에 켜짐. <b>액티브-로우 릴레이 보드</b>(대부분의 저가 릴레이 모듈)는 <code class="in">false</code></td></tr>
+      <tr><td><code class="in">pin</code></td><td><code class="in">17</code></td><td>BCM 번호(물리 11번 핀). hub 가 GPIO 로 직접 켤 때만 의미 — 노드 독립 운용에서는 미사용</td></tr>
+      <tr><td><code class="in">active_high</code></td><td><code class="in">true</code></td><td>HIGH 에 켜짐 (GPIO 드라이버용)</td></tr>
       <tr><td><code class="in">warmup_s</code></td><td><code class="in">300</code></td><td>점등 후 촬영까지. LED 는 켜진 직후 몇 분간 광량·색온도가 흘러내리므로 안정된 뒤 찍습니다</td></tr>
       <tr><td><code class="in">max_on_s</code></td><td><code class="in">1200</code></td><td>watchdog — 이 시간이 지나면 무조건 소등</td></tr>
     </table>
 
-    <h3>3) 시각표 — 램프 유무에 따라</h3>
+    <h3>3) 시각표 — 스트립 유무에 따라</h3>
     <table>
-      <tr><th></th><th>타이머</th><th>점등</th><th>촬영</th><th>소등</th><th>TimeoutStartSec</th></tr>
-      <tr><td><b>램프 없음</b> (지금)</td><td>05:50 · 15:00</td><td>—</td><td><b>05:50</b> · 15:00 (+ 2 s settle, 카메라 재시도 최대 3×30 s)</td><td>—</td><td>900 s</td></tr>
-      <tr><td><b>램프 설치</b> (warmup 300)</td><td>05:50 · 15:00</td><td>05:50 · 15:00</td><td><b>05:55</b> · 15:05</td><td>촬영 직후</td><td>900 s = max(900, 300 + 600)</td></tr>
+      <tr><th></th><th>노드 점등</th><th>파이 타이머</th><th>촬영</th><th>노드 소등</th><th>TimeoutStartSec</th></tr>
+      <tr><td><b>스트립 없음</b> (지금)</td><td>—</td><td>05:50 · 15:00</td><td><b>05:50</b> · 15:00 (+ 2 s settle, 카메라 재시도 최대 3×30 s)</td><td>—</td><td>900 s</td></tr>
+      <tr><td><b>스트립 설치</b></td><td><b>05:45</b> (새벽만)</td><td>05:50 · 15:00</td><td><b>05:50</b> · 15:00</td><td><b>06:15</b></td><td>900 s (변화 없음)</td></tr>
     </table>
     <div class="box tip">
-      <span class="lbl">05:50 으로 당긴 이유 — 새벽 촬영은 <b>램프가 있든 없든 06:00 전</b></span>
-      2026-07 판은 06:00 이었습니다. 워밍업 5분을 앞에 두면 램프가 있을 때 06:05 가 되어 여름 일출과 겹칩니다.
-      그래서 타이머를 05:50 으로 당겨 <b>램프가 있으면 05:55, 없으면 05:50</b> 에 찍히게 했습니다. 어느 쪽이든 06:00 전이라 자연광 조건이 같습니다.<br>
-      <b>램프를 다는 날 실험 노트에 적으세요</b> — 그날부터 새벽 사진 시각이 05:50 → 05:55 로 바뀌고, 조명 조건도 바뀝니다. 생장 곡선에 그 날짜의 계단이 보이면 그 이유입니다.
+      <span class="lbl">점등 창을 05:45~06:15 로 넓게 잡는 이유 — 두 시계는 서로 모릅니다</span>
+      노드 타이머와 파이의 plantsnap.timer 는 각자 돕니다(노드는 NTP, 파이는 시스템 시각). 점등을 촬영 5분 전(05:45)에 시작하면
+      네오픽셀 워밍업(광량·색 안정)과 두 시계의 어긋남을 함께 흡수하고, 06:15 소등이면 카메라 재시도(최대 3×30 s)까지 창 안에 들어옵니다.
+      hub 의 <code class="in">warmup_s</code> 는 쓰지 않으므로 촬영 시각은 <b>05:50 그대로</b> — 유닛 재렌더도 필요 없습니다.<br>
+      <b>스트립을 다는 날 실험 노트에 적으세요</b> — 그날부터 새벽 사진의 조명 조건이 바뀝니다. 생장 곡선에 그 날짜의 계단이 보이면 그 이유입니다.
     </div>
 
-    <h3>4) 램프를 달 때 — 나중에 할 일</h3>
+    <h3>4) 스틱을 달 때 — 설치 절차</h3>
     <div class="box warn">
-      <span class="lbl">왜 릴레이/MOSFET 모듈인가 — GPIO 핀은 램프를 못 켭니다</span>
-      GPIO 한 핀은 <b>3.3 V · 십수 mA</b> 입니다. 백색 LED 램프(수 W)는 커녕 밝은 LED 하나도 벅찹니다.
-      모듈은 <b>스위치일 뿐</b>이고, 램프 전원은 <b>별도 어댑터</b>에서 옵니다 — Pi 의 5 V 핀에서 램프 전류를 끌어오지 마세요(카메라·SD 브라운아웃).
-      릴레이 모듈이면 접점 정격, MOSFET 모듈이면 DC 전압·전류가 램프에 맞는지 확인하고, <b>GND 는 Pi 와 램프 전원이 공통</b>이어야 합니다.
+      <span class="lbl">전류와 스펙트럼 — Grove 스틱 2개(10구) 기준</span>
+      네오픽셀은 LED 마다 드라이버 내장이라 <b>데이터 핀 직결(스위칭 소자 불요)</b>. 풀 화이트 기준 LED 당 ~60 mA 로
+      10구 풀밝기면 ~600 mA 지만, 펌웨어 기본 밝기 80/255 에서는 <b>~190 mA — 보드 5 V 레일 직결 OK</b>.
+      밝기를 올릴 땐 총전류와 5 V 레일 여유를 확인하세요. 촬영 조명은 매일 같은 밝기로 고정합니다(<code class="in">LIGHT_BRIGHT</code>).
+      설치 후 새벽 시험 촬영으로 광량이 자연광을 누르는지 확인.
     </div>
     <ol style="margin:4px 0 0 18px; line-height:1.8;">
-      <li>Pi 전원 끄고 배선 — 모듈 IN ← <b>BCM 17</b>(물리 11번), VCC ← 3.3 V 또는 5 V(모듈 사양대로), GND 공통. 램프 전원은 모듈의 출력 쪽</li>
-      <li>웹 UI <code class="in">/system</code> → config.json: <code class="in">"led": {"enabled": true, "driver": "gpiozero", "pin": 17, "active_high": true, …}</code>
-          — 켜야 할 때 꺼지고 꺼야 할 때 켜지면 <code class="in">active_high: false</code></li>
-      <li><code class="in">cd ~/plant &amp;&amp; scripts/install.sh --update</code> — 유닛을 다시 렌더 (TimeoutStartSec 에 워밍업이 반영됨)</li>
-      <li><code class="in">.venv/bin/plantsvc doctor --led-test</code> — led 행이 <code class="in">OK gpio 17</code> 이고 램프가 2 초 켜졌다 꺼지는지 눈으로</li>
-      <li><code class="in">sudo systemctl start plantsnap.service</code> — 저널에 <code class="in">[LED] on — warm-up 300s</code> → 5분 뒤 <code class="in">shot</code> → 소등. 30분 안이면 <code class="in">debounced</code> 이므로 시험은 <code class="in">plantsvc capture --force --warmup 10</code> 로</li>
-      <li>실험 노트에 날짜·시각 변경(05:50 → 05:55)·램프 종류·높이를 기록</li>
+      <li>Grove RGB LED 스틱(5구) 2개를 Base Shield <b>D4·D5 포트</b>에 연결. <b>내장 12×8 매트릭스는 네오픽셀이 아니므로 외장 스틱 필수</b></li>
+      <li><code class="in">plant_env_r4wifi.ino</code> 의 <code class="in">USE_LIGHT=1</code> 확인 후 업로드 — NTP 동기화(부팅 + 하루 1회), KST 초단위 창 비교로 <b>05:45 점등 / 06:15 소등</b>, 창 밖·NTP 실패 시 무조건 소등(자체 watchdog). 라이브러리 Adafruit NeoPixel 필요</li>
+      <li>config.json 의 <code class="in">led</code> 절은 <code class="in">enabled=false</code> 그대로 — hub 는 관여하지 않음</li>
+      <li>새벽 저널에서 촬영(05:50)이 점등 창 안에 있는지, 사진이 조명 아래 찍혔는지 확인</li>
+      <li>조명 아래서 <code class="in">calib.jpg</code> 를 <b>다시 찍기</b> — 조명이 바뀌면 기준 사진도 바뀌어야 밀림 판정과 노출이 맞습니다</li>
+      <li>실험 노트에 날짜·밝기 설정(<code class="in">LIGHT_BRIGHT</code>)·스틱 위치·높이를 기록</li>
     </ol>
-<pre>plantsvc led test --seconds 2      <span class="c"># 켰다 끔 — 램프 없으면 "LED not installed" 만 출력하고 0 으로 종료</span>
-plantsvc led on --seconds 30       <span class="c"># 30초 뒤 자동 소등. 웹 UI /camera 의 LED 카드에서도 같은 일</span>
-plantsvc led off                   <span class="c"># 강제 소등 (언제든 안전)</span></pre>
 
     <h3>5) 놓친 촬영 — plantsnap-catchup.service</h3>
     <div class="box">
@@ -7204,22 +7213,21 @@ plantsvc led off                   <span class="c"># 강제 소등 (언제든 �
       아니면 <code class="in">skipped</code> 로 조용히 끝납니다. 정상 부팅에서는 늘 skipped 입니다.
     </div>
     <div class="box tip">
-      <span class="lbl">왜 LED 만 켜는 별도 유닛이 없나</span>
-      &ldquo;05:50 에 LED 유닛, 05:55 에 촬영 유닛&rdquo;으로 나누면 둘 사이의 <b>순서·실패 처리·소등 책임</b>이 systemd 의존성으로 흩어집니다 —
-      촬영이 실패했을 때 누가 끄는지, 촬영 유닛이 늦게 뜨면 워밍업이 얼마였는지 알 수 없습니다.
-      한 프로세스 안에서 켜고·기다리고·찍고·끄면 <b>워밍업 시간이 정확히 로그에 남고</b> <code class="in">finally</code> 하나로 소등이 보장됩니다.
-      그래서 LED 는 촬영 루틴의 <b>한 단계</b>이지 독립 서비스가 아닙니다.
+      <span class="lbl">보충 촬영과 조명 — 노드 독립 운용의 한계</span>
+      노드는 파이의 촬영 여부를 모르므로, 부팅 보충 촬영(<code class="in">--if-missing</code>)이나 수동 촬영이 <b>점등 창(05:45~06:15) 밖</b>에서 돌면
+      그날 새벽 사진은 조명 없이 찍힙니다. 기능상 문제는 없고, 그날 데이터만 조명 조건이 다르다는 점을 실험 노트·메타데이터로 남겨 분석 때 걸러냅니다.
+      이 단순함(스위칭 소자·MQTT 명령·hub GPIO 모두 불요)과 맞바꾼 대가입니다. 촬영 시각을 바꾸면 <b>노드 펌웨어의 점등 창도 같이</b> 바꿔야 합니다.
     </div>
 
     <div class="box ok">
-      <span class="lbl">램프 설치 뒤 확인할 것</span>
+      <span class="lbl">스트립 설치 뒤 확인할 것</span>
       <ul class="chk">
-        <li><code class="in">plantsvc doctor</code> led 행 OK · <code class="in">--led-test</code> 로 램프가 실제로 켜졌다 꺼진다</li>
-        <li><code class="in">journalctl -u plantsnap</code> 에 <code class="in">[LED] on — warm-up 300s</code> 가 있고 촬영 시각이 <b>05:55</b> 로 바뀌었다</li>
-        <li>촬영이 끝난 뒤(또는 <code class="in">systemctl stop plantsnap</code> 로 강제 중단해도) 램프가 <b>꺼져 있다</b></li>
-        <li>웹 UI /camera 의 LED 카드가 &ldquo;미설치&rdquo;가 아니라 상태(off · gpio 17)를 보여 준다</li>
-        <li>램프 아래서 찍은 <code class="in">calib.jpg</code> 를 <b>다시 찍었다</b> — 조명이 바뀌면 기준 사진도 바뀌어야 밀림 판정과 노출이 맞습니다</li>
-        <li>실험 노트에 날짜를 적었다</li>
+        <li>05:45 에 켜지고 06:15 에 꺼진다 — 하루 지켜보거나 노드 시각을 임시로 당겨 시험</li>
+        <li>노드 전원을 뽑았다 꽂아도(NTP 재동기화 후) 창 밖이면 <b>꺼진 상태</b>로 시작한다</li>
+        <li>새벽 05:50 사진이 조명 아래 찍혔다 — 저널의 촬영 시각이 점등 창 안</li>
+        <li>Wi-Fi 를 끊어 NTP 가 실패해도 램프가 켜진 채 남지 않는다</li>
+        <li>조명 아래서 찍은 <code class="in">calib.jpg</code> 를 <b>다시 찍었다</b> — 조명이 바뀌면 기준 사진도 바뀌어야 밀림 판정과 노출이 맞습니다</li>
+        <li>실험 노트에 날짜·스트립 종류·밝기를 적었다</li>
       </ul>
     </div>
     <div class="nav-btns"><button class="ghost">◀ 이전</button><button>다음 ▶</button></div>
@@ -8655,7 +8663,7 @@ df -h                                              # 이미지 누적</pre>
       <span class="lbl">가장 먼저 확인할 것</span>
       ExG = 2G − R − B 인데, 적청(보라) LED 아래에서는 <b>G 성분이 거의 없어</b> 잎이 검출되지 않습니다.
       <b>백색 풀스펙트럼 LED</b>를 쓰시거나, 보라색을 써야 한다면
-      <b>촬영 순간에만 백색으로 전환</b>(릴레이 자동화)해야 합니다.
+      <b>촬영 시간대에만 백색으로 전환</b>(환경노드 시간 기반 점등)해야 합니다.
     </div>
 
     <h3>왜 Camera Module 3 <b>Standard</b>인가 — Wide·NoIR 아님</h3>
