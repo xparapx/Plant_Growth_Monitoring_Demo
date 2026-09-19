@@ -153,7 +153,7 @@ uv run pytest                                    # 31 tests, no hardware
 - **급수 노드**: **M5Stack Core S3** + **Watering Unit (U101)** — Port B(G8=수분 / G9=PUMP_EN). 화분 1개당 노드 1개.
 - **허브**: **Raspberry Pi 5** — mosquitto · run_collector.py · plantsvc.
 - **카메라**: Raspberry Pi **Camera Module 3 — Standard(75°)**.
-- **LED**: Grove RGB LED 스틱(5구, WS2813) × 2 ← 환경노드 Base Shield D4·D5 직결, 시간 기반 독립 점등(05:45~06:15, `USE_LIGHT=1`).
+- **LED**: RGB 네오픽셀 4구 스트립 × 1 ← 환경노드 핀 9 직결(NEO_GRB), 시간 기반 독립 점등(05:45~06:15, `USE_LIGHT=1`). 광량 충분 여부는 [자동 측정] gain 으로 검증.
 - 공통: 노드·허브 모두 **같은 WiFi**(2.4GHz).
 
 > ⚠️ **오토포커스·자동노출·자동화이트밸런스는 반드시 끄세요** — 6주간 고정값(`config.json`)을 유지해야 면적이 왜곡되지 않습니다. 웹 UI 의 [자동 측정 → 고정] 이 한 번 재고 잠급니다.
