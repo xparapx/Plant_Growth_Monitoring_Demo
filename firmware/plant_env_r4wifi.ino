@@ -17,8 +17,9 @@
  *    · 발행 실패 = 유실이던 것을 오프라인 큐(8건)로 — 타임스탬프는
  *      payload 에 이미 박혀 있으므로 늦게 발행돼도 시각이 안 밀립니다.
  *    · String 제거(힙 단편화) · WDT(5초) · NTP 하루 1회 재동기화.
- *    · 촬영 조명 — RGB 네오픽셀 4구 (핀 9), KST 05:45~06:15 시간 기반
- *      독립 점등 (USE_LIGHT=1). 시리얼 모니터 1/0 = 점등 테스트.
+ *    · 촬영 조명 — RGB 네오픽셀 4구 × 2 (핀 8·9), KST 05:45~06:15 시간
+ *      기반 점등 + 원격 제어(MQTT plant/<id>/light/set "1"/"0", 30분
+ *      자동 소등) + 시리얼 1/0 테스트 (USE_LIGHT=1).
  * ═══════════════════════════════════════════════════════════
  *  ★ Core S3 판과 다른 점 (R4 WiFi 전용)
  *    · M5Unified 없음 → 화면 코드 제거 (R4는 12x8 LED 매트릭스뿐)
@@ -56,29 +57,40 @@ const unsigned long SAMPLE_MS = 10000;      // 5분에 n≈30
 // NTP는 UTC로 저장, hub에서 +9h. 아래 KST 는 조명 창 계산에만 씁니다.
 // ════════════════════════════════
 
-// ══════════ 촬영 조명 — RGB 네오픽셀 4구 (핀 9) ══════════
+// ══════════ 촬영 조명 — RGB 네오픽셀 4구 × 2 (핀 8·9) ══════════
 // 네오픽셀은 LED마다 드라이버 내장 -> 데이터 핀 직결, 릴레이/MOSFET 불요.
-// 노드가 시계(NTP)만 보고 독립 점등합니다 — 파이·MQTT 는 관여하지 않음.
-//   · 창이 지나면 무조건 소등 (자체 watchdog — 매 루프 창 밖이면 off)
-//   · NTP 실패(timeOK=false)면 켜지 않음 — 켜진 채 남는 길을 차단
-//   · 전류: 풀 화이트 LED당 ~60mA -> 4구 풀밝기 ~240mA, 보드 5V 직결 OK.
+//   · 기본 동작은 시간 기반 독립 점등 — 창(05:45~06:15)이 최우선이고,
+//     창 점등은 어떤 명령으로도 못 끕니다 (실험 데이터 보호).
+//   · 원격 제어: MQTT plant/<id>/light/set 에 "1"/"0" (또는 on/off).
+//     시리얼 모니터 1/0 도 같은 효과. 둘 다 <명령 점등>으로 취급되어
+//     LIGHT_CMD_MAX_MS 뒤 자동 소등 — 켜 두고 잊어도 남지 않습니다.
+//   · 상태 보고: 바뀔 때마다 plant/<id>/light 로 {"state":..,"by":..} 발행.
+//   · NTP 실패(timeOK=false)면 창 점등은 하지 않음 (안전측).
+//   · 전류: 풀 화이트 LED당 ~60mA -> 8구 풀밝기 ~480mA. 화면 밝기·USB 전원
+//     여유를 확인하고, 부족 징후(리셋·색 틀어짐)가 보이면 별도 5V 급전.
 //   · RGB 합성 백색은 스펙트럼이 뾰족함 — 설치 후 새벽 시험 촬영으로
 //     ExG 마스크가 안정한지 확인할 것 (매뉴얼 패널 19).
 #define USE_LIGHT 1
 #if USE_LIGHT
   #include <Adafruit_NeoPixel.h>
-  const int     LIGHT_PIN    = 9;           // ★ 스트립 데이터 핀 (Grove 디지털 포트)
-  const int     LIGHT_N      = 4;           // ★ LED 개수
+  const int     LIGHT_PIN1   = 8;           // ★ 스트립 1 데이터 핀
+  const int     LIGHT_PIN2   = 9;           // ★ 스트립 2 데이터 핀
+  const int     LIGHT_N      = 4;           // ★ 스트립당 LED 개수
   const uint8_t LIGHT_BRIGHT = 255;         // 0~255 — 매일 같은 값으로 고정 (전류 제한 겸)
   const long    LIGHT_ON_S   = 5*3600L + 45*60L;   // KST 05:45
   const long    LIGHT_OFF_S  = 6*3600L + 15*60L;   // KST 06:15 (촬영 05:50 이 창 안)
-  Adafruit_NeoPixel strip(LIGHT_N, LIGHT_PIN, NEO_GRB + NEO_KHZ800);  // RGB 스트립 (백색 칩 없음)
-  bool lit = false;
+  const unsigned long LIGHT_CMD_MAX_MS = 1800000UL;   // 명령 점등 자동 소등 (30분)
+  Adafruit_NeoPixel strip1(LIGHT_N, LIGHT_PIN1, NEO_GRB + NEO_KHZ800);  // RGB (백색 칩 없음)
+  Adafruit_NeoPixel strip2(LIGHT_N, LIGHT_PIN2, NEO_GRB + NEO_KHZ800);
+  bool lit = false;                         // 현재 실제 상태
+  bool cmdOn = false;                       // 원격/시리얼 명령 점등 중
+  unsigned long tCmd = 0;                   // 명령 점등 시작 시각
+  const char* litBy = "off";                // "window" | "cmd" | "off" — 상태 보고용
 
   void setLight(bool on) {                  // 점등/소등 한 곳에서 — RGB 합성 백색
-    uint32_t c = on ? strip.Color(255, 255, 255) : 0;
-    for (int i = 0; i < LIGHT_N; i++) strip.setPixelColor(i, c);
-    strip.show();
+    uint32_t c = on ? Adafruit_NeoPixel::Color(255, 255, 255) : 0;
+    for (int i = 0; i < LIGHT_N; i++) { strip1.setPixelColor(i, c); strip2.setPixelColor(i, c); }
+    strip1.show(); strip2.show();
   }
 #endif
 
@@ -141,7 +153,16 @@ bool netReady() {
   tRetry = now;
   char cid[24];
   snprintf(cid, sizeof(cid), "%s-%04x", nodeId, (unsigned)random(0xffff));
-  if (client.connect(cid)) { Serial.println("MQTT OK"); return true; }
+  if (client.connect(cid)) {
+    Serial.println("MQTT OK");
+#if USE_LIGHT
+    char sub[48];
+    snprintf(sub, sizeof(sub), "plant/%s/light/set", nodeId);
+    client.subscribe(sub);                       // 원격 점등 명령 구독
+    publishLightState();                         // 재접속 시 현재 상태 알림
+#endif
+    return true;
+  }
   Serial.print("MQTT rc="); Serial.println(client.state());   // -2 = 거부/방화벽
   return false;
 }
@@ -271,33 +292,65 @@ void publishAverage(long bucket) {
 void resetAccum() { sT=sH=sP=sV=sL=sC=0; n=0; nC=0; nB=0; }
 
 #if USE_LIGHT
-bool lightTest = false;                   // 시리얼 1/0 테스트 중이면 true — 창 전이가 오면 해제
+// 상태 보고 — 바뀔 때만 발행. 끊겨 있으면 조용히 넘어감(조명은 로컬이 진실).
+void publishLightState() {
+  if (!client.connected() || !idReady) return;
+  char t[48], m[96];
+  snprintf(t, sizeof(t), "plant/%s/light", nodeId);
+  snprintf(m, sizeof(m), "{\"node\":\"%s\",\"state\":\"%s\",\"by\":\"%s\"}",
+           nodeId, lit ? "on" : "off", litBy);
+  client.publish(t, m);
+}
 
-// 시간 기반 점등 — 상태가 <바뀔 때만> show(). 창 밖 = 무조건 소등이 watchdog 역할.
+// 원격/시리얼 <명령 점등> 공통 진입점. 켜기는 워치독 타이머를 재장전한다.
+void lightCommand(bool on, const char* src) {
+  cmdOn = on;
+  if (on) tCmd = millis();
+  Serial.print("[LIGHT] cmd "); Serial.print(on ? "ON" : "OFF");
+  Serial.print(" ("); Serial.print(src); Serial.println(")");
+}
+
+// 점등 결정 — 매 루프 재평가. 창이 최우선, 명령 점등은 30분 워치독.
 void lightTick() {
-  bool want = false;
+  bool window = false;
   long e = nowEpoch();
   if (e > 0) {
     long sod = (e + 9*3600L) % 86400L;          // KST 자정 기준 초 (UTC 일경계 wrap 처리)
-    want = (sod >= LIGHT_ON_S && sod < LIGHT_OFF_S);
-  }                                             // timeOK=false -> want=false (안전측)
+    window = (sod >= LIGHT_ON_S && sod < LIGHT_OFF_S);
+  }                                             // timeOK=false -> 창 점등 없음 (안전측)
+  if (cmdOn && millis() - tCmd >= LIGHT_CMD_MAX_MS) {   // 명령 점등 워치독
+    cmdOn = false;
+    Serial.println("[LIGHT] cmd timeout — auto off");
+  }
+  bool want = window || cmdOn;
   if (want == lit) return;
   lit = want;
-  lightTest = false;                            // 실제 창 전이가 오면 테스트 상태는 버린다
+  litBy = lit ? (window ? "window" : "cmd") : "off";
   setLight(lit);
-  Serial.println(lit ? "[LIGHT] on 05:45~06:15" : "[LIGHT] off");
+  Serial.print("[LIGHT] "); Serial.print(lit ? "on" : "off");
+  Serial.print(" by "); Serial.println(litBy);
+  publishLightState();
 }
 
-// 시리얼 테스트: 모니터(115200)에서 1 = 켜기, 0 = 끄기. 시간 로직과 무관.
+// 시리얼 테스트: 모니터(115200)에서 1 = 켜기, 0 = 끄기.
 void lightSerialTest() {
   if (!Serial.available()) return;
   char ch = Serial.read();
-  if (ch != '1' && ch != '0') return;
-  lightTest = (ch == '1');
-  setLight(lightTest);
-  Serial.println(lightTest ? "[LIGHT] test ON" : "[LIGHT] test OFF");
+  if (ch == '1' || ch == '0') lightCommand(ch == '1', "serial");
 }
 #endif
+
+// MQTT 수신 — plant/<id>/light/set : "1"/"on" 켜기, "0"/"off" 끄기
+void onMqtt(char* t, byte* payload, unsigned int len) {
+#if USE_LIGHT
+  const char* slash = strrchr(t, '/');
+  if (slash == nullptr || strcmp(slash, "/set") != 0) return;
+  char v[8] = "";
+  strncpy(v, (const char*)payload, len < sizeof(v) - 1 ? len : sizeof(v) - 1);
+  if (!strcmp(v, "1") || !strcasecmp(v, "on"))  lightCommand(true, "mqtt");
+  if (!strcmp(v, "0") || !strcasecmp(v, "off")) lightCommand(false, "mqtt");
+#endif
+}
 
 void setup() {
   Serial.begin(115200);
@@ -305,18 +358,21 @@ void setup() {
   initSensors();
 
 #if USE_LIGHT
-  strip.begin();
-  strip.setBrightness(LIGHT_BRIGHT);       // 매일 같은 값 — 전류 제한 겸 조명 고정
-  strip.clear(); strip.show();             // 부팅은 반드시 소등으로
+  strip1.begin(); strip2.begin();
+  strip1.setBrightness(LIGHT_BRIGHT);      // 매일 같은 값 — 전류 제한 겸 조명 고정
+  strip2.setBrightness(LIGHT_BRIGHT);
+  strip1.clear(); strip1.show();           // 부팅은 반드시 소등으로
+  strip2.clear(); strip2.show();
 #endif
 
   // ★ 여기서 기다리지 않습니다 — 연결·NTP·nodeId 확정은 전부 loop 에서 논블로킹으로.
   WiFi.begin(WIFI_SSID, WIFI_PASS);
   client.setServer(BROKER, PORT);
+  client.setCallback(onMqtt);              // 원격 점등 명령 수신
   client.setKeepAlive(60);
 
   WDT.begin(5000);                         // 5초 워치독 — I2C/소켓이 얼면 리셋
-  Serial.println("[BOOT] env node — 논블로킹 접속, 큐 8건, WDT 5s, LIGHT 4구/핀9");
+  Serial.println("[BOOT] env node — 논블로킹 접속, 큐 8건, WDT 5s, LIGHT 4구x2 핀8·9 (mqtt/serial 제어)");
 }
 
 void loop() {
