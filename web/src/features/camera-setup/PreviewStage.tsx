@@ -53,8 +53,9 @@ export function PreviewStage({ cm, className = '' }: { cm: number; className?: s
   const interactive = live && mode !== 'idle' && !disabled
   return (
     <div
-      className={`relative w-full overflow-hidden rounded-[16px] bg-sunken ${className}`}
-      style={{ aspectRatio: `${w} / ${h}` }}
+      className={`relative mx-auto w-full overflow-hidden rounded-[16px] bg-sunken ${className}`}
+      // 세로(90/270°)에서는 화면 높이에 맞춰 폭을 줄인다 — 가로는 min() 이 100% 를 고른다
+      style={{ aspectRatio: `${w} / ${h}`, width: `min(100%, calc(74vh * ${(w / h).toFixed(4)}))` }}
     >
       <img
         ref={imgRef}
