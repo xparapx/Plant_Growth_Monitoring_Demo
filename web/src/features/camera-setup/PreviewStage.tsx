@@ -20,10 +20,13 @@ export function PreviewStage({ cm, className = '' }: { cm: number; className?: s
   const live = status.preview === 'live'
   const [w, h] = status.preview_size
 
+  // rot 를 쿼리에 넣어 회전이 바뀌면 스트림을 재연결한다 — MJPEG <img> 는 첫 프레임
+  // 크기로 래스터가 고정되므로, 기존 연결로는 회전된 프레임이 눌려 보인다.
+  const rot = status.capture.rotation ?? 0
   const streamSrc = MOCK
     ? MOCK_PREVIEW_SRC
     : live
-      ? assetUrl(fallback ? `/api/camera/frame.jpg?t=${mountTs}` : `/api/camera/stream.mjpg?overlay=0&t=${mountTs}`)
+      ? assetUrl(fallback ? `/api/camera/frame.jpg?t=${mountTs}&r=${rot}` : `/api/camera/stream.mjpg?overlay=0&t=${mountTs}&r=${rot}`)
       : undefined
 
   // Stop the MJPEG socket when paused and on unmount.
