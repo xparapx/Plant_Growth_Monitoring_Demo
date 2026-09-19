@@ -141,8 +141,13 @@ bool primeLatch = false;
 
 
 // ── 버튼 영역 (rotation 1 = 320x240) ──
-const int AX=8,  AY=178, AW=150, AH=54;         // ARM / STOP
-const int BX=162,BY=178, BW=150, BH=54;         // PRIME (누르는 동안 펌프)
+const int AX=8,  AY=178, AW=98, AH=54;          // ARM / STOP (탭 토글)
+const int BX=111,BY=178, BW=98, BH=54;          // PRIME (누르는 동안 펌프)
+const int CX=214,CY=178, CW=98, CH=54;          // RESET (1.5초 길게 — 오터치 방지)
+const unsigned long RESET_HOLD_MS = 1500;
+unsigned long tHold = 0; bool holding = false;  // RESET 진행바
+// 처리군 선택 칩 — SAFE 상태에서만 표시·동작
+const int T1X=196, T2X=258, TY=4, TW=58, TH=26; // [STBL] [FLCT]
 
 // ══════════════ 변환 ══════════════
 float pctOf(int raw){
@@ -293,9 +298,14 @@ void drawUI(){
 
   M5.Display.setTextSize(2); M5.Display.setTextColor(TREAT[0]=='f' ? ORANGE : CYAN, BLACK);
   M5.Display.setCursor(10, 8);   M5.Display.printf("%s  %s", PLANT_ID, TREAT);
-  if (st == S_SAFE){                       // SAFE 에서만 처리군 전환 가능 — 안내
-    M5.Display.setTextSize(1); M5.Display.setTextColor(DARKGREY, BLACK);
-    M5.Display.setCursor(200, 12); M5.Display.print("tap = treat toggle");
+  if (st == S_SAFE){                       // SAFE 에서만 처리군 선택 칩 표시
+    for (int i = 0; i < 2; i++){
+      int x = i ? T2X : T1X;
+      bool sel = (treatIdx == i);
+      M5.Display.fillRoundRect(x, TY, TW, TH, 6, sel ? (i ? ORANGE : CYAN) : 0x2104);
+      M5.Display.setTextColor(sel ? BLACK : DARKGREY);
+      M5.Display.setCursor(x + 8, TY + 6); M5.Display.print(i ? "FLCT" : "STBL");
+    }
   }
 
   M5.Display.setTextSize(3); M5.Display.setTextColor(WHITE, BLACK);
@@ -350,9 +360,16 @@ void drawUI(){
 
   M5.Display.fillRoundRect(AX, AY, AW, AH, 8, st == S_SAFE ? NAVY : DARKGREEN);
   M5.Display.fillRoundRect(BX, BY, BW, BH, 8, pumpOn ? RED : 0x2104);
+  M5.Display.fillRoundRect(CX, CY, CW, CH, 8, MAROON);
+  if (holding){                                  // RESET 누른 시간만큼 채워짐
+    int w = (int)(CW * min(1.0f, (millis() - tHold) / (float)RESET_HOLD_MS));
+    M5.Display.fillRoundRect(CX, CY, w, CH, 8, RED);
+  }
   M5.Display.setTextSize(2); M5.Display.setTextColor(WHITE);
-  M5.Display.setCursor(AX + 34, AY + 18); M5.Display.print(st == S_SAFE ? "ARM " : "STOP");
-  M5.Display.setCursor(BX + 26, BY + 18); M5.Display.print("PRIME");
+  M5.Display.setCursor(AX + 22, AY + 18); M5.Display.print(st == S_SAFE ? "AUTO" : "STOP");   // 자동 급수 시작/중지
+  M5.Display.setCursor(BX + 22, BY + 18); M5.Display.print("PUMP");                            // 누르는 동안 수동 펌프
+
+  M5.Display.setCursor(CX + 18, CY + 18); M5.Display.print(holding ? "hold." : "RESET");
   M5.Display.endWrite();
 }
 
@@ -392,7 +409,7 @@ void setup(){
                 PULSE_MS, PULSE_GAP_MS);
   if (RAW_ON - RAW_OFF < 20)
     Serial.println("[WARN] 밴드가 raw 20카운트 미만입니다 — 노이즈와 구분이 어렵습니다");
-  Serial.println("[BOOT] SAFE 상태. 초기 젖음을 끝낸 뒤 ARM 을 누르세요.");
+  Serial.println("[BOOT] SAFE 상태. 초기 젖음(init wet OK)을 확인한 뒤 AUTO 를 누르세요.");
   drawUI();
 }
 
@@ -413,26 +430,44 @@ void loop(){
     else logEvent("prime", rawPrimeBefore, rawSoil, dur);   // PRIME 이 상한에 걸려도 기록
   }
 
-  // ── 터치 ──
+  // ── 터치 ── (탭 판정은 dry_probe 에서 검증된 wasClicked = 손을 뗄 때 기준)
   auto t = M5.Touch.getDetail();
-  bool inA = t.isPressed() && t.x>=AX && t.x<=AX+AW && t.y>=AY && t.y<=AY+AH;
+  bool inA = t.x>=AX && t.x<=AX+AW && t.y>=AY && t.y<=AY+AH;
   bool inB = t.isPressed() && t.x>=BX && t.x<=BX+BW && t.y>=BY && t.y<=BY+BH;
+  bool inC = t.x>=CX && t.x<=CX+CW && t.y>=CY && t.y<=CY+CH;
 
-  if (t.wasPressed() && inA){
-    if (st == S_SAFE){ st = S_IDLE; shots = 0; trigN = 0; tTrig = now; Serial.println("[ARM] 폐루프 시작"); }
+  // AUTO/STOP — 자동 급수 폐루프 켜고 끄기 (같은 버튼 토글)
+  if (t.wasClicked() && inA){
+    if (st == S_SAFE){ st = S_IDLE; shots = 0; trigN = 0; tTrig = now; Serial.println("[AUTO] 폐루프 시작"); }
     else { setPump(false); st = S_SAFE; Serial.println("[STOP] SAFE 로 복귀"); }
+    drawUI();                                    // 즉시 반영
   }
 
-  // 처리군 전환 — SAFE 에서만, 상단 라벨(화면 위쪽 70px) 탭. NVS 저장이라 재부팅에도 유지.
-  if (t.wasClicked() && t.y < 70 && st == S_SAFE){
-    treatIdx ^= 1;
-    prefs.putInt("treat", treatIdx);
-    kPerMs = 0.0f; noRise = 0; shots = 0; trigN = 0;   // 학습값은 처리군(도즈 규모)에 묶이므로 초기화
-    Serial.printf("[TREAT] %s  raw %d..%d · seed %d ms (NVS 저장)\n",
-                  TREAT, RAW_ON, RAW_OFF, DOSE_SEED);
+  // 처리군 선택 칩 — SAFE 에서만 [STBL][FLCT] 탭. NVS 저장이라 재부팅에도 유지.
+  if (t.wasClicked() && st == S_SAFE && t.y <= TY + TH + 8 && t.x >= T1X){
+    int sel = (t.x >= T2X) ? 1 : 0;
+    if (sel != treatIdx){
+      treatIdx = sel;
+      prefs.putInt("treat", treatIdx);
+      kPerMs = 0.0f; noRise = 0; shots = 0; trigN = 0; // 학습값은 처리군(도즈 규모)에 묶이므로 초기화
+      Serial.printf("[TREAT] %s  raw %d..%d · seed %d ms (NVS 저장)\n",
+                    TREAT, RAW_ON, RAW_OFF, DOSE_SEED);
+      drawUI();
+    }
   }
 
-  // PRIME — 누르는 동안만. 손을 떼야 다시 켜집니다(하드 상한 무력화 방지).
+  // RESET — 1.5초 길게 누르면 어떤 상태에서든 처음(SAFE)으로. FAULT·학습값도 초기화.
+  if (t.wasPressed() && t.isPressed() && inC){ holding = true; tHold = now; }
+  if (holding && (!t.isPressed() || !inC)) holding = false;      // 떼거나 벗어나면 취소
+  if (holding && now - tHold >= RESET_HOLD_MS){
+    holding = false;
+    setPump(false); st = S_SAFE;
+    shots = 0; noRise = 0; trigN = 0; kPerMs = 0.0f; doseMs = 0; doseBudget = 0; faultMsg = "";
+    Serial.println("[RESET] SAFE 복귀 · 학습값 초기화");
+    drawUI();
+  }
+
+  // PUMP(수동) — 누르는 동안만. 손을 떼야 다시 켜집니다(하드 상한 무력화 방지).
   // 누른 시간·전후 raw 를 pump 이벤트(reason="prime")로 남깁니다 —
   // 초기 젖음 때 얼마나 줬는지가 DB 에 기록되어 나중에 참고할 수 있습니다.
   if (st == S_SAFE || st == S_FAULT){
@@ -536,5 +571,5 @@ void loop(){
       break;
   }
 
-  if (now - tDraw > 250){ drawUI(); tDraw = now; }
+  if (now - tDraw > (holding ? 100UL : 250UL)){ drawUI(); tDraw = now; }   // 홀드 중엔 진행바 갱신
 }
