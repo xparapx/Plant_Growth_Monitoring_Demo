@@ -11,7 +11,8 @@
        (목표 raw 도달 시 즉시 중지) → 다 주면 3분 침투 검증 → 필요하면 반복
        0.2초/2.5초는 dry_probe 주기 측정 경험(2026-09)에서 온 값입니다.
 
-  ■ 노드마다 고칠 곳은 맨 위 두 줄(TREAT_FLUCT / PLANT_ID)뿐입니다.
+  ■ 노드마다 고칠 곳은 PLANT_ID 한 줄뿐입니다. 처리군(stable/fluct)은
+    화면에서 지정합니다 — SAFE 상태에서 상단 라벨 탭 = 전환, NVS 저장.
 */
 #include <M5Unified.h>
 
@@ -36,7 +37,6 @@
 #endif
 
 // ══════════════ 노드 설정 — 여기만 고칩니다 ══════════════
-#define TREAT_FLUCT   1                 // 0 = 꾸준군(stable) · 1 = 널뜀군(fluct)
 const char* PLANT_ID = "p2";            // 화분 이름 (p1, p2, ...)
 
 // 센서 보정 — 2026-07 실측 (공기 2133 / 포장용수량 1750)
@@ -44,28 +44,28 @@ const char* PLANT_ID = "p2";            // 화분 이름 (p1, p2, ...)
 const int RAW_DRY = 2120;
 const int RAW_WET = 1750;
 
-// ══════════════ 처리군별 상수 ══════════════
+// ══════════════ 처리군 — 화면에서 고릅니다 (2026-09) ══════════════
+//  SAFE 상태에서 <상단 라벨을 탭>하면 stable ↔ fluct 전환. NVS 에 저장되어
+//  재부팅에도 유지되므로, 같은 펌웨어를 모든 노드에 올리고 현장에서 지정합니다.
+//
 //  ★ 밴드를 % 가 아니라 raw 로 직접 씁니다.
 //    % 는 보정 상수(RAW_DRY/RAW_WET)를 고치면 같은 흙이 다른 숫자로 보입니다.
 //    raw 는 센서가 실제로 내는 값이라 보정을 바꿔도 흙 상태가 바뀌지 않습니다.
-//
 //  ★ 두 처리군의 <중심>이 같아야 실험이 성립합니다 — 폭만 다릅니다.
-//       stable  (1940+1900)/2 = 1920
-//       fluct   (2020+1820)/2 = 1920      <- 같아야 함
-//
+//       stable (1940+1900)/2 = 1920 · fluct (2020+1820)/2 = 1920  <- 같아야 함
 //  관측 기준점 (2026-07)   포장용수량 1750 · 물 안 준 화분 1940 · 공기 2133
-#if TREAT_FLUCT
-  const char* TREAT   = "fluct";
-  const int   RAW_ON  = 2020;           // 이보다 크면(=마르면) 급수 시작
-  const int   RAW_OFF = 1820;           // 이보다 작으면(=젖으면) 정지
-  const int   DOSE_SEED = 600;          // 첫 도즈 6mL — 이후에는 학습값으로 조절
-#else
-  const char* TREAT   = "stable";
-  const int   RAW_ON  = 1940;
-  const int   RAW_OFF = 1900;
-  const int   DOSE_SEED = 300;          // 첫 도즈 3mL — 이후에는 학습값으로 조절
-#endif
-const int BAND_CENTER = (RAW_ON + RAW_OFF) / 2;   // 두 노드가 같은지 부팅 로그로 확인
+#include <Preferences.h>
+struct TreatCfg { const char* name; int rawOn, rawOff, doseSeed; };
+const TreatCfg TREATS[2] = {
+  { "stable", 1940, 1900, 300 },        // 꾸준군 — 좁은 밴드, 첫 도즈 3mL
+  { "fluct",  2020, 1820, 600 },        // 널뜀군 — 넓은 밴드, 첫 도즈 6mL
+};
+int treatIdx = 1;                       // 부팅 시 NVS 값으로 대체 (기본 fluct)
+Preferences prefs;
+#define TREAT     (TREATS[treatIdx].name)
+#define RAW_ON    (TREATS[treatIdx].rawOn)     // 이보다 크면(=마르면) 급수 시작
+#define RAW_OFF   (TREATS[treatIdx].rawOff)    // 이보다 작으면(=젖으면) 정지
+#define DOSE_SEED (TREATS[treatIdx].doseSeed)
 
 // ══════════════ 안전·타이밍 ══════════════
 // ── 적응 급수 ──────────────────────────────────────────
@@ -282,6 +282,10 @@ void drawUI(){
 
   M5.Display.setTextSize(2); M5.Display.setTextColor(TREAT[0]=='f' ? ORANGE : CYAN, BLACK);
   M5.Display.setCursor(10, 8);   M5.Display.printf("%s  %s", PLANT_ID, TREAT);
+  if (st == S_SAFE){                       // SAFE 에서만 처리군 전환 가능 — 안내
+    M5.Display.setTextSize(1); M5.Display.setTextColor(DARKGREY, BLACK);
+    M5.Display.setCursor(200, 12); M5.Display.print("tap = treat toggle");
+  }
 
   M5.Display.setTextSize(3); M5.Display.setTextColor(WHITE, BLACK);
   M5.Display.setCursor(10, 34);  M5.Display.printf("%5.1f %%", pctOf(rawSoil));
@@ -347,11 +351,16 @@ void setup(){
   M5.Display.setRotation(1);
   M5.Display.fillScreen(BLACK);
 
+  prefs.begin("water", false);                             // 처리군 — NVS 에서 복원
+  treatIdx = constrain(prefs.getInt("treat", treatIdx), 0, 1);
+
   rawSoil = readSoil();
 
+  int center = (RAW_ON + RAW_OFF) / 2;                     // 두 노드가 같은지 부팅 로그로 확인
   Serial.printf("\n[BOOT] %s %s  raw %d..%d (gap %d) · center %d = %.1f%%\n",
                 PLANT_ID, TREAT, RAW_ON, RAW_OFF, RAW_ON - RAW_OFF,
-                BAND_CENTER, pctOf(BAND_CENTER));
+                center, pctOf(center));
+  Serial.println("[BOOT] 처리군 전환: SAFE 상태에서 화면 상단 라벨 탭 (NVS 저장)");
   Serial.printf("[BOOT] 지금 흙: raw %d = %.1f%%\n", rawSoil, pctOf(rawSoil));
   Serial.printf("[BOOT] 첫 도즈 %d ms (%.1f mL) · 대기 %lu s · 최대 %d회 · 도즈 %d~%d ms\n",
                 DOSE_SEED, DOSE_SEED / 1000.0f * ML_PER_SEC,
@@ -387,6 +396,15 @@ void loop(){
   if (t.wasPressed() && inA){
     if (st == S_SAFE){ st = S_IDLE; shots = 0; Serial.println("[ARM] 폐루프 시작"); }
     else { setPump(false); st = S_SAFE; Serial.println("[STOP] SAFE 로 복귀"); }
+  }
+
+  // 처리군 전환 — SAFE 에서만, 상단 라벨(화면 위쪽 70px) 탭. NVS 저장이라 재부팅에도 유지.
+  if (t.wasClicked() && t.y < 70 && st == S_SAFE){
+    treatIdx ^= 1;
+    prefs.putInt("treat", treatIdx);
+    kPerMs = 0.0f; noRise = 0; shots = 0;    // 학습값은 처리군(도즈 규모)에 묶이므로 초기화
+    Serial.printf("[TREAT] %s  raw %d..%d · seed %d ms (NVS 저장)\n",
+                  TREAT, RAW_ON, RAW_OFF, DOSE_SEED);
   }
 
   // PRIME — 누르는 동안만. 손을 떼야 다시 켜집니다(하드 상한 무력화 방지).
