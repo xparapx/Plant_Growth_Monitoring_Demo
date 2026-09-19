@@ -116,6 +116,11 @@ const unsigned long COOLDOWN_MS  = 600000UL;   // 이상 판정 후 재시도 �
 const int            PIN_PUMP    = 9;
 const int            PIN_SOIL    = 8;
 
+// ── 초기 젖음 목표 — 실험 시작 전 모든 화분을 손 급수로 이 구간에 맞춘다 ──
+//   포장용수량(흠뻑 주고 배수 끝난 상태) 부근. SAFE 화면이 도달 여부를 안내.
+const int INIT_WET_MIN = 1750;                 // 이보다 낮으면(더 젖으면) 배수 대기
+const int INIT_WET_MAX = 1800;                 // 이보다 높으면(마르면) 물 더 주기
+
 // ══════════════ 상태 ══════════════
 enum State { S_SAFE, S_IDLE, S_DOSING, S_GAP, S_SETTLE, S_FAULT };
 State st = S_SAFE;                      // 부팅 직후엔 절대 급수하지 않습니다
@@ -317,7 +322,19 @@ void drawUI(){
 
   M5.Display.setTextColor(DARKGREY, BLACK);
   M5.Display.setCursor(10, 126);
-  if (st == S_SETTLE){
+  if (st == S_SAFE){
+    // 초기 젖음(수분 맞추기) 안내 — 모든 화분을 같은 출발선(포장용수량 부근)에
+    if (rawSoil > INIT_WET_MAX){
+      M5.Display.setTextColor(ORANGE, BLACK);
+      M5.Display.printf("init wet: %d -> %d~%d  POUR", rawSoil, INIT_WET_MIN, INIT_WET_MAX);
+    } else if (rawSoil < INIT_WET_MIN){
+      M5.Display.setTextColor(YELLOW, BLACK);
+      M5.Display.printf("init wet: %d  DRAINING...     ", rawSoil);
+    } else {
+      M5.Display.setTextColor(GREEN, BLACK);
+      M5.Display.printf("init wet OK (%d) -> ARM       ", rawSoil);
+    }
+  } else if (st == S_SETTLE){
     long left = (long)(SETTLE_MS - (millis() - tSettle)) / 1000;
     if (left < 0) left = 0;
     M5.Display.printf("wait %3lds  shot %d/%d", left, shots, MAX_SHOTS);
