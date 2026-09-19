@@ -150,7 +150,7 @@ def cmd_seed(args) -> int:
         store = ConfigStore(p.config, example=p.example_config)
 
         def _u(c):
-            rois = grid_rois(c.capture.size[0], c.capture.size[1], 3, 2)
+            rois = grid_rois(c.capture.eff_size[0], c.capture.eff_size[1], 3, 2)
             for i, r in enumerate(rois):
                 r["treat"] = "stable" if i < 3 else "fluct"
             c.rois = [Roi(**r) for r in rois]

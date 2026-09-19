@@ -32,10 +32,24 @@ class Layout(BaseModel):
 
 class Capture(BaseModel):
     size: tuple[int, int] = (4608, 2592)
+    rotation: int = 0                  # 0|90|180|270 — 설치 방향 보정. 센서가 아니라 프레임을 돌린다
     lens_position: float = 1.82        # dioptres = 1/m
     exposure_us: int = 20000
     gain: float = 2.0
     colour_gains: tuple[float, float] = (1.8, 1.6)   # (red, blue)
+
+    @field_validator("rotation")
+    @classmethod
+    def _rot(cls, v: int) -> int:
+        if v % 360 not in (0, 90, 180, 270):
+            raise ValueError("rotation must be 0/90/180/270")
+        return v % 360
+
+    @property
+    def eff_size(self) -> tuple[int, int]:
+        """회전 적용 후의 (W, H) — ROI·격자·프레임폭 계산은 전부 이걸 쓴다."""
+        w, h = self.size
+        return (h, w) if self.rotation in (90, 270) else (w, h)
 
 
 class Roi(BaseModel):

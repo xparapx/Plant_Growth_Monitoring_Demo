@@ -151,9 +151,13 @@ class CameraManager:
         cfg = self.store.get()
         holder = self.flock.holder_pid() if self.flock and not self.flock.held else None
         preview = "unavailable" if self.state == "error" else ("paused_capture" if self.paused_for else "live")
+        pw, ph = cfg.preview.size
+        if cfg.capture.rotation in (90, 270):
+            pw, ph = ph, pw
         return {"state": self.state, "driver": self.driver or self.probe_driver(), "clients": self.clients,
                 "preview": preview, "paused_for": self.paused_for, "error": self.error,
-                "preview_size": list(cfg.preview.size), "capture_size": list(cfg.capture.size),
+                "rotation": cfg.capture.rotation,
+                "preview_size": [pw, ph], "capture_size": list(cfg.capture.eff_size),
                 "scale": round(cfg.scale, 6), "opened_at": iso_utc(self.opened_at) if self.opened_at else None,
                 "lock_holder_pid": holder, "ops_busy": self.ops_busy,
                 "quiet_window": self._quiet_window_info(cfg)}
@@ -252,6 +256,14 @@ class CameraManager:
             self.ops_lock.release()
 
     # ---- device ops -----------------------------------------------------------------
+    def _rotated(self, frame: np.ndarray) -> np.ndarray:
+        """설치 방향 보정 — 센서(picamera2 Transform)는 90도 회전을 못 하므로 프레임을 돌린다.
+        미리보기·촬영본이 같은 회전을 거치므로 ROI 좌표계는 항상 회전 후 기준으로 일관된다."""
+        rot = self.store.get().capture.rotation
+        if not rot:
+            return frame
+        return np.ascontiguousarray(np.rot90(frame, k=(-rot // 90) % 4))
+
     def apply_controls(self, capture) -> None:
         cap = capture.model_dump() if hasattr(capture, "model_dump") else dict(capture)
         with self.dev_lock:
@@ -262,7 +274,8 @@ class CameraManager:
         self.ensure_open()
         with self.dev_lock:
             assert self._backend is not None
-            return self._backend.capture_array()
+            frame = self._backend.capture_array()
+        return self._rotated(frame)
 
     def capture_still(self, path: str | os.PathLike) -> None:
         self.ensure_open(for_capture=True)
@@ -270,6 +283,12 @@ class CameraManager:
             assert self._backend is not None
             Path(path).parent.mkdir(parents=True, exist_ok=True)
             self._backend.capture_file(str(path))
+        rot = self.store.get().capture.rotation
+        if rot:
+            img = cv2.imread(str(path))
+            if img is not None:
+                cv2.imwrite(str(path), np.ascontiguousarray(np.rot90(img, k=(-rot // 90) % 4)),
+                            [cv2.IMWRITE_JPEG_QUALITY, 95])
 
     def auto_cycle(self) -> dict[str, Any]:
         """Let the camera converge (AE/AWB/AF), read the values back, lock manual again."""
@@ -305,7 +324,7 @@ class CameraManager:
                     if self._backend is None or self.state != "open":
                         break
                     frame = self._backend.capture_array()
-                self._latest = frame
+                self._latest = self._rotated(frame)
                 self._latest_at = time.time()
             except Exception as e:  # noqa: BLE001
                 self.error = f"{type(e).__name__}: {e}"

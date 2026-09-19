@@ -84,7 +84,7 @@ export interface Water extends Meta {
 export interface Reference extends Meta { p05: number | null; p95: number | null; mean: number | null }
 
 export interface Roi { plant_id: string; treat: string; x: number; y: number; w: number; h: number; out?: boolean }
-export interface CaptureSettings { size: [number, number]; lens_position: number; exposure_us: number; gain: number; colour_gains: [number, number] }
+export interface CaptureSettings { size: [number, number]; rotation?: number; lens_position: number; exposure_us: number; gain: number; colour_gains: [number, number] }
 export interface CameraStatus {
   msg: string; msg_level: 'info' | 'good' | 'warn'
   done: { focus: boolean; scale: boolean; roi: boolean; treat: boolean; shot: boolean }; all: boolean
@@ -103,7 +103,7 @@ export interface Drift {
 }
 export type CameraAction =
   | 'auto' | 'point' | 'clearpoints' | 'setpot' | 'findleaf' | 'autoroi' | 'rename' | 'cancel_naming' | 'pickroi'
-  | 'settreat' | 'shuffle' | 'shoot' | 'save' | 'centerroi' | 'open' | 'close'
+  | 'settreat' | 'shuffle' | 'shoot' | 'save' | 'centerroi' | 'open' | 'close' | 'rotate'
 export interface ActionResult { msg: string; status: CameraStatus }
 
 export type JobState = 'queued' | 'running' | 'done' | 'failed' | 'skipped' | 'cancelled'

@@ -28,7 +28,7 @@ export function defaultConfig(o: ConfigOpts): PlantConfig {
   return {
     version: 2, tz: 'Asia/Seoul',
     layout: { cols: 3, rows: 2, pot_cm: 15, gap_cm: 20 },
-    capture: { size: [...CAP] as [number, number], lens_position: o.lens, exposure_us: 20000, gain: 2, colour_gains: [1.8, 1.6] },
+    capture: { size: [...CAP] as [number, number], rotation: 0, lens_position: o.lens, exposure_us: 20000, gain: 2, colour_gains: [1.8, 1.6] },
     rois: o.rois, treat_mode: o.treatMode, run_started: o.runStarted,
     qc: { px_per_cm_ref: o.ppc, edge_tol: 0.02, drift_warn_px: 8, drift_fail_px: 40, drift_resp_min: 0.05 },
     bands: { raw: { stable: [1900, 1940], fluct: [1820, 2020] }, cal_default: [2120, 1750], cal: {} },

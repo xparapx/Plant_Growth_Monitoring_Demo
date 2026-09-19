@@ -80,15 +80,18 @@ export function latestRaw(st: MockState): string | null {
 
 export function cameraStatus(st: MockState): CameraStatus {
   const c = st.cfg, d = stepDone(st), s = st.setup
+  const swap = (c.capture.rotation ?? 0) % 180 !== 0   // 90/270 = 세로 화면
+  const prev: [number, number] = swap ? [PREVIEW[1], PREVIEW[0]] : [...PREVIEW]
+  const cap: [number, number] = swap ? [CAP[1], CAP[0]] : [...CAP]
   return {
     msg: s.msg, msg_level: s.level, done: d, all: Object.values(d).every(Boolean), mode: c.treat_mode as CameraStatus['mode'],
     naming: s.order !== null, order: s.order ? [...s.order] : null, pots: c.rois.map((r) => ({ id: r.plant_id, treat: r.treat })),
-    rois: c.rois.map((r) => ({ ...r, out: outOfFrame(r, c.capture.size) })), ppc: Math.round((s.ppcFixed ?? c.qc.px_per_cm_ref ?? 0) * 10) / 10,
+    rois: c.rois.map((r) => ({ ...r, out: outOfFrame(r, cap) })), ppc: Math.round((s.ppcFixed ?? c.qc.px_per_cm_ref ?? 0) * 10) / 10,
     nroi: c.rois.length, cm: s.cm, pts: s.pts.map((p) => [...p] as [number, number]), pot_cm: c.layout.pot_cm,
     capture: structuredClone(c.capture), last_auto: s.lastAuto,
     calib: { exists: st.calibExists, mtime: st.calibMtime, url: st.calibExists ? '/api/camera/calib.jpg' : null }, latest_raw: latestRaw(st),
     state: st.cam.state, driver: 'mock', clients: st.cam.clients, preview: st.cam.preview, paused_for: st.cam.pausedFor, error: null,
-    preview_size: [...PREVIEW] as [number, number], capture_size: [...CAP] as [number, number], scale: Math.round(SCALE * 1e6) / 1e6,
+    preview_size: prev, capture_size: cap, scale: Math.round(SCALE * 1e6) / 1e6,
     lock_holder_pid: st.job ? 4242 : null, ops_busy: st.cam.opsBusy, quiet_window: null,
   }
 }

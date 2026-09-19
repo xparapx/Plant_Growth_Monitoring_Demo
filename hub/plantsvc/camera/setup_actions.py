@@ -75,7 +75,7 @@ class SetupSession:
 
     @staticmethod
     def _out_of_frame(r: Roi, cfg) -> bool:
-        W, H = cfg.capture.size
+        W, H = cfg.capture.eff_size
         return r.x < 0 or r.y < 0 or r.x + r.w > W or r.y + r.h > H
 
     # ---- dispatch -------------------------------------------------------------------
@@ -136,6 +136,23 @@ class SetupSession:
         return (f"exp {vals['exposure_us']} · gain {gain:.2f} · WB {cg[0]:.2f}/{cg[1]:.2f} · "
                 f"lens {vals['lens_position']:.2f}  — 고정·저장 완료{warn}")
 
+    def act_rotate(self, p):
+        """90도 단위 화면 회전 — 카메라 설치 방향 보정. 인자 없으면 +90도씩 순환."""
+        cfg = self.store.get()
+        rot = int(p.get("rotation", (cfg.capture.rotation + 90) % 360))
+        if rot % 360 not in (0, 90, 180, 270):
+            return "회전은 0/90/180/270 만 됩니다"
+        if rot == cfg.capture.rotation:
+            return f"이미 {rot}° 입니다"
+
+        def _u(c):
+            c.capture.rotation = rot
+        self.store.update(_u)
+        self._drift_cache = None
+        stale = bool(cfg.rois or cfg.qc.px_per_cm_ref or self.paths.calib.exists())
+        tail = "  ⚠ 좌표계가 바뀌었습니다 — 배율·ROI·기준사진(calib)을 다시 잡으세요" if stale else ""
+        return f"화면 회전 {rot}° 저장{tail}"
+
     def act_point(self, p):
         x, y, cm = float(p["x"]), float(p["y"]), float(p.get("cm", self.cm or 10))
         cfg = self.store.get()
@@ -155,7 +172,7 @@ class SetupSession:
         def _u(c):
             c.qc.px_per_cm_ref = round(ppc, 1)
         self.store.update(_u)
-        frame_cm = cfg.capture.size[0] / ppc
+        frame_cm = cfg.capture.eff_size[0] / ppc
         lay = cfg.layout
         need = lay.cols * lay.pot_cm + (lay.cols - 1) * lay.gap_cm
         warn = ""
@@ -184,7 +201,7 @@ class SetupSession:
         with self.camera.exclusive(timeout=30, label="shoot"):
             self.camera.capture_still(self.paths.calib)
         self._drift_cache = None
-        W, H = cfg.capture.size
+        W, H = cfg.capture.eff_size
         return f"calib.jpg 저장 ({W}x{H}) — 완료"
 
     def act_findleaf(self, p):
@@ -195,8 +212,8 @@ class SetupSession:
         if not blobs:
             return "초록 덩어리를 못 찾았습니다 — 조명·초점을 먼저 맞추세요"
         existing = [r.model_dump() for r in cfg.rois]
-        rois, info = roi_tools.place_from_blobs(blobs, scale=cfg.scale, cap_w=cfg.capture.size[0],
-                                                cap_h=cfg.capture.size[1], existing=existing)
+        rois, info = roi_tools.place_from_blobs(blobs, scale=cfg.scale, cap_w=cfg.capture.eff_size[0],
+                                                cap_h=cfg.capture.eff_size[1], existing=existing)
 
         def _u(c):
             c.rois = [Roi(**r) for r in rois]
@@ -208,7 +225,7 @@ class SetupSession:
     def act_autoroi(self, p):
         cfg = self.store.get()
         cols, rows = int(p.get("cols", cfg.layout.cols)), int(p.get("rows", cfg.layout.rows))
-        rois = roi_tools.grid_rois(cfg.capture.size[0], cfg.capture.size[1], cols, rows)
+        rois = roi_tools.grid_rois(cfg.capture.eff_size[0], cfg.capture.eff_size[1], cols, rows)
 
         def _u(c):
             c.rois = [Roi(**r) for r in rois]

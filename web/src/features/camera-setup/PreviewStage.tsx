@@ -49,7 +49,10 @@ export function PreviewStage({ cm, className = '' }: { cm: number; className?: s
 
   const interactive = live && mode !== 'idle' && !disabled
   return (
-    <div className={`relative w-full aspect-[16/9] overflow-hidden rounded-[16px] bg-sunken ${className}`}>
+    <div
+      className={`relative w-full overflow-hidden rounded-[16px] bg-sunken ${className}`}
+      style={{ aspectRatio: `${w} / ${h}` }}
+    >
       <img
         ref={imgRef}
         src={streamSrc}
@@ -76,6 +79,15 @@ export function PreviewStage({ cm, className = '' }: { cm: number; className?: s
       </svg>
       {MOCK && <span className="pointer-events-none absolute left-3 top-3 rounded-full bg-dummy-bg px-2 py-0.5 text-[10px] font-bold tracking-wider text-dummy">{ss.mockLabel}</span>}
       {live && <span className="pointer-events-none absolute right-3 top-3 rounded-full bg-accent/90 px-2.5 py-1 text-[10px] font-medium text-white">{ko.setup.live}</span>}
+      <button
+        type="button"
+        title={ss.rotateTitle}
+        disabled={disabled}
+        onClick={() => void run('rotate')}
+        className="absolute bottom-3 right-3 rounded-full bg-black/55 px-3 py-1.5 text-[11px] font-medium text-white backdrop-blur-sm transition hover:bg-black/75 disabled:opacity-40"
+      >
+        ⟳ {ss.rotate}
+      </button>
       {live && <ModeHint status={status} mode={mode} />}
       <StageStatusBar status={status} />
       {!live && <PausedOverlay status={status} />}

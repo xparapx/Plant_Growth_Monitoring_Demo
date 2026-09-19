@@ -39,6 +39,16 @@ const ACTIONS: Record<string, (st: MockState, p: Body) => string> = {
     return `exp ${vals.exposure_us} · gain ${vals.gain.toFixed(2)} · WB ${vals.colour_gains[0].toFixed(2)}/${vals.colour_gains[1].toFixed(2)} · lens ${vals.lens_position.toFixed(2)}  — 고정·저장 완료${warn}`
   },
 
+  rotate(st, p) {
+    const cur = (st.cfg.capture.rotation ?? 0) % 360
+    const rot = (typeof p.rotation === 'number' ? p.rotation : cur + 90) % 360
+    if (![0, 90, 180, 270].includes(rot)) return '회전은 0/90/180/270 만 됩니다'
+    if (rot === cur) return `이미 ${rot}° 입니다`
+    bumpConfig(st, (c) => { c.capture = { ...c.capture, rotation: rot } })
+    const stale = st.cfg.rois.length > 0 || !!st.cfg.qc.px_per_cm_ref || st.calibExists
+    return `화면 회전 ${rot}° 저장${stale ? '  ⚠ 좌표계가 바뀌었습니다 — 배율·ROI·기준사진(calib)을 다시 잡으세요' : ''}`
+  },
+
   point(st, p) {
     const x = num(p, 'x'), y = num(p, 'y'), cm = num(p, 'cm', st.setup.cm || 10)
     const pts = st.setup.pts.length < 2 ? st.setup.pts : []
