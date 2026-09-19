@@ -7123,7 +7123,7 @@ uv run plantsvc seed --days 14               <span class="c"># 통째로 더미�
   <!-- ════════ sL ════════ -->
   <section class="panel" id="sL">
     <h2 class="title"><span class="badge">19</span>LED 촬영 조명 (자리)</h2>
-    <p class="lead">새벽 촬영 조명은 <b>환경노드(UNO R4 WiFi)의 Grove RGB LED 스틱(5구, WS2813) × 2</b>(D4·D5 포트)가 맡습니다 — 노드가 자체 타이머로
+    <p class="lead">새벽 촬영 조명은 <b>환경노드(UNO R4 WiFi)의 RGB 네오픽셀 4구 스트립</b>(핀 9 직결)이 맡습니다 — 노드가 자체 타이머로
     <b>05:45 점등 → 06:15 소등</b> 하고, 파이는 그 창 안(05:50)에서 평소처럼 찍기만 합니다. 펌웨어는 <code class="in">plant_env_r4wifi.ino</code> 의
     <code class="in">USE_LIGHT=1</code> 블록(<code class="in">lightTick</code>)에 들어 있습니다.
     hub 쪽 LED 훅(<code class="in">led.*</code>)은 코드에 남아 있지만 기본값 &ldquo;꺼짐·noop&rdquo; 그대로 두고 쓰지 않습니다.</p>
@@ -7189,14 +7189,14 @@ uv run plantsvc seed --days 14               <span class="c"># 통째로 더미�
 
     <h3>4) 스틱을 달 때 — 설치 절차</h3>
     <div class="box warn">
-      <span class="lbl">전류와 스펙트럼 — Grove 스틱 2개(10구) 기준</span>
+      <span class="lbl">전류와 스펙트럼 — RGB 4구 기준</span>
       네오픽셀은 LED 마다 드라이버 내장이라 <b>데이터 핀 직결(스위칭 소자 불요)</b>. 풀 화이트 기준 LED 당 ~60 mA 로
-      10구 풀밝기면 ~600 mA 지만, 펌웨어 기본 밝기 80/255 에서는 <b>~190 mA — 보드 5 V 레일 직결 OK</b>.
-      밝기를 올릴 땐 총전류와 5 V 레일 여유를 확인하세요. 촬영 조명은 매일 같은 밝기로 고정합니다(<code class="in">LIGHT_BRIGHT</code>).
-      설치 후 새벽 시험 촬영으로 광량이 자연광을 누르는지 확인.
+      4구 풀밝기(255)여도 <b>~240 mA — 보드 5 V 레일 직결 OK</b>.
+      촬영 조명은 매일 같은 밝기로 고정합니다(<code class="in">LIGHT_BRIGHT</code>).
+      광량 검증: 조명만 켠 상태에서 setup 의 <b>[자동 측정]</b> — gain ≤ 2 근처면 충분, gain &gt; 4 면 부족(밝기·거리 조정 또는 스트립 추가).
     </div>
     <ol style="margin:4px 0 0 18px; line-height:1.8;">
-      <li>Grove RGB LED 스틱(5구) 2개를 Base Shield <b>D4·D5 포트</b>에 연결. <b>내장 12×8 매트릭스는 네오픽셀이 아니므로 외장 스틱 필수</b></li>
+      <li>RGB 네오픽셀 4구 스트립을 <b>핀 9</b> 에 연결(<code class="in">NEO_GRB</code>). <b>내장 12×8 매트릭스는 네오픽셀이 아니므로 외장 스트립 필수</b>. 시리얼 모니터에서 <code class="in">1</code>/<code class="in">0</code> 으로 점등 테스트</li>
       <li><code class="in">plant_env_r4wifi.ino</code> 의 <code class="in">USE_LIGHT=1</code> 확인 후 업로드 — NTP 동기화(부팅 + 하루 1회), KST 초단위 창 비교로 <b>05:45 점등 / 06:15 소등</b>, 창 밖·NTP 실패 시 무조건 소등(자체 watchdog). 라이브러리 Adafruit NeoPixel 필요</li>
       <li>config.json 의 <code class="in">led</code> 절은 <code class="in">enabled=false</code> 그대로 — hub 는 관여하지 않음</li>
       <li>새벽 저널에서 촬영(05:50)이 점등 창 안에 있는지, 사진이 조명 아래 찍혔는지 확인</li>
