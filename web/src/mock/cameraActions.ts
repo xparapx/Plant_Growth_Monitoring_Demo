@@ -39,6 +39,12 @@ const ACTIONS: Record<string, (st: MockState, p: Body) => string> = {
     return `exp ${vals.exposure_us} · gain ${vals.gain.toFixed(2)} · WB ${vals.colour_gains[0].toFixed(2)}/${vals.colour_gains[1].toFixed(2)} · lens ${vals.lens_position.toFixed(2)}  — 고정·저장 완료${warn}`
   },
 
+  light(st, p) {
+    const on = !!p.on
+    addEvent(st, 'light.cmd', { on })
+    return `조명 ${on ? '점등' : '소등'} 명령 발행 완료${on ? ' — 노드에서 30분 뒤 자동 소등' : ''}`
+  },
+
   rotate(st, p) {
     const cur = (st.cfg.capture.rotation ?? 0) % 360
     const rot = (typeof p.rotation === 'number' ? p.rotation : cur + 90) % 360

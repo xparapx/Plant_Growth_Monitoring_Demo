@@ -9,6 +9,8 @@ export const ss = {
   busyJob: '촬영 작업이 진행 중이라 지금은 조작할 수 없습니다',
   rotate: '90° 회전',
   rotateTitle: '화면을 시계방향으로 90° 회전 (설치 방향 보정) — ROI·배율·기준사진은 다시 잡아야 합니다',
+  lightOn: '조명 켬', lightOff: '조명 끔',
+  lightTitle: '환경노드 촬영 조명(MQTT) — 켜면 노드가 30분 뒤 자동 소등합니다',
   exposure: '노출 (µs)', gain: '게인', wb: '화이트밸런스', lens: '렌즈 위치',
   scaleReadout: (ppc: string, cm: number) => `${ppc} px/cm (${cm} cm 기준)`,
   measureOn: '두 점 찍기 (진행 중)', measureOff: '두 점 찍기',

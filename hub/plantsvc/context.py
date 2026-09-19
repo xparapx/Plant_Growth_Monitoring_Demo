@@ -78,11 +78,11 @@ def build_context(settings: Settings | None = None, *, camera_backend: Any = Non
                            quiet_window_s=settings.quiet_window_s, log=log)
     led = LedController(store, events, hub, mode_override=led_mode or settings.led_mode)
     runner = CaptureRunner(paths, store, camera, led, events, hub)
-    setup = SetupSession(store, camera, paths, events, hub)
     bridge = None
     if (settings.mqtt if mqtt is None else mqtt):
         m = store.get().mqtt
         bridge = MqttBridge(m.host, m.port, hub, cache, events, log=log)
+    setup = SetupSession(store, camera, paths, events, hub, mqtt=bridge)
     store.on_change(lambda cfg: (cache.invalidate(), hub.broadcast("config.changed", {"mtime": store.mtime_ns})))
     return AppContext(settings=settings, paths=paths, store=store, cache=cache, events=events, hub=hub,
                       camera=camera, led=led, runner=runner, setup=setup, bridge=bridge)

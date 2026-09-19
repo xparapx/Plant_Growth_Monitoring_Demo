@@ -63,6 +63,15 @@ class MqttBridge:
         self._thread = threading.Thread(target=_run, name="mqtt-bridge", daemon=True)
         self._thread.start()
 
+    def publish(self, topic: str, payload: str) -> bool:
+        """Best-effort publish (LED 원격 점등 등). 끊겨 있으면 False."""
+        if self._client is None or not self.connected:
+            return False
+        try:
+            return self._client.publish(topic, payload, qos=1).rc == 0
+        except Exception:
+            return False
+
     def stop(self) -> None:
         self._stop.set()
         if self._client is not None:

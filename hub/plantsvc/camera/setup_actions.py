@@ -21,9 +21,10 @@ from .manager import CameraBusy
 
 
 class SetupSession:
-    def __init__(self, store, camera, paths, events=None, hub=None):
+    def __init__(self, store, camera, paths, events=None, hub=None, mqtt=None):
         self.store, self.camera, self.paths = store, camera, paths
         self.events, self.hub = events, hub
+        self.mqtt = mqtt                     # MqttBridge — 노드 조명 원격 점등에 사용
         self._lock = threading.RLock()
         self.msg = "준비됨"
         self.level = "info"
@@ -135,6 +136,16 @@ class SetupSession:
         cg = vals["colour_gains"]
         return (f"exp {vals['exposure_us']} · gain {gain:.2f} · WB {cg[0]:.2f}/{cg[1]:.2f} · "
                 f"lens {vals['lens_position']:.2f}  — 고정·저장 완료{warn}")
+
+    def act_light(self, p):
+        """환경노드 촬영 조명 원격 점등/소등 — plant/light/set 브로드캐스트.
+        노드 펌웨어가 30분 자동 소등 워치독을 가지므로 켜 두고 잊어도 안전."""
+        on = bool(p.get("on"))
+        if self.mqtt is None or not getattr(self.mqtt, "connected", False):
+            return "⚠ MQTT 브로커에 연결되어 있지 않습니다 — 조명 명령을 보낼 수 없습니다"
+        if not self.mqtt.publish("plant/light/set", "1" if on else "0"):
+            return "⚠ 조명 명령 발행 실패 — 브로커 상태를 확인하세요"
+        return f"조명 {'점등' if on else '소등'} 명령 발행 완료" + (" — 노드에서 30분 뒤 자동 소등" if on else "")
 
     def act_rotate(self, p):
         """90도 단위 화면 회전 — 카메라 설치 방향 보정. 인자 없으면 +90도씩 순환."""

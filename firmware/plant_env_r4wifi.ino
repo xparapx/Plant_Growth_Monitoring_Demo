@@ -158,7 +158,8 @@ bool netReady() {
 #if USE_LIGHT
     char sub[48];
     snprintf(sub, sizeof(sub), "plant/%s/light/set", nodeId);
-    client.subscribe(sub);                       // 원격 점등 명령 구독
+    client.subscribe(sub);                       // 원격 점등 명령 구독 (노드 지정)
+    client.subscribe("plant/light/set");         // 브로드캐스트 — 웹 UI 조명 버튼용
     publishLightState();                         // 재접속 시 현재 상태 알림
 #endif
     return true;

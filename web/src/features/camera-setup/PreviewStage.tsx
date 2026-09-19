@@ -83,15 +83,35 @@ export function PreviewStage({ cm, className = '' }: { cm: number; className?: s
       </svg>
       {MOCK && <span className="pointer-events-none absolute left-3 top-3 rounded-full bg-dummy-bg px-2 py-0.5 text-[10px] font-bold tracking-wider text-dummy">{ss.mockLabel}</span>}
       {live && <span className="pointer-events-none absolute right-3 top-3 rounded-full bg-accent/90 px-2.5 py-1 text-[10px] font-medium text-white">{ko.setup.live}</span>}
-      <button
-        type="button"
-        title={ss.rotateTitle}
-        disabled={disabled}
-        onClick={() => void run('rotate')}
-        className="absolute bottom-3 right-3 rounded-full bg-black/55 px-3 py-1.5 text-[11px] font-medium text-white backdrop-blur-sm transition hover:bg-black/75 disabled:opacity-40"
-      >
-        ⟳ {ss.rotate}
-      </button>
+      <div className="absolute bottom-3 right-3 flex gap-1.5">
+        <button
+          type="button"
+          title={ss.lightTitle}
+          disabled={disabled}
+          onClick={() => void run('light', { on: true })}
+          className="rounded-full bg-black/55 px-3 py-1.5 text-[11px] font-medium text-white backdrop-blur-sm transition hover:bg-black/75 disabled:opacity-40"
+        >
+          💡 {ss.lightOn}
+        </button>
+        <button
+          type="button"
+          title={ss.lightTitle}
+          disabled={disabled}
+          onClick={() => void run('light', { on: false })}
+          className="rounded-full bg-black/55 px-3 py-1.5 text-[11px] font-medium text-white backdrop-blur-sm transition hover:bg-black/75 disabled:opacity-40"
+        >
+          {ss.lightOff}
+        </button>
+        <button
+          type="button"
+          title={ss.rotateTitle}
+          disabled={disabled}
+          onClick={() => void run('rotate')}
+          className="rounded-full bg-black/55 px-3 py-1.5 text-[11px] font-medium text-white backdrop-blur-sm transition hover:bg-black/75 disabled:opacity-40"
+        >
+          ⟳ {ss.rotate}
+        </button>
+      </div>
       {live && <ModeHint status={status} mode={mode} />}
       <StageStatusBar status={status} />
       {!live && <PausedOverlay status={status} />}

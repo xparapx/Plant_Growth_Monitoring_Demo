@@ -103,7 +103,7 @@ export interface Drift {
 }
 export type CameraAction =
   | 'auto' | 'point' | 'clearpoints' | 'setpot' | 'findleaf' | 'autoroi' | 'rename' | 'cancel_naming' | 'pickroi'
-  | 'settreat' | 'shuffle' | 'shoot' | 'save' | 'centerroi' | 'open' | 'close' | 'rotate'
+  | 'settreat' | 'shuffle' | 'shoot' | 'save' | 'centerroi' | 'open' | 'close' | 'rotate' | 'light'
 export interface ActionResult { msg: string; status: CameraStatus }
 
 export type JobState = 'queued' | 'running' | 'done' | 'failed' | 'skipped' | 'cancelled'
