@@ -135,6 +135,7 @@ float kPerMs = 0.0f;                // 학습값: 1ms 당 내려가는 counts
 bool pumpOn = false;
 unsigned long tPump = 0, tGap = 0, tSettle = 0, tSoakLog = 0, tFault = 0, tDraw = 0, tTrig = 0;
 int   trigN = 0;                    // 트리거 확인 카운터 (연속 RAW_ON 초과 횟수)
+int   rawPrimeBefore = 0;           // PRIME 시작 시점 raw — prime 이벤트 기록용
 const char* faultMsg = "";
 bool primeLatch = false;
 
@@ -405,9 +406,11 @@ void loop(){
 
   // ── 하드 상한: 무슨 상태든 이 시간을 넘겨 켜져 있으면 강제 OFF ──
   if (pumpOn && now - tPump > PUMP_HARD_MS){
+    int dur = (int)(now - tPump);
     setPump(false); primeLatch = true;
     Serial.println("[SAFETY] hard limit");
     if (st == S_DOSING){ st = S_SETTLE; tSettle = now; tSoakLog = now; }
+    else logEvent("prime", rawPrimeBefore, rawSoil, dur);   // PRIME 이 상한에 걸려도 기록
   }
 
   // ── 터치 ──
@@ -430,9 +433,18 @@ void loop(){
   }
 
   // PRIME — 누르는 동안만. 손을 떼야 다시 켜집니다(하드 상한 무력화 방지).
+  // 누른 시간·전후 raw 를 pump 이벤트(reason="prime")로 남깁니다 —
+  // 초기 젖음 때 얼마나 줬는지가 DB 에 기록되어 나중에 참고할 수 있습니다.
   if (st == S_SAFE || st == S_FAULT){
-    if (inB && !pumpOn && !primeLatch) setPump(true);
-    if (!inB){ if (pumpOn) setPump(false); primeLatch = false; }
+    if (inB && !pumpOn && !primeLatch){ rawPrimeBefore = rawSoil; setPump(true); }
+    if (!inB){
+      if (pumpOn){
+        int dur = (int)(now - tPump);
+        setPump(false);
+        if (dur >= 300) logEvent("prime", rawPrimeBefore, readSoil(), dur);
+      }
+      primeLatch = false;
+    }
   }
 
   // ── 상태기계 ──
