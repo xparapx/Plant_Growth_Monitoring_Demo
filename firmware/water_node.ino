@@ -104,6 +104,10 @@ const float ML_PER_SEC = 10.0f;
 #else
   const unsigned long SETTLE_MS  = 180000UL;   // 3분 — 물이 센서까지 퍼지는 시간
 #endif
+// ── 급수 트리거 확인 — 밴드가 좁아도(stable 40카운트) 순간 요동에 안 속게 ──
+const unsigned long TRIG_SAMPLE_MS = 10000UL;  // 10초 간격으로
+const int           TRIG_CONFIRM   = 3;        // 연속 3회 RAW_ON 초과 = 진짜 마름 (30초)
+
 const int            MAX_SHOTS   = 6;          // 한 사이클 도즈 상한 -> 넘으면 이상
 const int            MIN_DROP    = 3;          // 1도즈당 최소 raw 하강(카운트)
 const int            NO_RISE_MAX = 2;          // 연속 몇 번 안 오르면 고장으로 볼 것인가
@@ -124,7 +128,8 @@ int   doseMs = 0;                   // 이번에 실제로 튼 누적 ON 시간 
 int   noRise = 0;                   // 연속으로 "안 올랐다" 가 나온 횟수
 float kPerMs = 0.0f;                // 학습값: 1ms 당 내려가는 counts
 bool pumpOn = false;
-unsigned long tPump = 0, tGap = 0, tSettle = 0, tSoakLog = 0, tFault = 0, tDraw = 0;
+unsigned long tPump = 0, tGap = 0, tSettle = 0, tSoakLog = 0, tFault = 0, tDraw = 0, tTrig = 0;
+int   trigN = 0;                    // 트리거 확인 카운터 (연속 RAW_ON 초과 횟수)
 const char* faultMsg = "";
 bool primeLatch = false;
 
@@ -394,7 +399,7 @@ void loop(){
   bool inB = t.isPressed() && t.x>=BX && t.x<=BX+BW && t.y>=BY && t.y<=BY+BH;
 
   if (t.wasPressed() && inA){
-    if (st == S_SAFE){ st = S_IDLE; shots = 0; Serial.println("[ARM] 폐루프 시작"); }
+    if (st == S_SAFE){ st = S_IDLE; shots = 0; trigN = 0; tTrig = now; Serial.println("[ARM] 폐루프 시작"); }
     else { setPump(false); st = S_SAFE; Serial.println("[STOP] SAFE 로 복귀"); }
   }
 
@@ -402,7 +407,7 @@ void loop(){
   if (t.wasClicked() && t.y < 70 && st == S_SAFE){
     treatIdx ^= 1;
     prefs.putInt("treat", treatIdx);
-    kPerMs = 0.0f; noRise = 0; shots = 0;    // 학습값은 처리군(도즈 규모)에 묶이므로 초기화
+    kPerMs = 0.0f; noRise = 0; shots = 0; trigN = 0;   // 학습값은 처리군(도즈 규모)에 묶이므로 초기화
     Serial.printf("[TREAT] %s  raw %d..%d · seed %d ms (NVS 저장)\n",
                   TREAT, RAW_ON, RAW_OFF, DOSE_SEED);
   }
@@ -418,10 +423,18 @@ void loop(){
 
     case S_IDLE:
       rawSoil = readSoil();
-      if (rawSoil >= RAW_ON){                 // raw 가 크다 = 말랐다
-        rawCycleStart = rawSoil; shots = 0;
-        rawBefore = rawSoil; doseBudget = planDose(rawSoil); doseMs = 0;
-        if (doseBudget > 0){ setPump(true); st = S_DOSING; }
+      // ── 트리거 확인 — 순간 요동으로 급수가 시작되지 않게 (dry_probe 방식) ──
+      //   10초 간격 측정이 <연속 TRIG_CONFIRM 회> RAW_ON 을 넘어야 진짜 마름으로 봅니다.
+      //   센서 접촉 변화·전원 노이즈로 raw 가 수십 카운트 튀는 것은 한두 번에 그칩니다.
+      if (now - tTrig >= TRIG_SAMPLE_MS){
+        tTrig = now;
+        if (rawSoil >= RAW_ON) trigN++; else trigN = 0;
+        if (trigN >= TRIG_CONFIRM){
+          trigN = 0;
+          rawCycleStart = rawSoil; shots = 0;
+          rawBefore = rawSoil; doseBudget = planDose(rawSoil); doseMs = 0;
+          if (doseBudget > 0){ setPump(true); st = S_DOSING; }
+        }
       }
       break;
 
