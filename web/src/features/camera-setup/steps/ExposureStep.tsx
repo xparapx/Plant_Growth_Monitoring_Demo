@@ -17,12 +17,23 @@ export function ExposureStep(_p: StepProps) {
       <Button variant="alt" size="sm" onClick={() => run('auto')} busy={busy} disabled={disabled} className="min-h-10 w-full md:min-h-9">
         {busy ? ko.setup.converging : ko.setup.auto}
       </Button>
+      <div className="grid grid-cols-2 gap-2">
+        <Button variant="sub" size="sm" onClick={() => run('auto', { phase: 'dawn' })} busy={busy} disabled={disabled} className="min-h-9">
+          {ss.autoDawn}
+        </Button>
+        <Button variant="sub" size="sm" onClick={() => run('auto', { phase: 'pm' })} busy={busy} disabled={disabled} className="min-h-9">
+          {ss.autoPm}
+        </Button>
+      </div>
+      <div className="text-[11px] leading-relaxed text-muted">{ss.phaseHint}</div>
       <KeyValue
         items={[
           { k: ss.exposure, v: fmtNum(c.exposure_us, 0) },
           { k: ss.gain, v: fmtNum(c.gain, 2) },
           { k: ss.wb, v: `${fmtNum(c.colour_gains[0], 2)} / ${fmtNum(c.colour_gains[1], 2)}` },
           { k: ss.lens, v: fmtNum(c.lens_position, 2) },
+          { k: ss.profDawn, v: ss.prof(c.dawn) },
+          { k: ss.profPm, v: ss.prof(c.pm) },
         ]}
       />
       {gainTone && (

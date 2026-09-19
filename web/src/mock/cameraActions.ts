@@ -30,13 +30,20 @@ const ACTIONS: Record<string, (st: MockState, p: Body) => string> = {
   close(st) { st.cam.state = 'closed'; st.cam.clients = 0; broadcast('camera.state', { state: 'closed' }); return '카메라 닫음 — 예약 촬영이 쓸 수 있습니다' },
   save(st) { bumpConfig(st); return '현재 설정을 다시 저장했습니다' },
 
-  auto(st) {
+  auto(st, p) {
+    const phase = p.phase === 'dawn' || p.phase === 'pm' ? (p.phase as 'dawn' | 'pm') : ''
     const r = new Rng(Date.now() & 0xffff)
     const vals = { exposure_us: Math.round(r.uniform(17000, 21000) / 100) * 100, gain: Number(r.uniform(1.6, 2.4).toFixed(2)), colour_gains: [Number(r.uniform(1.8, 2.0).toFixed(2)), Number(r.uniform(1.5, 1.65).toFixed(2))] as [number, number], lens_position: Number(r.uniform(1.75, 1.9).toFixed(2)) }
     st.setup.lastAuto = vals
-    bumpConfig(st, (c) => { c.capture = { ...c.capture, ...vals } })
+    bumpConfig(st, (c) => {
+      c.capture.lens_position = vals.lens_position
+      const ctl = { exposure_us: vals.exposure_us, gain: vals.gain, colour_gains: vals.colour_gains }
+      if (phase) c.capture = { ...c.capture, [phase]: ctl }
+      else c.capture = { ...c.capture, ...ctl }
+    })
+    const dest = phase === 'dawn' ? '새벽(조명) 프로필' : phase === 'pm' ? '오후(자연광) 프로필' : '공통값'
     const warn = vals.gain > 4 ? `  ⚠ gain ${vals.gain.toFixed(1)} 은 높습니다 — 조명을 밝게 하고 다시 측정하세요(노이즈)` : vals.gain > 2 ? '  · 조명을 더 밝게 하면 노이즈가 줄어듭니다' : ''
-    return `exp ${vals.exposure_us} · gain ${vals.gain.toFixed(2)} · WB ${vals.colour_gains[0].toFixed(2)}/${vals.colour_gains[1].toFixed(2)} · lens ${vals.lens_position.toFixed(2)}  — 고정·저장 완료${warn}`
+    return `exp ${vals.exposure_us} · gain ${vals.gain.toFixed(2)} · WB ${vals.colour_gains[0].toFixed(2)}/${vals.colour_gains[1].toFixed(2)} · lens ${vals.lens_position.toFixed(2)}  — ${dest}로 고정·저장 완료${warn}`
   },
 
   light(st, p) {

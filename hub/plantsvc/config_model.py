@@ -30,6 +30,15 @@ class Layout(BaseModel):
     gap_cm: float = 20.0
 
 
+class PhaseCtl(BaseModel):
+    """phase 별 노출 프로필 — 새벽(LED 조명)과 오후(자연광)는 조도가 달라
+    한 노출로 둘 다 커버할 수 없다. 면적 비교는 늘 같은 phase 끼리이므로
+    노출은 phase 안에서만 일정하면 된다. 렌즈 위치는 공통(초점은 안 변함)."""
+    exposure_us: int = 20000
+    gain: float = 2.0
+    colour_gains: tuple[float, float] = (1.8, 1.6)
+
+
 class Capture(BaseModel):
     size: tuple[int, int] = (4608, 2592)
     rotation: int = 0                  # 0|90|180|270 — 설치 방향 보정. 센서가 아니라 프레임을 돌린다
@@ -37,6 +46,17 @@ class Capture(BaseModel):
     exposure_us: int = 20000
     gain: float = 2.0
     colour_gains: tuple[float, float] = (1.8, 1.6)   # (red, blue)
+    dawn: PhaseCtl | None = None       # 새벽(조명 아래) 프로필 — 없으면 공통값
+    pm: PhaseCtl | None = None         # 오후(자연광) 프로필 — 없으면 공통값
+
+    def for_phase(self, phase: str) -> dict[str, Any]:
+        """촬영에 적용할 컨트롤 dict — 공통값 위에 phase 프로필을 덮는다."""
+        d = self.model_dump()
+        prof = d.pop("dawn", None) if phase == "dawn" else d.pop("pm", None)
+        d.pop("pm", None); d.pop("dawn", None)
+        if prof:
+            d.update(prof)
+        return d
 
     @field_validator("rotation")
     @classmethod

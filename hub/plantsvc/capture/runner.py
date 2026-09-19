@@ -211,7 +211,8 @@ class CaptureRunner:
                 self._mark(job, "camera_open")
                 self.camera.ensure_open(for_capture=True)
                 self._mark(job, "controls")
-                self.camera.apply_controls(self.store.get().capture)   # persisted values only
+                # phase 프로필(dawn=조명 아래, pm=자연광) — 없으면 공통값 그대로
+                self.camera.apply_controls(self.store.get().capture.for_phase(job.phase))
                 self._mark(job, "settle")
                 self._wait(0.1 if job.fake else 2.0, job)
                 self._mark(job, "capture")

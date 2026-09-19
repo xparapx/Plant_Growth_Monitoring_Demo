@@ -118,14 +118,24 @@ class SetupSession:
         return "현재 설정을 다시 저장했습니다"
 
     def act_auto(self, p):
+        """자동 측정 → 고정. p.phase 가 dawn/pm 이면 그 phase 전용 프로필로 저장 —
+        새벽(조명)과 오후(자연광)는 조도가 달라 한 노출로 둘 다 커버할 수 없다.
+        렌즈 위치는 항상 공통값에 저장(초점은 조명과 무관)."""
+        from ..config_model import PhaseCtl
+        phase = str(p.get("phase") or "")
         vals = self.camera.auto_cycle()
         self.last_auto = vals
 
         def _u(c):
-            c.capture.exposure_us = int(vals["exposure_us"])
-            c.capture.gain = float(vals["gain"])
-            c.capture.colour_gains = (float(vals["colour_gains"][0]), float(vals["colour_gains"][1]))
             c.capture.lens_position = float(vals["lens_position"])
+            ctl = dict(exposure_us=int(vals["exposure_us"]), gain=float(vals["gain"]),
+                       colour_gains=(float(vals["colour_gains"][0]), float(vals["colour_gains"][1])))
+            if phase in ("dawn", "pm"):
+                setattr(c.capture, phase, PhaseCtl(**ctl))
+            else:
+                c.capture.exposure_us = ctl["exposure_us"]
+                c.capture.gain = ctl["gain"]
+                c.capture.colour_gains = ctl["colour_gains"]
         self.store.update(_u)
         gain = vals["gain"]
         warn = ""
@@ -134,8 +144,9 @@ class SetupSession:
         elif gain > 2.0:
             warn = "  · 조명을 더 밝게 하면 노이즈가 줄어듭니다"
         cg = vals["colour_gains"]
+        dest = {"dawn": "새벽(조명) 프로필", "pm": "오후(자연광) 프로필"}.get(phase, "공통값")
         return (f"exp {vals['exposure_us']} · gain {gain:.2f} · WB {cg[0]:.2f}/{cg[1]:.2f} · "
-                f"lens {vals['lens_position']:.2f}  — 고정·저장 완료{warn}")
+                f"lens {vals['lens_position']:.2f}  — {dest}로 고정·저장 완료{warn}")
 
     def act_light(self, p):
         """환경노드 촬영 조명 원격 점등/소등 — plant/light/set 브로드캐스트.

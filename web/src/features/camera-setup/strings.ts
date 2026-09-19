@@ -1,4 +1,5 @@
 /* Extra copy for the camera-setup feature (ko.setup.* covers the rest). */
+type PhaseCtlLike = { exposure_us: number; gain: number; colour_gains: [number, number] }
 export const ss = {
   stageAria: (n: number, ppc: number) => `카메라 미리보기 — ROI ${n}개, ${ppc} px/cm`,
   safeFrame: '안전 영역',
@@ -15,6 +16,10 @@ export const ss = {
   camOffMsg: '카메라 꺼짐 — [카메라 켜기]를 누르면 미리보기가 다시 시작됩니다',
   lightTitle: '환경노드 촬영 조명(MQTT) — 켜면 노드가 30분 뒤 자동 소등합니다',
   exposure: '노출 (µs)', gain: '게인', wb: '화이트밸런스', lens: '렌즈 위치',
+  autoDawn: '새벽(조명) 프로필 측정', autoPm: '오후(자연광) 프로필 측정',
+  phaseHint: '새벽(LED)과 오후(자연광)는 조도가 달라 노출을 따로 고정합니다 — 각 조명 조건에서 눌러 측정하세요',
+  profDawn: '새벽 프로필', profPm: '오후 프로필', profNone: '미설정 (공통값 사용)',
+  prof: (p: PhaseCtlLike | null | undefined) => p ? `${p.exposure_us}µs · g${p.gain.toFixed(2)} · WB ${p.colour_gains[0].toFixed(2)}/${p.colour_gains[1].toFixed(2)}` : '미설정 (공통값 사용)',
   scaleReadout: (ppc: string, cm: number) => `${ppc} px/cm (${cm} cm 기준)`,
   measureOn: '두 점 찍기 (진행 중)', measureOff: '두 점 찍기',
   potNow: (cm: number) => `현재 ${cm} cm — 배율(두 점 찍기)에는 쓰이지 않고, 잰 배율이 말이 되는지 검산 경고에만 씁니다`,
