@@ -36,7 +36,7 @@ function overlayTransform(rot: number, dw: number, dh: number) {
 }
 
 /** Live MJPEG preview with the interactive SVG overlay (the only pointer target). */
-export function PreviewStage({ cm, className = '' }: { cm: number; className?: string }) {
+export function PreviewStage({ cm, camOn = true, className = '' }: { cm: number; camOn?: boolean; className?: string }) {
   const { status, mode, run, disabled } = useSetup()
   const imgRef = useRef<HTMLImageElement>(null)
   const svgRef = useRef<SVGSVGElement>(null)
@@ -55,11 +55,14 @@ export function PreviewStage({ cm, className = '' }: { cm: number; className?: s
     try { localStorage.setItem(VIEWROT_KEY, String(next)) } catch { /* per-viewer convenience */ }
   }
 
-  const streamSrc = MOCK
-    ? MOCK_PREVIEW_SRC
-    : live
-      ? assetUrl(fallback ? `/api/camera/frame.jpg?t=${mountTs}` : `/api/camera/stream.mjpg?overlay=0&t=${mountTs}`)
-      : undefined
+  // camOn=false 면 스트림 자체를 끊는다 — 열어 달라는 요청이 다시 가면 close 가 무효가 되므로
+  const streamSrc = !camOn
+    ? undefined
+    : MOCK
+      ? MOCK_PREVIEW_SRC
+      : live
+        ? assetUrl(fallback ? `/api/camera/frame.jpg?t=${mountTs}` : `/api/camera/stream.mjpg?overlay=0&t=${mountTs}`)
+        : undefined
 
   // Stop the MJPEG socket when paused and on unmount.
   useEffect(() => {
@@ -157,9 +160,14 @@ export function PreviewStage({ cm, className = '' }: { cm: number; className?: s
           ⟳ {ss.rotate}
         </button>
       </div>
-      {live && <ModeHint status={status} mode={mode} />}
+      {live && camOn && <ModeHint status={status} mode={mode} />}
       <StageStatusBar status={status} />
       {!live && <PausedOverlay status={status} />}
+      {!camOn && (
+        <div className="absolute inset-0 flex items-center justify-center bg-black/60">
+          <span className="rounded-full bg-black/70 px-4 py-2 text-[12.5px] font-medium text-white">{ss.camOffMsg}</span>
+        </div>
+      )}
     </div>
   )
 }
