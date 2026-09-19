@@ -23,6 +23,12 @@ cd web && npm run lint && npm run build
 - 브라우저 확인: `.claude/launch.json` 의 `api`(PLANT_FAKE_HW=1, :8080)와 `web`(:5173) → http://localhost:5173
 - 백엔드 없이: `http://localhost:5173/?mock=1` (`&scenario=full|env-only|none|conflict|unknown-treat|one-group|setup-fresh|setup-done|capture-failed`)
 
+## SSH 별명 (교무실 PC `~/.ssh/config`, 2026-09-19)
+
+- `pl` = 식물 파이(jh@raspi) · `aq` = 공기질(arduino@aqhub) · `tr` = 교통위험 Jetson(kjhs@orin) · `mb` = 급식실 파이(xparapx@rsp)
+- `mb-cf` = 급식실 파이 예비 경로(Cloudflare 터널) — 급식실 네트워크가 Tailscale 컨트롤 서버를 차단해 `mb` 는 현재 불통. 네트워크 이전 후 `sudo tailscale up` 재인증 필요.
+- HostName 은 Tailscale 기기명이라 어느 네트워크에서든 동일. 학교 유선망(10.23.x)에 기기를 직접 붙이지 말 것(차단·MAC 등록제).
+
 ## 알아둘 것 (환경 제약)
 
 - Windows Smart App Control 이 최신 pydantic-core DLL 을 막아 win32 에서만 `pydantic<2.11` 고정(pyproject). 파이는 최신.
