@@ -17,8 +17,8 @@
  *    · 발행 실패 = 유실이던 것을 오프라인 큐(8건)로 — 타임스탬프는
  *      payload 에 이미 박혀 있으므로 늦게 발행돼도 시각이 안 밀립니다.
  *    · String 제거(힙 단편화) · WDT(5초) · NTP 하루 1회 재동기화.
- *    · 촬영 조명 — Grove RGB LED 스틱(5구) × 2 (D4·D5), KST 05:45~06:15
- *      시간 기반 독립 점등 (USE_LIGHT=1). (매뉴얼 패널 19)
+ *    · 촬영 조명 — RGB 네오픽셀 4구 (핀 9), KST 05:45~06:15 시간 기반
+ *      독립 점등 (USE_LIGHT=1). 시리얼 모니터 1/0 = 점등 테스트.
  * ═══════════════════════════════════════════════════════════
  *  ★ Core S3 판과 다른 점 (R4 WiFi 전용)
  *    · M5Unified 없음 → 화면 코드 제거 (R4는 12x8 LED 매트릭스뿐)
@@ -26,8 +26,7 @@
  *    · Wire.begin() — 핀 번호 지정 안 함 (SDA/SCL 고정)
  *    · NTP = RTC(WiFiS3 내장) 이용, UTC
  *  라이브러리: WiFiS3(보드 내장) / PubSubClient / Sensirion I2C SCD4x(신버전)
- *              Adafruit BME680(BME688 호환) / BH1750
- *              (USE_LIGHT=1 이면 + Adafruit NeoPixel)
+ *              Adafruit BME680(BME688 호환) / BH1750 / Adafruit NeoPixel
  * ═══════════════════════════════════════════════════════════
  */
 #include <WiFiS3.h>
@@ -46,9 +45,9 @@
 const uint8_t SCD41_ADDR = 0x62;
 
 // ══════════ 사용자 설정 ══════════
-const char* WIFI_SSID = "your-hotspot";
+const char* WIFI_SSID = "your-hotspot";       // ★ 2.4GHz SSID
 const char* WIFI_PASS = "your-password";
-const char* BROKER    = "192.168.0.15";     // ★ 브로커 IP (Pi: hostname -I / PC: ipconfig)
+const char* BROKER    = "192.168.0.15";     // ★ 브로커 IP — 파이 확정 후 교체 (Pi: hostname -I / PC: ipconfig)
 const int   PORT      = 1883;
 
 const uint16_t ALTITUDE_M = 40;             // ★ 학교 해발고도(m) — SCD41 CO2 보정
@@ -57,27 +56,30 @@ const unsigned long SAMPLE_MS = 10000;      // 5분에 n≈30
 // NTP는 UTC로 저장, hub에서 +9h. 아래 KST 는 조명 창 계산에만 씁니다.
 // ════════════════════════════════
 
-// ══════════ 촬영 조명 — Grove RGB LED 스틱(5구, WS2813) × 2 ══════════
-// 네오픽셀은 LED마다 드라이버 내장 -> Grove D4·D5 포트에 데이터 핀 직결,
-// 릴레이/MOSFET 불요. 노드가 시계(NTP)만 보고 독립 점등합니다 — 파이·MQTT 무관.
+// ══════════ 촬영 조명 — RGB 네오픽셀 4구 (핀 9) ══════════
+// 네오픽셀은 LED마다 드라이버 내장 -> 데이터 핀 직결, 릴레이/MOSFET 불요.
+// 노드가 시계(NTP)만 보고 독립 점등합니다 — 파이·MQTT 는 관여하지 않음.
 //   · 창이 지나면 무조건 소등 (자체 watchdog — 매 루프 창 밖이면 off)
 //   · NTP 실패(timeOK=false)면 켜지 않음 — 켜진 채 남는 길을 차단
-//   · 전류: 풀 화이트 LED당 ~60mA. 10구 × 밝기 80/255 ≈ 190mA — 보드 5V 직결 OK.
-//     밝기를 올릴 땐 총전류(10구 풀밝기 ~600mA)와 5V 레일 여유를 확인할 것.
-//   · Grove 스틱은 RGB(백색 칩 없음) — 합성 백색이라 스펙트럼이 뾰족합니다.
-//     설치 후 새벽 시험 촬영으로 ExG 마스크가 안정한지 반드시 확인. (매뉴얼 패널 19)
+//   · 전류: 풀 화이트 LED당 ~60mA -> 4구 풀밝기 ~240mA, 보드 5V 직결 OK.
+//   · RGB 합성 백색은 스펙트럼이 뾰족함 — 설치 후 새벽 시험 촬영으로
+//     ExG 마스크가 안정한지 확인할 것 (매뉴얼 패널 19).
 #define USE_LIGHT 1
 #if USE_LIGHT
   #include <Adafruit_NeoPixel.h>
-  const int     LIGHT_PIN1   = 4;           // Grove D4 포트 — 스틱 1
-  const int     LIGHT_PIN2   = 5;           // Grove D5 포트 — 스틱 2
-  const int     LIGHT_N      = 5;           // 스틱당 LED 5구
-  const uint8_t LIGHT_BRIGHT = 80;          // 0~255 — 매일 같은 값으로 고정 (전류 제한 겸)
+  const int     LIGHT_PIN    = 9;           // ★ 스트립 데이터 핀 (Grove 디지털 포트)
+  const int     LIGHT_N      = 4;           // ★ LED 개수
+  const uint8_t LIGHT_BRIGHT = 255;         // 0~255 — 매일 같은 값으로 고정 (전류 제한 겸)
   const long    LIGHT_ON_S   = 5*3600L + 45*60L;   // KST 05:45
   const long    LIGHT_OFF_S  = 6*3600L + 15*60L;   // KST 06:15 (촬영 05:50 이 창 안)
-  Adafruit_NeoPixel strip1(LIGHT_N, LIGHT_PIN1, NEO_GRB + NEO_KHZ800);
-  Adafruit_NeoPixel strip2(LIGHT_N, LIGHT_PIN2, NEO_GRB + NEO_KHZ800);
+  Adafruit_NeoPixel strip(LIGHT_N, LIGHT_PIN, NEO_GRB + NEO_KHZ800);  // RGB 스트립 (백색 칩 없음)
   bool lit = false;
+
+  void setLight(bool on) {                  // 점등/소등 한 곳에서 — RGB 합성 백색
+    uint32_t c = on ? strip.Color(255, 255, 255) : 0;
+    for (int i = 0; i < LIGHT_N; i++) strip.setPixelColor(i, c);
+    strip.show();
+  }
 #endif
 
 WiFiClient net;
@@ -269,6 +271,8 @@ void publishAverage(long bucket) {
 void resetAccum() { sT=sH=sP=sV=sL=sC=0; n=0; nC=0; nB=0; }
 
 #if USE_LIGHT
+bool lightTest = false;                   // 시리얼 1/0 테스트 중이면 true — 창 전이가 오면 해제
+
 // 시간 기반 점등 — 상태가 <바뀔 때만> show(). 창 밖 = 무조건 소등이 watchdog 역할.
 void lightTick() {
   bool want = false;
@@ -279,10 +283,19 @@ void lightTick() {
   }                                             // timeOK=false -> want=false (안전측)
   if (want == lit) return;
   lit = want;
-  uint32_t c = lit ? Adafruit_NeoPixel::Color(255, 255, 255) : 0;  // RGB 합성 백색
-  for (int i = 0; i < LIGHT_N; i++) { strip1.setPixelColor(i, c); strip2.setPixelColor(i, c); }
-  strip1.show(); strip2.show();
+  lightTest = false;                            // 실제 창 전이가 오면 테스트 상태는 버린다
+  setLight(lit);
   Serial.println(lit ? "[LIGHT] on 05:45~06:15" : "[LIGHT] off");
+}
+
+// 시리얼 테스트: 모니터(115200)에서 1 = 켜기, 0 = 끄기. 시간 로직과 무관.
+void lightSerialTest() {
+  if (!Serial.available()) return;
+  char ch = Serial.read();
+  if (ch != '1' && ch != '0') return;
+  lightTest = (ch == '1');
+  setLight(lightTest);
+  Serial.println(lightTest ? "[LIGHT] test ON" : "[LIGHT] test OFF");
 }
 #endif
 
@@ -292,11 +305,9 @@ void setup() {
   initSensors();
 
 #if USE_LIGHT
-  strip1.begin(); strip2.begin();
-  strip1.setBrightness(LIGHT_BRIGHT);      // 매일 같은 값 — 전류 제한 겸 조명 고정
-  strip2.setBrightness(LIGHT_BRIGHT);
-  strip1.clear(); strip1.show();           // 부팅은 반드시 소등으로
-  strip2.clear(); strip2.show();
+  strip.begin();
+  strip.setBrightness(LIGHT_BRIGHT);       // 매일 같은 값 — 전류 제한 겸 조명 고정
+  strip.clear(); strip.show();             // 부팅은 반드시 소등으로
 #endif
 
   // ★ 여기서 기다리지 않습니다 — 연결·NTP·nodeId 확정은 전부 loop 에서 논블로킹으로.
@@ -305,7 +316,7 @@ void setup() {
   client.setKeepAlive(60);
 
   WDT.begin(5000);                         // 5초 워치독 — I2C/소켓이 얼면 리셋
-  Serial.println("[BOOT] env node — 논블로킹 접속, 큐 8건, WDT 5s");
+  Serial.println("[BOOT] env node — 논블로킹 접속, 큐 8건, WDT 5s, LIGHT 4구/핀9");
 }
 
 void loop() {
@@ -314,6 +325,7 @@ void loop() {
   if (netReady()) { client.loop(); flushQueue(); }
   ntpTick();
 #if USE_LIGHT
+  lightSerialTest();
   lightTick();
 #endif
 
