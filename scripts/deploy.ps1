@@ -31,7 +31,7 @@ function Invoke-Native([string]$cmd, [string[]]$argv) {
 $dirty = git status --porcelain
 if ($dirty -and -not $Force) { throw "working tree is dirty - commit first (or -Force)" }
 if (-not $Branch) { $Branch = (git rev-parse --abbrev-ref HEAD).Trim() }
-Write-Host "== deploy $Branch -> $PiHost:$RemoteDir (web=$Web)"
+Write-Host "== deploy $Branch -> ${PiHost}:${RemoteDir} (web=$Web)"
 & ssh -o BatchMode=yes -o ConnectTimeout=8 $PiHost "true"
 if ($LASTEXITCODE -ne 0) {
   Write-Host "ssh key login to $PiHost failed. One-time setup (enter the Pi password once):"
