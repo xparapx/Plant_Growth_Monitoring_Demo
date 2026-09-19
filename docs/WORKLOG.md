@@ -4,6 +4,8 @@
 
 ## 2026-09
 
+- **09-19 조명 체계 정리** — ① 카메라 설정 UI: 보기 전용 90° 회전(브라우저 표시만, 사진·좌표 원본 유지), 조명 켬/끔 버튼(→ MQTT `plant/light/set`, 노드 30분 자동 소등), 카메라 수동 켜기/끄기 버튼. ② 환경노드 정식 펌웨어: RGB 4구×2(핀 8·9), 시간 창 + MQTT 원격 점등 + 시리얼 테스트. ③ hub 의 옛 GPIO LED 훅(config `led` 절·LedController·`plantsvc led` CLI·촬영 루틴 점등 단계·systemd led off·웹 LED 카드) 전면 제거 — 조명 코드는 노드 펌웨어에만 존재. 학교망 이슈: Tailscale 컨트롤·GitHub SSH 차단 확인 → 파이 remote HTTPS 전환, 급식실 파이는 `mb-cf`(Cloudflare) 경로 사용.
+
 - **09-19 카메라 90° 회전** — 설치 방향 보정용 `capture.rotation`(0/90/180/270) 신설. picamera2 Transform 은 90도가 안 되므로 서버에서 프레임 회전(미리보기 grab·정지촬영 후처리 모두), ROI·격자·프레임폭 계산은 `eff_size` 기준으로 통일. 설정 UI 미리보기에 ⟳ 90° 회전 버튼(+세로 화면 동적 종횡비), 회전 시 배율·ROI·calib 재설정 경고. mock 동등 반영.
 - **09-18 환경노드 개정** — `plant_env_r4wifi.ino`: 블로킹 재접속(최대 85초 루프 정지) 제거 → water_node 식 논블로킹 `netReady()`(10초 간격 1회 시도), 발행 실패 유실 → 오프라인 큐 8건(payload 에 버킷 시각 포함이라 늦게 발행돼도 시각 정확), String → 정적 버퍼, WDT 5초, NTP 하루 1회 재동기화, 네오픽셀 시간 점등 구현(`USE_LIGHT=1` — Grove RGB 스틱 5구×2, D4·D5, 밝기 80/255 고정, KST 05:45~06:15, 창 밖·NTP 실패 시 무조건 소등).
 - **09-18 급수 펄스 분할** — dry_probe 주기 측정 경험을 반영해 `water_node.ino` 도즈를 **0.2초 펄스 + 2.5초 스며듦·측정** 열로 분할(새 상태 `S_GAP`). 간격 측정에서 목표(RAW_OFF) 도달 시 남은 예산을 버리고 조기 중지 — 드로퍼 물튐·과급수 방지. 학습(kPerMs)·3분 침투 검증·no-rise/MAX_SHOTS 고장 판정은 그대로(2.5초 측정은 조기 중지용 참고). `dry_probe.ino`를 `firmware/tools/`에 수록.

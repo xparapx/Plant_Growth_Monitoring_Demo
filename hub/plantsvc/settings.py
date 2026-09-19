@@ -9,8 +9,7 @@ from the wrong directory silently created a second, empty database.
     PLANT_WEB_DIST   built React app (default: <repo>/web/dist)
     PLANT_PORT / PLANT_HOST
     PLANT_CAMERA     auto | picamera2 | fake
-    PLANT_LED        auto | gpiozero | noop     (config.json led.driver is the base; env overrides)
-    PLANT_FAKE_HW=1  shorthand for camera=fake + led=noop (CI, PC, other-user dry runs)
+    PLANT_FAKE_HW=1  shorthand for camera=fake (CI, PC, other-user dry runs)
     PLANT_MQTT=0     do not connect the live-update bridge
 """
 
@@ -104,7 +103,6 @@ class Settings(BaseSettings):
     data_dir: Path | None = None
     web_dist: Path | None = None
     camera: Literal["auto", "picamera2", "fake"] = "auto"
-    led: Literal["auto", "gpiozero", "noop"] | None = None
     fake_hw: bool = False
     mqtt: bool = True
     preview_idle_close_s: int = 30
@@ -118,10 +116,6 @@ class Settings(BaseSettings):
     @property
     def camera_mode(self) -> str:
         return "fake" if self.fake_hw else self.camera
-
-    @property
-    def led_mode(self) -> str | None:
-        return "noop" if self.fake_hw else self.led
 
 
 @lru_cache(maxsize=1)

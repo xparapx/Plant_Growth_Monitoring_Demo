@@ -72,8 +72,7 @@ def summary(c=Depends(ctx), dummy: str | None = DummyQ) -> dict[str, Any]:
             "env": health_an.env_summary(fr), "nodes": nodes, "alerts": alerts,
             "validity": soil_an.validity(fr, roster, cfg),
             "run_started": cfg.run_started, "tz": cfg.tz, "real_env": fr.real_env,
-            "capture": {"driver": c.camera.driver or c.camera.probe_driver()},
-            "led": c.led.status()}
+            "capture": {"driver": c.camera.driver or c.camera.probe_driver()}}
 
 
 @router.get("/env")

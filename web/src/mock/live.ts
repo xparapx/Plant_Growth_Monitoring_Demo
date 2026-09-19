@@ -64,7 +64,7 @@ function tickSoil(st: MockState): void {
 }
 
 // ---- capture job -----------------------------------------------------------------
-const WAIT: Record<string, number> = { lock: 150, led_on: 100, camera_open: 200, controls: 300, settle: 200, capture: 500, led_off: 2000, measure: 100, jsonl: 3000, publish: 100, done: 1000 }
+const WAIT: Record<string, number> = { lock: 150, camera_open: 200, controls: 300, settle: 200, capture: 2000, measure: 100, jsonl: 3000, publish: 100, done: 1000 }
 let cancelFlag = false
 let lastMarkMs = 0
 
@@ -95,8 +95,7 @@ export function startJob(st: MockState, phase: string): Job {
     window.setTimeout(() => {
       if (cancelFlag) return finish(st, job, 'cancelled', 'cancelled by user')
       const name = steps[i]
-      if (name === 'led_on') job.log.push('[LED] skipped — LED not installed (led.enabled=false)')
-      if (name === 'led_off') job.log.push(`[${job.img_file}] shot ${job.img_file}`)
+      if (name === 'measure') job.log.push(`[${job.img_file}] shot ${job.img_file}`)
       if (name === 'jsonl') measure(st, job)
       if (name === 'publish') { job.published = true; job.log.push(`[${job.img_file}] ${job.phase}  ${job.ok_rows}/${job.n_rows} ok  ->  ${st.cfg.mqtt.growth_topic} 발행`) }
       if (name === 'done') return finish(st, job, job.ok_rows ? 'done' : 'failed', job.ok_rows ? null : 'no valid measurement — check photos/debug')

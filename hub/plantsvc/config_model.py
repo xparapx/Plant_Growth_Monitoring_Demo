@@ -3,7 +3,7 @@
 Everything an operator can set lives in ONE file (data/config.json).  The
 vision code still consumes the plain-dict shape (`to_legacy_dict()`), so the
 numbers and key names are exactly those setup_camera / leaf_measure /
-frame_align always used.  New sections (tz, bands, analysis, led, schedule,
+frame_align always used.  New sections (tz, bands, analysis, schedule,
 mqtt, preview) carry the constants that were previously duplicated in
 dashboard.py, water_node.ino and the systemd units.
 
@@ -111,17 +111,6 @@ class Analysis(BaseModel):
     cam_interval_min: int = 720
 
 
-class Led(BaseModel):
-    """Capture light.  Hardware is not installed yet: driver 'noop' is the default and the
-    routine still walks led_on -> warmup -> shoot -> led_off so the UI/API shapes are final."""
-    enabled: bool = False
-    driver: Literal["auto", "gpiozero", "noop"] = "noop"
-    pin: int = 17                  # BCM numbering
-    active_high: bool = True
-    warmup_s: int = 300
-    max_on_s: int = 1200           # watchdog: never leave the lamp on longer than this
-
-
 class Schedule(BaseModel):
     dawn: str = "05:50"            # local wall clock (config.tz); shot lands before 06:00
     pm: str = "15:00"
@@ -158,7 +147,6 @@ class Config(BaseModel):
     run_started: str | None = None
     bands: Bands = Field(default_factory=Bands)
     analysis: Analysis = Field(default_factory=Analysis)
-    led: Led = Field(default_factory=Led)
     schedule: Schedule = Field(default_factory=Schedule)
     mqtt: Mqtt = Field(default_factory=Mqtt)
     preview: Preview = Field(default_factory=Preview)
@@ -194,7 +182,7 @@ class Config(BaseModel):
         return self.preview.size[0] / self.capture.size[0]
 
 
-DEAD_TOP_KEYS = ("marker_mm", "ref_marker")
+DEAD_TOP_KEYS = ("marker_mm", "ref_marker", "led")
 DEAD_QC_KEYS = ("px_per_cm_tol",)
 
 
@@ -209,7 +197,7 @@ def migrate(raw: dict[str, Any] | None, *, strict: bool = False) -> tuple[dict[s
     for k in DEAD_TOP_KEYS:
         if k in d:
             d.pop(k)
-            warnings.append(f"dropped legacy key '{k}' (ArUco era; frame_align replaced it)")
+            warnings.append(f"dropped legacy key '{k}' (no longer used)")
     qc = d.get("qc")
     if isinstance(qc, dict):
         for k in DEAD_QC_KEYS:

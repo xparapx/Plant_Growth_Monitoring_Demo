@@ -10,7 +10,7 @@ import { phaseLabel, stateChip, stateLabel } from '@/features/capture/jobUtils'
 import { ko } from '@/i18n/ko'
 import { fmtDateTime } from '@/lib/format'
 
-/** "촬영 일지" — the 3a filler proposed in the plan: the last few capture jobs with LED, drift and ok/n. */
+/** "촬영 일지" — the 3a filler proposed in the plan: the last few capture jobs with drift and ok/n. */
 export function CaptureLogCard() {
   const q = useCaptureJobs(6)
   return (
@@ -28,7 +28,6 @@ export function CaptureLogCard() {
 }
 
 function Row({ j }: { j: Job }) {
-  const ledOn = j.led?.installed ? j.steps.find((s) => s.name === 'led_on') : null
   const drift = j.drift?.level
   return (
     <li className="card-sub flex flex-col gap-1 px-3.5 py-2.5 text-[11.5px] text-muted">
@@ -39,7 +38,6 @@ function Row({ j }: { j: Job }) {
       </div>
       <div className="num flex flex-wrap gap-x-3 gap-y-0.5">
         <span>ok {j.ok_rows}/{j.n_rows}</span>
-        <span>{ko.captureLog.led} {ledOn ? fmtDateTime(ledOn.at).slice(-5) : ko.captureLog.skipped}</span>
         {drift && <span style={{ color: drift === 'fail' ? 'var(--bad-ink)' : drift === 'drift' ? 'var(--warn-ink)' : undefined }}>drift {drift}</span>}
         {j.fake && <span className="text-dummy">{ko.capture.fakeFrame}</span>}
       </div>

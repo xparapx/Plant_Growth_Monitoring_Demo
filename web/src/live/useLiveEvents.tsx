@@ -1,6 +1,6 @@
 import { useEffect, type ReactNode } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
-import type { CaptureStatus, Job, LedStatus, LiveEvent } from '@/api/types'
+import type { CaptureStatus, Job, LiveEvent } from '@/api/types'
 import { qk } from '@/api/queries'
 import { liveStore } from './liveStore'
 import { onLive, startLive } from './ws'
@@ -41,14 +41,10 @@ export function LiveEventsProvider({ children }: { children: ReactNode }) {
           const job = ev.data as Job
           qc.setQueryData<CaptureStatus>(qk.capture.status, (old) =>
             old ? { ...old, job: job.state === 'running' || job.state === 'queued' ? job : null, last: job.state === 'running' || job.state === 'queued' ? old.last : job } : old)
-          if (ev.type === 'capture.done') inv(qk.capture.status, ['capture', 'jobs'], qk.camera.status, qk.images('raw'), qk.led)
+          if (ev.type === 'capture.done') inv(qk.capture.status, ['capture', 'jobs'], qk.camera.status, qk.images('raw'))
           else inv(qk.camera.status)
           break
         }
-        case 'led':
-          qc.setQueryData<LedStatus>(qk.led, ev.data as LedStatus)
-          qc.setQueryData<CaptureStatus>(qk.capture.status, (old) => (old ? { ...old, led: ev.data as LedStatus } : old))
-          break
         case 'config.changed':
           inv(qk.config, qk.summary, qk.camera.status, qk.capture.status)
           break

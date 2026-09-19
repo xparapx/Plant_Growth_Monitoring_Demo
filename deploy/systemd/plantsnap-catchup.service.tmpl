@@ -14,7 +14,6 @@ Environment=PLANT_PORT=${PLANT_PORT}
 Environment=PYTHONUNBUFFERED=1
 Environment=GPIOZERO_PIN_FACTORY=lgpio
 ExecStart=${PLANT_DIR}/.venv/bin/plantsvc capture --phase auto --if-missing
-ExecStopPost=-${PLANT_DIR}/.venv/bin/plantsvc led off
 TimeoutStartSec=${SNAP_TIMEOUT_S}
 
 [Install]

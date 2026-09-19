@@ -6,9 +6,9 @@ run_capture.py — compatibility shim.  The capture routine now lives in plantsv
   uv run python hub/run_capture.py --replay   ==  plantsvc replay
   sudo systemctl start plantsnap.service      ★ the real timer path
 
-Flow (unchanged in spirit, with the LED hook added):
-  ① camera lock  ② LED on → warm-up (when installed)  ③ shoot with config.json controls
-  ④ leaf_measure  ⑤ growth.jsonl FIRST  ⑥ MQTT publish qos=1
+Flow (unchanged in spirit):
+  ① camera lock  ② shoot with config.json controls
+  ③ leaf_measure  ④ growth.jsonl FIRST  ⑤ MQTT publish qos=1
 """
 import sys
 

@@ -74,8 +74,6 @@ async def action(name: str, c=Depends(ctx), body: dict[str, Any] | None = Body(d
 @router.post("/release")
 def release(c=Depends(ctx)) -> dict[str, Any]:
     """Internal: an external capture process asks the service to let go of the camera."""
-    if c.led.is_on:
-        c.led.off(reason="release")
     return c.camera.release_for_capture("capture")
 
 

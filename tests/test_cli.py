@@ -19,9 +19,8 @@ def test_doctor_rows_and_check_config(paths, capsys):
     from plantsvc.settings import Settings
     rows = doctor.run(Settings(data_dir=paths.data_dir, fake_hw=True), paths)
     names = {r["name"] for r in rows}
-    assert {"venv", "config.json", "data dir", "camera", "led", "schedule"} <= names
-    led = next(r for r in rows if r["name"] == "led")
-    assert led["status"] == "SKIP"
+    assert {"venv", "config.json", "data dir", "camera", "schedule"} <= names
+    assert not any(r["name"].startswith("led") for r in rows)
     assert main(["--data-dir", str(paths.data_dir), "check-config"]) == 1               # no rois yet
     out = capsys.readouterr().out
     assert "px_per_cm_ref" in out

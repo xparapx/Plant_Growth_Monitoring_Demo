@@ -33,7 +33,6 @@ export function defaultConfig(o: ConfigOpts): PlantConfig {
     qc: { px_per_cm_ref: o.ppc, edge_tol: 0.02, drift_warn_px: 8, drift_fail_px: 40, drift_resp_min: 0.05 },
     bands: { raw: { stable: [1900, 1940], fluct: [1820, 2020] }, cal_default: [2120, 1750], cal: {} },
     analysis: { tol_pp: 2, sep_ratio: 2, hist_bins: 44, soil_days: 7, pump_limit: 200, dummy_fill: 'auto', env_interval_min: 5, soil_interval_min: 5, cam_interval_min: 720 },
-    led: { enabled: false, driver: 'noop', pin: 17, active_high: true, warmup_s: 300, max_on_s: 1200 },
     schedule: { dawn: '05:50', pm: '15:00' },
     mqtt: { host: 'localhost', port: 1883, growth_topic: 'plant/tray/growth' },
     preview: { size: [...PREVIEW] as [number, number], jpeg_quality: 80, frame_ms: 80 },
@@ -69,8 +68,6 @@ export function checkConfig(cfg: PlantConfig): CheckReport {
     line('ROI', '처리군', rois.map((r) => `${r.plant_id}:${r.treat || '-'}`).join(' '), cfg.treat_mode ? `mode ${cfg.treat_mode}` : '')
   }
   line('스케줄', 'dawn / pm', `${cfg.schedule.dawn} / ${cfg.schedule.pm}`, `tz ${cfg.tz}`)
-  line('LED', 'enabled / driver', `${cfg.led.enabled ? 'True' : 'False'} / ${cfg.led.driver}`, `pin ${cfg.led.pin} warm-up ${cfg.led.warmup_s}s`)
-  if (cfg.led.enabled && cfg.led.driver === 'noop') warn.push('led.enabled 인데 driver 가 noop 입니다 — LED 가 켜지지 않습니다')
   return { bad, warn, lines, ok: bad.length === 0 }
 }
 

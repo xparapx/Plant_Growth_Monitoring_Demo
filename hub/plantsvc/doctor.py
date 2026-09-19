@@ -20,7 +20,7 @@ def _row(name: str, status: str, detail: str = "", fix: str = "") -> dict[str, s
     return {"name": name, "status": status, "detail": detail, "fix": fix}
 
 
-def run(settings: Settings, paths: Paths, *, led_test: bool = False) -> list[dict[str, Any]]:
+def run(settings: Settings, paths: Paths) -> list[dict[str, Any]]:
     rows: list[dict[str, Any]] = []
     on_pi = sys.platform.startswith("linux") and os.path.exists("/proc/device-tree/model")
 
@@ -107,29 +107,12 @@ def run(settings: Settings, paths: Paths, *, led_test: bool = False) -> list[dic
     rows.append(_row("camera lock", "OK" if pid in (None, os.getpid()) else "WARN",
                      "free" if pid in (None, os.getpid()) else f"held by pid {pid}"))
 
-    # led
-    if cfg is None or not cfg.led.enabled:
-        rows.append(_row("led", "SKIP", "not installed (led.enabled=false)"))
-    else:
-        from .led import gpio_available
-        ok, why = gpio_available()
-        rows.append(_row("led", "OK" if ok else "FAIL", f"gpio {cfg.led.pin}" if ok else why,
-                         "sudo apt install python3-gpiozero python3-lgpio; usermod -aG gpio $USER"))
-        if led_test and ok:
-            try:
-                from .led import LedController
-                LedController(store).test(1.0)
-                rows.append(_row("led test", "OK", "1 s on/off"))
-            except Exception as e:  # noqa: BLE001
-                rows.append(_row("led test", "FAIL", str(e)))
-
     # schedule / time
     if cfg is not None:
-        warm = cfg.led.warmup_s if cfg.led.enabled else 0
-        shot = add_minutes(cfg.schedule.dawn, warm // 60 + 2)
+        shot = add_minutes(cfg.schedule.dawn, 2)
         late = seconds_between_hhmm(shot, "06:00") < 0
         rows.append(_row("schedule", "WARN" if late else "OK",
-                         f"dawn {cfg.schedule.dawn} (+{warm}s warm-up → shot ≈ {shot}), pm {cfg.schedule.pm}, tz {cfg.tz}",
+                         f"dawn {cfg.schedule.dawn} (shot ≈ {shot}), pm {cfg.schedule.pm}, tz {cfg.tz}",
                          "move schedule.dawn earlier" if late else ""))
     if shutil.which("timedatectl"):
         try:

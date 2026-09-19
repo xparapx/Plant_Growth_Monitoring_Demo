@@ -1,17 +1,16 @@
 import type { PlantConfig } from '@/api/types'
 import { NumberField } from '@/components/ui/NumberField'
 import { ko } from '@/i18n/ko'
-import { Section, SelectField, TextField, ToggleField } from './fields'
+import { Section, SelectField, TextField } from './fields'
 import { S } from './strings'
 
 const T = S.config.sections
 const DUMMY = ['auto', 'on', 'off'] as const
-const DRIVERS = ['noop', 'auto', 'gpiozero'] as const
 
 export function ConfigForm({ draft, onChange }: { draft: PlantConfig; onChange: (next: PlantConfig) => void }) {
   const upd = (fn: (c: PlantConfig) => void) => { const c = structuredClone(draft); fn(c); onChange(c) }
   const n = (v: number | '') => (v === '' ? 0 : v)
-  const { capture: cap, layout, qc, analysis, led, schedule, mqtt } = draft
+  const { capture: cap, layout, qc, analysis, schedule, mqtt } = draft
   return (
     <div className="flex flex-col gap-3">
       <Section title={T.capture} cols={5}>
@@ -43,14 +42,6 @@ export function ConfigForm({ draft, onChange }: { draft: PlantConfig; onChange: 
         <NumberField label="hist_bins" value={analysis.hist_bins} step={1} min={4} onChange={(v) => upd((c) => { c.analysis.hist_bins = n(v) })} />
         <NumberField label="soil_days" value={analysis.soil_days} step={1} min={1} onChange={(v) => upd((c) => { c.analysis.soil_days = n(v) })} />
         <SelectField label="dummy_fill" value={analysis.dummy_fill} options={DUMMY} onChange={(v) => upd((c) => { c.analysis.dummy_fill = v })} />
-      </Section>
-      <Section title={T.led} cols={3}>
-        <ToggleField label="enabled" checked={led.enabled} onChange={(v) => upd((c) => { c.led.enabled = v })} />
-        <SelectField label="driver" value={(DRIVERS as readonly string[]).includes(led.driver) ? (led.driver as (typeof DRIVERS)[number]) : 'noop'} options={DRIVERS} onChange={(v) => upd((c) => { c.led.driver = v })} />
-        <NumberField label="pin" value={led.pin} step={1} min={0} onChange={(v) => upd((c) => { c.led.pin = n(v) })} />
-        <ToggleField label="active_high" checked={led.active_high} onChange={(v) => upd((c) => { c.led.active_high = v })} />
-        <NumberField label="warmup_s" value={led.warmup_s} unit="s" step={10} min={0} onChange={(v) => upd((c) => { c.led.warmup_s = n(v) })} />
-        <NumberField label="max_on_s" value={led.max_on_s} unit="s" step={60} min={0} onChange={(v) => upd((c) => { c.led.max_on_s = n(v) })} />
       </Section>
       <Section title={T.schedule} cols={3}>
         <TextField label="dawn (HH:MM)" value={schedule.dawn} placeholder="05:50" onChange={(v) => upd((c) => { c.schedule.dawn = v })} />

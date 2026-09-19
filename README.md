@@ -38,7 +38,7 @@
 ```
 환경 노드                급수 노드 (화분별)             허브 (Raspberry Pi)
 UNO R4 WiFi          →   M5 Core S3               →   run_collector.py ─→ plant.db ─→ plantsvc (FastAPI :8080)
-+ BME688/SCD41/BH1750    + Watering Unit              (planthub.service)   (SQLite)     ├─ 웹 UI (React) — 대시보드·카메라 설정·촬영/LED·시스템
++ BME688/SCD41/BH1750    + Watering Unit              (planthub.service)   (SQLite)     ├─ 웹 UI (React) — 대시보드·카메라 설정·촬영·시스템
 5분 평균 발행            폐루프 급수 + 5분 평균                ↑                        ├─ /api/* · /ws (실시간)
        │                       │                  mosquitto (1883)                    └─ 카메라 미리보기(MJPEG)
        └──── WiFi · MQTT ──────┴──────────────────────┘  ↑
@@ -72,13 +72,13 @@ Streamlit 대시보드(:8501)와 `setup_camera.py`(:8000)를 **하나의 앱(:80
 | **개요** `/overview` | 환경 5종 KPI+스파크라인 · 노드 상태 칩 · **Validity**(Δμ 정렬 / σ 비) · 캐노피 실루엣(어제→오늘) · 습윤–건조 톱니 7일 · 최근 관수 · **관수 기록**(처리군별 누적 급수·간격) |
 | **처리** `/treatment` | ρ(w) 히스토그램 · (접힌) 해석 참고 곡선 ∩/∪ · 주간 평균 정렬 추세 · 정오 처짐 지수 + 14일 타임라인 |
 | **생장** `/growth` | 캐노피 dawn 시계열 · RGR 포레스트 플롯(95 % CI) · Cohen's d · CSV 내보내기 |
-| **카메라** `/camera` | 다음 촬영 카운트다운 · 촬영 진행 단계 · 마지막 촬영 결과 · LED 상태(미설치 시 안내) · 지금 촬영 · 이력 |
+| **카메라** `/camera` | 다음 촬영 카운트다운 · 촬영 진행 단계 · 마지막 촬영 결과 · 지금 촬영 · 이력 · 조명 원격 점등(설정 탭) |
 | **카메라 설정** `/camera/setup` | 실시간 미리보기 위에 ① 노출·초점 ② 배율(두 점 클릭) ③ ROI ④ 처리군 ⑤ 기준 사진 — 예전 `setup_camera.py` 의 5단계 그대로 + ROI 재중심 + 밀림 판정 |
 | **시스템** `/system` | 서비스 상태 · 디스크/온도 · DB 행 수 · **config.json 편집** · 로그 · 미발행 측정 재발행 |
 
 **더미 데이터 모드** — 노드·카메라가 아직 없어도 전 화면이 돌아갑니다. 비어 있는 테이블은 합성 데이터로 채우고 그 섹션에 `DUMMY DATA` 배지를 붙입니다(`analysis.dummy_fill: auto`). 실제 메시지가 들어온 테이블부터 실측으로 바뀝니다. 카메라가 없으면 가짜 카메라(`PLANT_FAKE_HW=1`)로 세팅 5단계와 촬영 루틴까지 시험할 수 있고, 가짜 프레임의 측정값은 **절대 발행되지 않습니다**.
 
-**LED 촬영 조명(자리)** — 새벽 촬영 조명은 환경노드(UNO R4 WiFi)의 네오픽셀 스트립이 **시간 기반으로 독립 운용**할 계획입니다(NTP 동기화, 05:45 점등 → 06:15 소등; 촬영은 그 창 안 05:50). 스위칭 소자·MQTT 명령·파이 GPIO 모두 쓰지 않고, 파이는 hub(영상 처리·백엔드·프론트) 역할만 합니다. 스트립 종류·펌웨어 로직은 추후 확정. hub 쪽 `led.*` 훅은 코드에 남아 있지만 기본값 `enabled=false`(noop) 그대로 둡니다.
+**LED 촬영 조명** — 새벽 촬영 조명은 환경노드(UNO R4 WiFi)의 네오픽셀이 맡습니다: 기본은 **시간 기반 독립 점등**(NTP, 05:45~06:15; 촬영은 창 안 05:50)이고, 창 밖에는 웹 UI 카메라 설정의 조명 버튼(MQTT `plant/light/set`)으로 원격 점등할 수 있습니다(30분 자동 소등). 파이는 hub(영상 처리·백엔드·프론트) 역할만 하며, hub 쪽 GPIO LED 훅은 2026-09-19에 제거했습니다.
 
 ---
 
@@ -102,7 +102,7 @@ data/           런타임 데이터(git 제외): plant.db · events.db · config
 |---|---|---|
 | `run_collector.py` | systemd `planthub.service` | MQTT 구독 → SQLite 저장 (readings·soil·pump_log·growth) |
 | `plantsvc serve` | systemd `plantsvc.service` | 웹 UI + API + 카메라 미리보기 + 촬영 루틴(:8080) |
-| `plantsvc capture` | systemd `plantsnap.timer` (05:50·15:00) | LED → 촬영 → 측정 → `growth.jsonl` → MQTT 발행 |
+| `plantsvc capture` | systemd `plantsnap.timer` (05:50·15:00) | 촬영 → 측정 → `growth.jsonl` → MQTT 발행 |
 | `plantsvc doctor` | 사람 | venv·카메라·GPIO·DB·브로커·타이머·시간대 점검표 |
 | `plantsvc seed` | 사람 · PC | 더미 plant.db 생성(개발·데모) |
 | `run_capture.py` / `leaf_measure.py` / `frame_align.py` | 레거시 진입점 | 각각 `plantsvc capture` / `plantsvc.vision.*` 로 연결되는 shim |
@@ -153,7 +153,7 @@ uv run pytest                                    # 31 tests, no hardware
 - **급수 노드**: **M5Stack Core S3** + **Watering Unit (U101)** — Port B(G8=수분 / G9=PUMP_EN). 화분 1개당 노드 1개.
 - **허브**: **Raspberry Pi 5** — mosquitto · run_collector.py · plantsvc.
 - **카메라**: Raspberry Pi **Camera Module 3 — Standard(75°)**.
-- **LED**: RGB 네오픽셀 4구 스트립 × 1 ← 환경노드 핀 9 직결(NEO_GRB), 시간 기반 독립 점등(05:45~06:15, `USE_LIGHT=1`). 광량 충분 여부는 [자동 측정] gain 으로 검증.
+- **LED**: RGB 네오픽셀 4구 × 2 ← 환경노드 핀 8·9 직결(NEO_GRB), 시간 기반 점등(05:45~06:15) + MQTT 원격 점등(`plant/light/set`, 30분 자동 소등). 광량 충분 여부는 [자동 측정] gain 으로 검증.
 - 공통: 노드·허브 모두 **같은 WiFi**(2.4GHz).
 
 > ⚠️ **오토포커스·자동노출·자동화이트밸런스는 반드시 끄세요** — 6주간 고정값(`config.json`)을 유지해야 면적이 왜곡되지 않습니다. 웹 UI 의 [자동 측정 → 고정] 이 한 번 재고 잠급니다.

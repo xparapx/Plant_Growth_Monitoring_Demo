@@ -60,7 +60,6 @@ function HostBody({ sys }: { sys: SystemStatus }) {
       </div>
       <div className="flex flex-wrap gap-2">
         <StatusChip label={H.camera} state={camState === 'open' ? 'ok' : camState === 'error' ? 'bad' : 'off'} detail={`${sys.camera.driver ?? '?'} · ${camState}${sys.camera.preview === 'paused_capture' ? ' · paused' : ''}`} />
-        <StatusChip label={H.led} state={!sys.led.installed ? 'off' : sys.led.state === 'on' ? 'ok' : 'info'} detail={sys.led.installed ? `${sys.led.driver} · ${sys.led.state}` : ko.capture.ledNotInstalled.split(' — ')[0]} />
         <StatusChip label={H.mqtt} state={sys.mqtt.disabled ? 'off' : sys.mqtt.connected ? 'ok' : 'bad'} detail={`${sys.mqtt.broker ?? ko.common.dash}${sys.mqtt.messages !== undefined ? ` · ${sys.mqtt.messages} msg` : ''}`} title={sys.mqtt.error ?? undefined} />
         <StatusChip label={H.wsClients} state="info" detail={String(sys.ws_clients)} />
         <StatusChip label={H.dummyFill} state={sys.dummy_fill === 'off' ? 'off' : 'info'} detail={sys.dummy_fill} />

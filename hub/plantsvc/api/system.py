@@ -95,7 +95,7 @@ def status(c=Depends(ctx)) -> dict[str, Any]:
             "db": {"path": str(c.paths.db), "exists": c.paths.db.exists(),
                    "size": c.paths.db.stat().st_size if c.paths.db.exists() else 0, "tables": counts},
             "photos": photos, "services": services_status(cfg.tz),
-            "camera": c.camera.status(), "led": c.led.status(),
+            "camera": c.camera.status(),
             "mqtt": c.bridge.status() if c.bridge else {"connected": False, "broker": None, "disabled": True},
             "ws_clients": c.hub.client_count, "web_dist": c.paths.web_dist.exists(),
             "dummy_fill": cfg.analysis.dummy_fill, "pid": os.getpid(), "started_at": iso_utc(c.started_at)}

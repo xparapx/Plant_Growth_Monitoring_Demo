@@ -2,7 +2,7 @@ import { QueryClient, keepPreviousData, useQuery } from '@tanstack/react-query'
 import { apiFetch } from './client'
 import type {
   AlignmentTrend, CameraStatus, Canopy, CaptureStatus, ConfigDoc, Drift, Droop, DroopTimeline, EnvSeries, EventsList,
-  Histogram, ImagesList, JobsList, LedStatus, LogLines, PumpRecent, Reference, Rgr, Silhouettes, SoilSeries, Summary,
+  Histogram, ImagesList, JobsList, LogLines, PumpRecent, Reference, Rgr, Silhouettes, SoilSeries, Summary,
   SystemStatus, Water,
 } from './types'
 import { liveStore } from '@/live/liveStore'
@@ -27,7 +27,6 @@ export const qk = {
   analytics: (name: string) => ['analytics', name] as const,
   camera: { status: ['camera', 'status'] as const, drift: ['camera', 'drift'] as const },
   capture: { status: ['capture', 'status'] as const, jobs: (n: number) => ['capture', 'jobs', n] as const },
-  led: ['led'] as const,
   config: ['config'] as const,
   system: ['system'] as const,
   images: (kind: string) => ['images', kind] as const,
@@ -57,7 +56,6 @@ export const useDrift = (enabled = true) =>
 export const useCaptureStatus = () =>
   useQuery({ queryKey: qk.capture.status, queryFn: () => apiFetch<CaptureStatus>('/api/capture/status'), refetchInterval: 15_000, staleTime: 5_000 })
 export const useCaptureJobs = (n = 30) => useQuery({ queryKey: qk.capture.jobs(n), queryFn: () => apiFetch<JobsList>(`/api/capture/jobs?limit=${n}`) })
-export const useLedStatus = () => useQuery({ queryKey: qk.led, queryFn: () => apiFetch<LedStatus>('/api/led') })
 export const useConfig = () => useQuery({ queryKey: qk.config, queryFn: () => apiFetch<ConfigDoc>('/api/config') })
 export const useSystem = () => useQuery({ queryKey: qk.system, queryFn: () => apiFetch<SystemStatus>('/api/system/status'), refetchInterval: 30_000 })
 export const useImages = (kind: string, enabled = true) =>

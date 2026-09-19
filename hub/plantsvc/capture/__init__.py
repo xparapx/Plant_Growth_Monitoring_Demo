@@ -1,1 +1,1 @@
-"""Capture routine: LED -> warm-up -> shoot -> measure -> growth.jsonl -> publish."""
+"""Capture routine: shoot -> measure -> growth.jsonl -> publish."""

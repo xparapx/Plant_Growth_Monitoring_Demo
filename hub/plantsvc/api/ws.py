@@ -1,4 +1,4 @@
-"""/ws - live events (env/soil/pump/growth from MQTT, capture progress, LED, camera, config)."""
+"""/ws - live events (env/soil/pump/growth from MQTT, capture progress, camera, config)."""
 
 from __future__ import annotations
 

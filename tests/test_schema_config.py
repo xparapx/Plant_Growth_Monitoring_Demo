@@ -30,16 +30,16 @@ def test_schema_idempotent_and_migrates_old_tables(tmp_path):
 
 def test_migrate_drops_dead_keys_and_normalises():
     legacy = json.load(open("hub/config.example.json", encoding="utf-8"))
-    legacy.update({"marker_mm": 50.0, "ref_marker": [], "tz": "Mars/Olympus", "treat_mode": "weird"})
+    legacy.update({"marker_mm": 50.0, "ref_marker": [], "led": {"enabled": False, "pin": 17},
+                   "tz": "Mars/Olympus", "treat_mode": "weird"})
     legacy["qc"]["px_per_cm_tol"] = 0.03
     legacy["rois"] = [{"plant_id": "p1", "treat": None, "x": 1, "y": 2, "w": 3, "h": 4, "_new": (5, 6)}, "garbage"]
     data, warns = migrate(legacy)
-    assert "marker_mm" not in data and "ref_marker" not in data and "px_per_cm_tol" not in data["qc"]
+    assert "marker_mm" not in data and "ref_marker" not in data and "led" not in data and "px_per_cm_tol" not in data["qc"]
     assert data["tz"] == "Asia/Seoul" and data["treat_mode"] == ""
     assert data["rois"] == [{"plant_id": "p1", "treat": "", "x": 1, "y": 2, "w": 3, "h": 4}]
     assert len(warns) >= 5
     cfg = Config.model_validate(data)
-    assert cfg.led.enabled is False and cfg.led.driver == "noop"
     assert cfg.schedule.dawn == "05:50" and cfg.analysis.dummy_fill == "auto"
     assert abs(cfg.scale - 1280 / 4608) < 1e-9
     assert cfg.bands.band_pct()["fluct"][0] < cfg.bands.band_pct()["fluct"][1]

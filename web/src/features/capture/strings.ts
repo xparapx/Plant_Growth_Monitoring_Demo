@@ -1,6 +1,6 @@
 /* Extra copy for the capture feature (ko.capture.* covers the rest). */
 export const cs = {
-  tabs: { capture: '촬영 · LED', setup: '카메라 설정' },
+  tabs: { capture: '촬영', setup: '카메라 설정' },
   nextPhase: (p: string) => `다음 단계: ${p}`,
   expected: (d: string, p: string) => `예상 촬영 시각 dawn ${d} · pm ${p}`,
   timer: (active: boolean, next: string | null) => `systemd 타이머 ${active ? '활성' : '비활성'}${next ? ` · 다음 ${next}` : ''}`,
@@ -18,8 +18,6 @@ export const cs = {
   openFull: '원본 열기 (새 창)',
   imgMissing: '이미지를 불러올 수 없습니다',
   publishError: '발행 오류',
-  ledState: 'LED 상태', ledOn: '켜짐', ledOff: '꺼짐', ledPin: 'GPIO 핀', ledWarmup: '예열 (s)', ledDriver: '드라이버', ledReason: '사유',
-  ledToggle: 'LED 전원',
   force: '조건 무시 (force)', forceHint: '이미 촬영한 단계·조용한 시간창을 무시하고 실행합니다',
   phaseLabel: '단계 선택',
   replayResult: (sent: number, skipped: number, errs: number) => `보냄 ${sent} · 건너뜀 ${skipped} · 오류 ${errs}`,

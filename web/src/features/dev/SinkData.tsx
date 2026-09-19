@@ -28,7 +28,7 @@ const COLS: Col<Row>[] = [
   { key: 'reason', header: 'Reason', render: (r) => r.reason },
 ]
 const HSTEPS: Step[] = [
-  { id: 'queued', title: '대기', done: true }, { id: 'lock', title: '카메라 잠금', done: true }, { id: 'led_on', title: 'LED 점등', skipped: true },
+  { id: 'queued', title: '대기', done: true }, { id: 'lock', title: '카메라 잠금', done: true }, { id: 'settle', title: '안정화', skipped: true },
   { id: 'capture', title: '촬영', active: true }, { id: 'measure', title: '측정' }, { id: 'publish', title: '발행' },
 ]
 const HFAIL: Step[] = [{ id: 'a', title: '대기', done: true }, { id: 'b', title: '촬영', done: true }, { id: 'c', title: '측정', failed: true }]
@@ -52,7 +52,7 @@ export function SinkData() {
           <SectionHeader title="ConfirmDialog" sub="native <dialog> · ESC/backdrop 닫힘" />
           <Button variant="accent" onClick={() => setOpen(true)}>지금 촬영 (다이얼로그 열기)</Button>
           <ConfirmDialog
-            open={open} title="지금 촬영할까요?" body="LED 점등(설치 시) → 예열 → 촬영 → 측정 → 발행 순서로 실행됩니다." confirmLabel="촬영" tone="accent" busy={busy}
+            open={open} title="지금 촬영할까요?" body="촬영 → 측정 → 발행 순서로 실행됩니다." confirmLabel="촬영" tone="accent" busy={busy}
             onConfirm={() => { setBusy(true); window.setTimeout(() => { setBusy(false); setOpen(false) }, 900) }} onCancel={() => setOpen(false)}
           />
         </Card>
@@ -66,7 +66,7 @@ export function SinkData() {
         </Card>
       </div>
       <Card animate={false}>
-        <SectionHeader title="HStepper" sub="running (LED 건너뜀) / failed" />
+        <SectionHeader title="HStepper" sub="running (건너뜀 포함) / failed" />
         <div className="flex flex-col gap-3"><HStepper steps={HSTEPS} /><HStepper steps={HFAIL} /></div>
       </Card>
       <div>

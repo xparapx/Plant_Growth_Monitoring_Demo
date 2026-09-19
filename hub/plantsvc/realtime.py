@@ -1,4 +1,4 @@
-"""WebSocket fan-out.  Producers (MQTT bridge, capture runner, LED, camera) run in
+"""WebSocket fan-out.  Producers (MQTT bridge, capture runner, camera) run in
 threads; `broadcast` is thread-safe and never blocks them.  Slow clients get a
 bounded queue - drop-oldest - so one stalled phone cannot back up the hub."""
 

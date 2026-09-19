@@ -1,10 +1,10 @@
 /* Mutable in-memory state of the mock service (config store, camera session, jobs, events). */
-import type { CameraStatus, CaptureStatus, ConfigDoc, EventRow, Job, LedStatus, PlantConfig, Roi, Schedule } from '@/api/types'
+import type { CameraStatus, CaptureStatus, ConfigDoc, EventRow, Job, PlantConfig, Roi, Schedule } from '@/api/types'
 import { buildRoster, type Frames, type Roster } from './frames'
 import { CAP, PREVIEW, SCALE, checkConfig, defaultConfig } from './fixtures/config'
 import { failedJob, seedEvents } from './fixtures/jobs'
 import { buildFrames, currentScenario, scenarioSetup, type Scenario } from './scenarios'
-import { addMinutes, iso, nextOccurrence } from './time'
+import { iso, nextOccurrence } from './time'
 
 export interface SetupSession {
   msg: string; level: CameraStatus['msg_level']; pts: [number, number][]; ppcFixed: number | null; cm: number
@@ -55,12 +55,6 @@ export function addEvent(st: MockState, type: string, data: Record<string, unkno
 
 export const configDoc = (st: MockState): ConfigDoc => ({ config: structuredClone(st.cfg), path: '/home/pi/plant/data/config.json', mtime: st.mtime, warnings: [...st.warnings], check: checkConfig(st.cfg) })
 
-export function ledStatus(st: MockState): LedStatus {
-  const l = st.cfg.led
-  const reason = !l.enabled ? 'LED not installed (led.enabled=false)' : 'LED not installed (no gpiozero in the mock)'
-  return { installed: false, enabled: l.enabled, driver: l.driver, reason, state: 'off', pin: l.pin, active_high: l.active_high, warmup_s: l.warmup_s, max_on_s: l.max_on_s, since: null, auto_off_at: null, last_reason: st.jobs.length ? 'capture_done' : null }
-}
-
 export function stepDone(st: MockState): CameraStatus['done'] {
   const c = st.cfg, rois = c.rois
   return {
@@ -100,12 +94,12 @@ export function schedule(st: MockState, now = Date.now()): Schedule {
   const c = st.cfg
   const nd = nextOccurrence(c.schedule.dawn, c.tz, now), np = nextOccurrence(c.schedule.pm, c.tz, now)
   return {
-    tz: c.tz, dawn: c.schedule.dawn, pm: c.schedule.pm, warmup_s: 0, expected_shot: { dawn: addMinutes(c.schedule.dawn, 0), pm: addMinutes(c.schedule.pm, 0) },
+    tz: c.tz, dawn: c.schedule.dawn, pm: c.schedule.pm,
     next: nd <= np ? { phase: 'dawn', at: iso(nd) } : { phase: 'pm', at: iso(np) }, timer: null,
   }
 }
 
 export const captureStatus = (st: MockState): CaptureStatus => ({
-  job: st.job ? structuredClone(st.job) : null, last: st.jobs[0] ? structuredClone(st.jobs[0]) : null, schedule: schedule(st), led: ledStatus(st),
+  job: st.job ? structuredClone(st.job) : null, last: st.jobs[0] ? structuredClone(st.jobs[0]) : null, schedule: schedule(st),
   camera: { state: st.cam.state, driver: 'mock', preview: st.cam.preview },
 })

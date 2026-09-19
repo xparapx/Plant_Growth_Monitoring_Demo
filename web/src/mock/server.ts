@@ -8,7 +8,7 @@ import { systemStatus } from './fixtures/system'
 import { cancelJob, startJob, startLive as liveStart, broadcast } from './live'
 import { MOCK_PREVIEW_SRC } from './preview'
 import { analytics, envSeries, exportCsv, growthRows, health, pumpRecentDoc, soilSeries, summary } from './serverData'
-import { addEvent, bumpConfig, cameraStatus, captureStatus, configDoc, getState, latestRaw, ledStatus, type MockState } from './state'
+import { addEvent, bumpConfig, cameraStatus, captureStatus, configDoc, getState, latestRaw, type MockState } from './state'
 import { iso, localDay } from './time'
 
 const LATENCY_MS = 150
@@ -49,7 +49,7 @@ function route(st: MockState, p: string, q: URLSearchParams, method: string, ini
   if (p === '/api/camera/calib/info') return st.calibExists ? { exists: true, size: 1_843_200, mtime: st.calibMtime } : { exists: false }
   if (p === '/api/images') return images(st, q.get('kind') ?? 'raw', int('limit', 50))
 
-  // ---- capture / led / events ----------------------------------------------------------
+  // ---- capture / events ----------------------------------------------------------
   if (p === '/api/capture/status') return captureStatus(st)
   if (p === '/api/capture/schedule') return captureStatus(st).schedule
   if (p === '/api/capture/run' && method === 'POST') return { job: startJob(st, q.get('phase') ?? 'auto') }
@@ -58,9 +58,6 @@ function route(st: MockState, p: string, q: URLSearchParams, method: string, ini
   if (p === '/api/capture/jobs') return { jobs: st.jobs.slice(0, int('limit', 20)) }
   if ((m = p.match(/^\/api\/capture\/jobs\/(\w+)$/))) { const j = st.jobs.find((x) => x.id === m![1]); if (!j) throw new ApiError(404, 'no_job', m[1]); return j }
   if (p === '/api/capture/replay' && method === 'POST') return replay(st)
-  if (p === '/api/led') return ledStatus(st)
-  if (p === '/api/led/on' || p === '/api/led/test') throw new ApiError(409, 'led_not_installed', 'LED not installed (led.enabled=false)')
-  if (p === '/api/led/off') return ledStatus(st)
   if (p === '/api/events') {
     const type = q.get('type')
     return { events: st.events.filter((e) => !type || e.type === type).slice(0, int('limit', 100)), now: iso(Date.now()) }

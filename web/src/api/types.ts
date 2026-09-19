@@ -24,11 +24,6 @@ export interface Validity {
   mu: Record<string, number>; sd: Record<string, number>; n: Record<string, number>
   dmu: number | null; aligned: boolean | null; ratio: number | null; separated: boolean | null
 }
-export interface LedStatus {
-  installed: boolean; enabled: boolean; driver: string; reason: string | null; state: 'on' | 'off'
-  pin: number; active_high: boolean; warmup_s: number; max_on_s: number
-  since: string | null; auto_off_at: string | null; last_reason: string | null
-}
 export interface Summary extends Meta {
   sources: Record<TableName, 'real' | 'dummy' | 'none'>
   pots: { id: string; treat: string | null; real: boolean }[]
@@ -36,7 +31,7 @@ export interface Summary extends Meta {
   conflicts: { pot: string; sources: Record<string, string> }[]
   unknown_labels: string[]; suggested_sql: string | null
   env: Record<EnvKey, EnvStat>; nodes: NodeHealth[]; alerts: Alert[]; validity: Validity
-  run_started: string | null; tz: string; real_env: boolean; capture: { driver: string }; led: LedStatus
+  run_started: string | null; tz: string; real_env: boolean; capture: { driver: string }
 }
 export interface EnvSeries extends Meta {
   bucket: number
@@ -113,14 +108,14 @@ export interface Job {
   started_at: string; finished_at: string | null; img_file: string | null; n_rows: number; ok_rows: number
   published: boolean; error: string | null; steps: JobStep[]
   rows: { plant_id: string; treat: string | null; area_cm2: number | null; ok: number }[]
-  warmup_s: number; warm_until: string | null; led: Partial<LedStatus> | null; fake: boolean
+  fake: boolean
   drift: Drift | null; log: string[]; publish_error: string | null
 }
 export interface Schedule {
-  tz: string; dawn: string; pm: string; warmup_s: number; expected_shot: { dawn: string; pm: string }
+  tz: string; dawn: string; pm: string
   next: { phase: 'dawn' | 'pm'; at: string }; timer: { unit: string; active: boolean; next: string | null; last: string | null } | null
 }
-export interface CaptureStatus { job: Job | null; last: Job | null; schedule: Schedule; led: LedStatus; camera: { state: string; driver: string; preview: string } }
+export interface CaptureStatus { job: Job | null; last: Job | null; schedule: Schedule; camera: { state: string; driver: string; preview: string } }
 export interface JobsList { jobs: Job[] }
 export interface ReplayResult { last_db_ts: string; sent: number; skipped: number; errors: string[] }
 
@@ -132,7 +127,6 @@ export interface PlantConfig {
   qc: { px_per_cm_ref: number; edge_tol: number; drift_warn_px: number; drift_fail_px: number; drift_resp_min: number }
   bands: { raw: Record<string, [number, number]>; cal_default: [number, number]; cal: Record<string, [number, number]> }
   analysis: { tol_pp: number; sep_ratio: number; hist_bins: number; soil_days: number; pump_limit: number; dummy_fill: 'auto' | 'on' | 'off'; env_interval_min: number; soil_interval_min: number; cam_interval_min: number }
-  led: { enabled: boolean; driver: string; pin: number; active_high: boolean; warmup_s: number; max_on_s: number }
   schedule: { dawn: string; pm: string }
   mqtt: { host: string; port: number; growth_topic: string }
   preview: { size: [number, number]; jpeg_quality: number; frame_ms: number }
@@ -147,7 +141,7 @@ export interface SystemStatus {
   data_dir: string; repo_root: string; disk: { total: number; used: number; free: number }
   db: { path: string; exists: boolean; size: number; tables: Record<string, { rows: number; max_ts: string | null }> }
   photos: Record<string, number>; services: Record<string, ServiceState> | null
-  camera: Partial<CameraStatus>; led: LedStatus
+  camera: Partial<CameraStatus>
   mqtt: { connected: boolean; broker: string | null; last_msg?: string | null; messages?: number; error?: string | null; disabled?: boolean }
   ws_clients: number; web_dist: boolean; dummy_fill: string; pid: number; started_at: string
 }
@@ -157,5 +151,5 @@ export interface EventRow { id: number; ts: string; type: string; data: Record<s
 export interface EventsList { events: EventRow[]; now: string }
 export interface LogLines { unit: string; lines: string[]; available: boolean; error?: string }
 
-export type LiveType = 'hello' | 'pong' | 'env' | 'soil' | 'pump' | 'growth' | 'capture.progress' | 'capture.done' | 'led' | 'config.changed' | 'camera.state' | 'camera.setup' | 'mqtt.state'
+export type LiveType = 'hello' | 'pong' | 'env' | 'soil' | 'pump' | 'growth' | 'capture.progress' | 'capture.done' | 'config.changed' | 'camera.state' | 'camera.setup' | 'mqtt.state'
 export interface LiveEvent<T = unknown> { type: LiveType; ts: string; data: T }

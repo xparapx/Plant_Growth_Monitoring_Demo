@@ -5,7 +5,7 @@ import { ENV_KEYS } from '@/api/types'
 import { alignmentTrend, envSummary, histogram, nodesAndAlerts, reference, validity } from './analytics'
 import { meta, suggestedSql, type Frames } from './frames'
 import { canopySeries, droop, droopTimeline, pumpRecent, rgr, silhouettes, waterSummary } from './growth'
-import { ledStatus, roster, type MockState } from './state'
+import { roster, type MockState } from './state'
 import { bucketSeconds, iso, resample, round } from './time'
 import { bandPct } from './synth'
 
@@ -20,7 +20,7 @@ export function summary(st: MockState): Summary {
     pots: r.pots.map((p) => ({ id: p, treat: r.treat[p] ?? null, real: fr.real_pots.has(p) })), groups: r.groups, ncol: r.ncol,
     conflicts: conflictsOf(r), unknown_labels: r.unknown, suggested_sql: suggestedSql(r),
     env: envSummary(fr), nodes, alerts, validity: validity(fr, r, st.cfg),
-    run_started: st.cfg.run_started, tz: st.cfg.tz, real_env: fr.real_env, capture: { driver: 'mock' }, led: ledStatus(st),
+    run_started: st.cfg.run_started, tz: st.cfg.tz, real_env: fr.real_env, capture: { driver: 'mock' },
   }
 }
 

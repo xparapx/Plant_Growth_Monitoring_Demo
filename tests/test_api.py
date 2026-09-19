@@ -2,7 +2,6 @@ def test_read_endpoints_on_empty_data_dir_are_dummy(client):
     s = client.get("/api/summary").json()
     assert s["dummy"] == ["env", "growth", "pump", "soil"]
     assert s["validity"]["enough_groups"] and len(s["pots"]) == 6 and s["env"]["vpd"]["value"] is not None
-    assert s["led"]["installed"] is False
     h = client.get("/api/health").json()
     assert {n["name"] for n in h["nodes"]} >= {"ENV", "P1", "CAM"}
     assert all(n["state"] == "off" for n in h["nodes"])                 # dummy nodes never look healthy
@@ -54,7 +53,7 @@ def test_camera_setup_flow_and_capture(client):
     assert client.get(f"/api/capture/jobs/{j['id']}").json()["id"] == j["id"]
     assert client.get("/api/capture/jsonl").json()["lines"][0]["img"].startswith("fake_")
     sched = client.get("/api/capture/schedule").json()
-    assert sched["dawn"] == "05:50" and sched["warmup_s"] == 0 and sched["next"]["phase"] in ("dawn", "pm")
+    assert sched["dawn"] == "05:50" and sched["next"]["phase"] in ("dawn", "pm")
     # setup actions are refused while a job holds the lock
     with client.app.state.ctx.camera.exclusive(label="job"):
         assert client.post("/api/camera/actions/findleaf").status_code == 409
@@ -62,12 +61,10 @@ def test_camera_setup_flow_and_capture(client):
     assert files and files[0]["fake"] and client.get(files[0]["url"] + "?w=200").status_code == 200
 
 
-def test_led_placeholder_and_config_write(client):
-    assert client.get("/api/led").json()["installed"] is False
-    assert client.post("/api/led/on").status_code == 409                # not installed -> explicit error
-    assert client.post("/api/led/off").status_code == 200
+def test_config_write(client):
+    assert client.get("/api/led").status_code == 404                    # legacy endpoint is gone
     doc = client.get("/api/config").json()
-    assert doc["config"]["led"]["driver"] == "noop"
+    assert "led" not in doc["config"]
     r = client.patch("/api/config", json={"layout": {"pot_cm": 11}}, headers={"if-match": str(doc["mtime"])})
     assert r.status_code == 200 and r.json()["config"]["layout"]["pot_cm"] == 11
     assert client.patch("/api/config", json={"layout": {"pot_cm": 12}}, headers={"if-match": "1"}).status_code == 409

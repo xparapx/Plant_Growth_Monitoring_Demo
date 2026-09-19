@@ -7,7 +7,6 @@ import { CameraTabs } from './CameraTabs'
 import { CaptureNowButton } from './CaptureNowButton'
 import { JobProgress } from './JobProgress'
 import { LastRunCard } from './LastRunCard'
-import { LedCard } from './LedCard'
 import { NextRunCard } from './NextRunCard'
 import { RunHistoryCard } from './RunHistoryCard'
 
@@ -28,7 +27,6 @@ export default function CapturePage() {
             <NextRunCard schedule={s.schedule} />
             <LastRunCard last={s.last} />
             <JobProgress job={s.job} last={s.last} />
-            <LedCard led={s.led} jobRunning={!!s.job} />
             <RunHistoryCard />
           </CardGrid>
         )}

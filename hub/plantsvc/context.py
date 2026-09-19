@@ -14,7 +14,6 @@ from .capture.runner import CaptureRunner
 from .config_store import ConfigStore
 from .db import FrameCache, Frames, load_frames
 from .events import EventStore
-from .led import LedController
 from .mqtt_bridge import MqttBridge
 from .realtime import Hub
 from .settings import Paths, Settings, get_settings
@@ -30,7 +29,6 @@ class AppContext:
     events: EventStore
     hub: Hub
     camera: CameraManager
-    led: LedController
     runner: CaptureRunner
     setup: SetupSession
     bridge: MqttBridge | None = None
@@ -46,8 +44,7 @@ class AppContext:
         return build_roster(fr.soil, fr.grow)
 
     def close(self) -> None:
-        for step in (lambda: self.bridge and self.bridge.stop(), self.camera.close, self.led.force_off,
-                     self.events.close):
+        for step in (lambda: self.bridge and self.bridge.stop(), self.camera.close, self.events.close):
             try:
                 step()
             except Exception:
@@ -55,7 +52,7 @@ class AppContext:
 
 
 def build_context(settings: Settings | None = None, *, camera_backend: Any = None,
-                  led_mode: str | None = None, mqtt: bool | None = None, log=print) -> AppContext:
+                  mqtt: bool | None = None, log=print) -> AppContext:
     settings = settings or get_settings()
     paths = settings.paths.ensure()
     store = ConfigStore(paths.config, example=paths.example_config)
@@ -76,8 +73,7 @@ def build_context(settings: Settings | None = None, *, camera_backend: Any = Non
     camera = CameraManager(factory, store, lock_path=paths.camera_lock, hub=hub, events=events,
                            idle_close_s=settings.preview_idle_close_s, max_clients=settings.max_stream_clients,
                            quiet_window_s=settings.quiet_window_s, log=log)
-    led = LedController(store, events, hub, mode_override=led_mode or settings.led_mode)
-    runner = CaptureRunner(paths, store, camera, led, events, hub)
+    runner = CaptureRunner(paths, store, camera, events, hub)
     bridge = None
     if (settings.mqtt if mqtt is None else mqtt):
         m = store.get().mqtt
@@ -85,4 +81,4 @@ def build_context(settings: Settings | None = None, *, camera_backend: Any = Non
     setup = SetupSession(store, camera, paths, events, hub, mqtt=bridge)
     store.on_change(lambda cfg: (cache.invalidate(), hub.broadcast("config.changed", {"mtime": store.mtime_ns})))
     return AppContext(settings=settings, paths=paths, store=store, cache=cache, events=events, hub=hub,
-                      camera=camera, led=led, runner=runner, setup=setup, bridge=bridge)
+                      camera=camera, runner=runner, setup=setup, bridge=bridge)

@@ -1,7 +1,7 @@
 """The single capture code path (CLI from the systemd timer, or the API button).
 
-  queued -> lock -> led_on -> warmup -> camera_open -> controls -> settle -> capture
-         -> led_off (finally) -> measure -> jsonl -> publish -> done | failed
+  queued -> lock -> camera_open -> controls -> settle -> capture
+         -> measure -> jsonl -> publish -> done | failed
 
 Rules kept from run_capture.py: config.capture is re-applied right before the
 shot (an unsaved auto-exposure in the browser cannot leak into a scheduled
@@ -18,7 +18,7 @@ import threading
 import time
 import uuid
 from dataclasses import asdict, dataclass, field
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from typing import Any
 
 from ..config_model import Config
@@ -62,9 +62,6 @@ class JobRecord:
     error: str | None = None
     steps: list[dict[str, Any]] = field(default_factory=list)
     rows: list[dict[str, Any]] = field(default_factory=list)
-    warmup_s: int = 0
-    warm_until: str | None = None
-    led: dict[str, Any] | None = None
     fake: bool = False
     drift: dict[str, Any] | None = None
     log: list[str] = field(default_factory=list)
@@ -77,11 +74,10 @@ class JobRecord:
 
 
 class CaptureRunner:
-    def __init__(self, paths, store, camera, led, events=None, hub=None, *, publish=_publish):
+    def __init__(self, paths, store, camera, events=None, hub=None, *, publish=_publish):
         self.paths = paths
         self.store = store
         self.camera = camera
-        self.led = led
         self.events = events
         self.hub = hub
         self._publish = publish
@@ -165,12 +161,11 @@ class CaptureRunner:
         if seconds <= 0:
             return
         if self._cancel.wait(timeout=seconds):
-            raise JobCancelled("cancelled during warm-up")
+            raise JobCancelled("cancelled while waiting")
 
     # ---- the routine ------------------------------------------------------------
-    def run(self, phase: str = "auto", *, trigger: str = "manual", warmup_s: int | None = None,
-            use_led: bool = True, force: bool = False, if_missing: bool = False,
-            allow_fake_publish: bool = False) -> JobRecord:
+    def run(self, phase: str = "auto", *, trigger: str = "manual", force: bool = False,
+            if_missing: bool = False, allow_fake_publish: bool = False) -> JobRecord:
         if not self._lock.acquire(blocking=False):
             raise JobBusy("capture already running")
         self._cancel.clear()
@@ -180,7 +175,7 @@ class CaptureRunner:
                         started_at=iso_utc(now_utc()))
         self._current = job
         try:
-            return self._run(job, cfg, warmup_s, use_led, force, if_missing, allow_fake_publish)
+            return self._run(job, cfg, force, if_missing, allow_fake_publish)
         finally:
             job.finished_at = job.finished_at or iso_utc(now_utc())
             self._persist(job)
@@ -188,8 +183,7 @@ class CaptureRunner:
                 self.hub.broadcast("capture.done", job.to_dict())
             self._lock.release()
 
-    def _run(self, job: JobRecord, cfg: Config, warmup_s, use_led, force, if_missing,
-             allow_fake_publish) -> JobRecord:
+    def _run(self, job: JobRecord, cfg: Config, force, if_missing, allow_fake_publish) -> JobRecord:
         self._mark(job, "queued")
         job.state = "running"
 
@@ -204,8 +198,6 @@ class CaptureRunner:
             return self._finish(job, "skipped", f"debounced: {job.phase} already captured at {iso_utc(when)}")
 
         self.paths.ensure()
-        led_installed = bool(use_led and self.led is not None and self.led.installed)
-        job.warmup_s = int(cfg.led.warmup_s if warmup_s is None else warmup_s) if led_installed else 0
         job.fake = (self.camera.driver or self.camera.probe_driver()) == "fake"
         stem = local_stem(now_utc(), cfg.tz)
         if job.fake:
@@ -216,32 +208,15 @@ class CaptureRunner:
         try:
             self._mark(job, "lock")
             with self.camera.exclusive(timeout=120):
-                # LED on -> warm-up -> shoot, off in finally
-                self._mark(job, "led_on")
-                if self.led is not None:
-                    ctx = self.led.lit("capture", use_led=use_led)
-                else:
-                    from contextlib import nullcontext
-                    ctx = nullcontext({"installed": False, "state": "off"})
-                with ctx as led_status:
-                    job.led = dict(led_status) if isinstance(led_status, dict) else None
-                    if job.led and not job.led.get("installed"):
-                        self._log(job, f"[LED] skipped — {job.led.get('reason') or 'not installed'}")
-                    if job.warmup_s > 0:
-                        job.warm_until = iso_utc(now_utc() + timedelta(seconds=job.warmup_s))
-                        self._mark(job, "warmup")
-                        self._log(job, f"[LED] on — warm-up {job.warmup_s}s")
-                        self._wait(job.warmup_s, job)
-                    self._mark(job, "camera_open")
-                    self.camera.ensure_open(for_capture=True)
-                    self._mark(job, "controls")
-                    self.camera.apply_controls(self.store.get().capture)   # persisted values only
-                    self._mark(job, "settle")
-                    self._wait(0.1 if job.fake else 2.0, job)
-                    self._mark(job, "capture")
-                    self.camera.capture_still(path)
-                    self._log(job, f"[{stem}] shot {path.name}")
-                self._mark(job, "led_off")
+                self._mark(job, "camera_open")
+                self.camera.ensure_open(for_capture=True)
+                self._mark(job, "controls")
+                self.camera.apply_controls(self.store.get().capture)   # persisted values only
+                self._mark(job, "settle")
+                self._wait(0.1 if job.fake else 2.0, job)
+                self._mark(job, "capture")
+                self.camera.capture_still(path)
+                self._log(job, f"[{stem}] shot {path.name}")
         except JobCancelled as e:
             return self._finish(job, "cancelled", str(e))
         except Exception as e:  # noqa: BLE001

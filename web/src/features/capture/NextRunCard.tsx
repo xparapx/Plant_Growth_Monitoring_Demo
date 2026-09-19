@@ -21,7 +21,6 @@ export function NextRunCard({ schedule }: { schedule: Schedule }) {
       </div>
       <div className="mt-3 flex flex-col gap-1 text-[12.5px] text-muted">
         <div className="num">{ko.capture.schedule(schedule.dawn, schedule.pm)}</div>
-        <div className="num">{cs.expected(schedule.expected_shot.dawn, schedule.expected_shot.pm)}</div>
         {t !== null && <div className="num">{cs.timer(t.active, t.next ? fmtDateTime(t.next) : null)}</div>}
       </div>
     </Card>

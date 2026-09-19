@@ -1,13 +1,12 @@
 """plantsvc command line.
 
   plantsvc serve [--host H] [--port P]
-  plantsvc capture [--phase auto|dawn|pm] [--force] [--if-missing] [--no-led] [--warmup N]
+  plantsvc capture [--phase auto|dawn|pm] [--force] [--if-missing]
                    [--allow-fake-publish] [--no-release]      <- what plantsnap.service runs
-  plantsvc led on|off|test [--seconds N]
   plantsvc replay
   plantsvc seed [--days 7] [--force]                          <- dummy plant.db for PC/CI
   plantsvc check-config
-  plantsvc doctor [--brief] [--json] [--led-test]
+  plantsvc doctor [--brief] [--json]
   plantsvc render-units [--user U] [--root DIR] [--data-dir DIR] [--out DIR]
   plantsvc migrate-data --from DIR [--dry-run]
   plantsvc version
@@ -64,8 +63,7 @@ def cmd_capture(args) -> int:
     if not args.no_release:
         _release_service(s.port)
     try:
-        job = ctx.runner.run(args.phase, trigger="cli", warmup_s=args.warmup, use_led=not args.no_led,
-                             force=args.force, if_missing=args.if_missing,
+        job = ctx.runner.run(args.phase, trigger="cli", force=args.force, if_missing=args.if_missing,
                              allow_fake_publish=args.allow_fake_publish)
     finally:
         ctx.close()
@@ -74,33 +72,6 @@ def cmd_capture(args) -> int:
     if job.state == "skipped":
         return 0
     return 0 if job.state == "done" and job.ok_rows > 0 else 1
-
-
-# ---- led -----------------------------------------------------------------------
-def cmd_led(args) -> int:
-    import time
-
-    from .config_store import ConfigStore
-    from .led import LedController, LedNotInstalled
-    s = _settings(args)
-    p = s.paths.ensure()
-    store = ConfigStore(p.config, example=p.example_config)
-    led = LedController(store, mode_override=s.led_mode)
-    try:
-        if args.action == "on":
-            print(json.dumps(led.on(reason="cli", max_on_s=args.seconds), ensure_ascii=False))
-            if args.seconds:
-                time.sleep(args.seconds)
-                led.off(reason="cli")
-        elif args.action == "off":
-            led.force_off()
-            print(json.dumps(led.status(), ensure_ascii=False))
-        else:
-            print(json.dumps(led.test(args.seconds or 2.0), ensure_ascii=False))
-    except LedNotInstalled as e:
-        print(f"LED not installed: {e}")
-        return 0
-    return 0
 
 
 # ---- replay / seed / check ----------------------------------------------------------
@@ -180,7 +151,7 @@ def cmd_check_config(args) -> int:
 def cmd_doctor(args) -> int:
     from . import doctor
     s = _settings(args)
-    rows = doctor.run(s, s.paths, led_test=args.led_test)
+    rows = doctor.run(s, s.paths)
     print(doctor.to_json(rows) if args.json else doctor.format_table(rows, brief=args.brief))
     return 1 if any(r["status"] == "FAIL" for r in rows) else 0
 
@@ -201,10 +172,9 @@ def cmd_render_units(args) -> int:
         data_dir = str(p.data_dir)
     user = args.user or os.environ.get("USER") or os.environ.get("USERNAME") or "pi"
     cfg = ConfigStore(p.config, example=p.example_config).get()
-    warm = cfg.led.warmup_s if cfg.led.enabled else 0
     values = {"PLANT_USER": user, "PLANT_DIR": plant_dir, "PLANT_DATA_DIR": data_dir,
-              "DAWN_TIME": cfg.schedule.dawn, "PM_TIME": cfg.schedule.pm, "LED_WARMUP_S": str(warm),
-              "SNAP_TIMEOUT_S": str(max(900, warm + 600)), "PLANT_PORT": str(s.port)}
+              "DAWN_TIME": cfg.schedule.dawn, "PM_TIME": cfg.schedule.pm,
+              "SNAP_TIMEOUT_S": "900", "PLANT_PORT": str(s.port)}
     tdir = p.repo_root / "deploy" / "systemd"
     out = Path(args.out) if args.out else tdir / "rendered"
     out.mkdir(parents=True, exist_ok=True)
@@ -272,16 +242,9 @@ def build_parser() -> argparse.ArgumentParser:
     c.add_argument("--phase", default="auto", choices=["auto", "dawn", "pm"])
     c.add_argument("--force", action="store_true")
     c.add_argument("--if-missing", action="store_true")
-    c.add_argument("--no-led", action="store_true")
-    c.add_argument("--warmup", type=int)
     c.add_argument("--allow-fake-publish", action="store_true")
     c.add_argument("--no-release", action="store_true", help="do not ask a running service to release the camera")
     c.set_defaults(fn=cmd_capture)
-
-    led = sub.add_parser("led")
-    led.add_argument("action", choices=["on", "off", "test"])
-    led.add_argument("--seconds", type=float)
-    led.set_defaults(fn=cmd_led)
 
     r = sub.add_parser("replay")
     r.add_argument("--allow-fake-publish", action="store_true")
@@ -298,7 +261,6 @@ def build_parser() -> argparse.ArgumentParser:
     d = sub.add_parser("doctor")
     d.add_argument("--brief", action="store_true")
     d.add_argument("--json", action="store_true")
-    d.add_argument("--led-test", action="store_true")
     d.set_defaults(fn=cmd_doctor)
 
     ru = sub.add_parser("render-units")

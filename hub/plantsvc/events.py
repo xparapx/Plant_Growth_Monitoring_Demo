@@ -1,7 +1,7 @@
 """events.db - the service's own writable store (plant.db stays read-only here).
 
   jobs    one row per capture run (CLI or API), updated as the routine advances
-  events  led on/off, capture steps, config saves, camera open/close, mqtt state
+  events  capture steps, config saves, camera open/close, mqtt state
 """
 
 from __future__ import annotations

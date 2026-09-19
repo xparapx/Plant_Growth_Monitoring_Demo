@@ -1,7 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { apiFetch } from './client'
 import { qk } from './queries'
-import type { ActionResult, CameraAction, CameraStatus, ConfigDoc, Job, LedStatus, PlantConfig, ReplayResult } from './types'
+import type { ActionResult, CameraAction, CameraStatus, ConfigDoc, Job, PlantConfig, ReplayResult } from './types'
 
 export function useCameraAction() {
   const qc = useQueryClient()
@@ -33,17 +33,6 @@ export function useCaptureCancel() {
   return useMutation({
     mutationFn: () => apiFetch<{ cancelled: boolean }>('/api/capture/cancel', { method: 'POST' }),
     onSettled: () => qc.invalidateQueries({ queryKey: qk.capture.status }),
-  })
-}
-
-export function useLedMutation() {
-  const qc = useQueryClient()
-  return useMutation({
-    mutationFn: (kind: 'on' | 'off' | 'test') => apiFetch<LedStatus>(`/api/led/${kind}${kind === 'test' ? '?seconds=2' : ''}`, { method: 'POST' }),
-    onSettled: () => {
-      qc.invalidateQueries({ queryKey: qk.led })
-      qc.invalidateQueries({ queryKey: qk.capture.status })
-    },
   })
 }
 

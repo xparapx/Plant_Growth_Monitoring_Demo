@@ -42,15 +42,6 @@
     "cam_interval_min": 720
   },
 
-  "led": {
-    "enabled": false,
-    "driver": "noop",
-    "pin": 17,
-    "active_high": true,
-    "warmup_s": 300,
-    "max_on_s": 1200
-  },
-
   "schedule": { "dawn": "05:50", "pm": "15:00" },
 
   "mqtt": { "host": "localhost", "port": 1883, "growth_topic": "plant/tray/growth" },

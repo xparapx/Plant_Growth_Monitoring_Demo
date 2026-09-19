@@ -164,7 +164,7 @@ class CameraManager:
 
     def _quiet_windows(self, cfg) -> list[tuple[datetime, datetime]]:
         out = []
-        warm = cfg.led.warmup_s if cfg.led.enabled else 0
+        warm = 0
         for hhmm in (cfg.schedule.dawn, cfg.schedule.pm):
             try:
                 parse_hhmm(hhmm)

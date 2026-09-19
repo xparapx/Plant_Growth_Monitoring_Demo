@@ -1,7 +1,7 @@
 """FastAPI application factory.
 
     plantsvc serve            -> uvicorn on PLANT_HOST:PLANT_PORT (default 0.0.0.0:8080)
-    create_app(settings, camera_backend=FakeBackend(), led_mode="noop", mqtt=False)   (tests)
+    create_app(settings, camera_backend=FakeBackend(), mqtt=False)   (tests)
 """
 
 from __future__ import annotations
@@ -33,14 +33,13 @@ FALLBACK_HTML = """<!doctype html><meta charset="utf-8"><title>plantsvc</title>
 <a href="/api/docs">/api/docs</a></p></body>"""
 
 
-def create_app(settings: Settings | None = None, *, camera_backend=None, led_mode: str | None = None,
+def create_app(settings: Settings | None = None, *, camera_backend=None,
                mqtt: bool | None = None, context: AppContext | None = None) -> FastAPI:
-    ctx = context or build_context(settings, camera_backend=camera_backend, led_mode=led_mode, mqtt=mqtt)
+    ctx = context or build_context(settings, camera_backend=camera_backend, mqtt=mqtt)
 
     @asynccontextmanager
     async def lifespan(app: FastAPI):
         ctx.hub.bind(asyncio.get_running_loop())
-        ctx.led.force_off()
         if ctx.bridge is not None:
             ctx.bridge.start()
         try:

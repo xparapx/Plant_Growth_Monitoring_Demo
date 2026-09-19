@@ -1,6 +1,6 @@
 /* /api/system/status for the mock (api/system.py shape; a PC-like host: no systemd, no Pi libs). */
 import type { SystemStatus } from '@/api/types'
-import { cameraStatus, ledStatus, type MockState } from '../state'
+import { cameraStatus, type MockState } from '../state'
 import { iso } from '../time'
 
 export function systemStatus(st: MockState, now = Date.now()): SystemStatus {
@@ -24,7 +24,6 @@ export function systemStatus(st: MockState, now = Date.now()): SystemStatus {
     photos: { raw: rawPhotos, debug: rawPhotos * st.cfg.rois.length, mask: rawPhotos * st.cfg.rois.length },
     services: null,
     camera: { state: cam.state, driver: cam.driver, clients: cam.clients, preview: cam.preview, paused_for: cam.paused_for, error: null, preview_size: cam.preview_size, capture_size: cam.capture_size, scale: cam.scale, lock_holder_pid: cam.lock_holder_pid, ops_busy: cam.ops_busy, quiet_window: null },
-    led: ledStatus(st),
     mqtt: { connected: true, broker: `${st.cfg.mqtt.host}:${st.cfg.mqtt.port}`, last_msg: fr.now === null ? null : iso(fr.now), messages: st.mqttMessages, error: null },
     ws_clients: 1, web_dist: true, dummy_fill: st.cfg.analysis.dummy_fill, pid: 4242, started_at: iso(st.startedAt),
   }

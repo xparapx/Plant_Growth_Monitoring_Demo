@@ -13,11 +13,8 @@ Environment=PLANT_DATA_DIR=${PLANT_DATA_DIR}
 Environment=PLANT_PORT=${PLANT_PORT}
 Environment=PYTHONUNBUFFERED=1
 Environment=GPIOZERO_PIN_FACTORY=lgpio
-# Known LED state at boot (relay boards can float during kernel init). Harmless when no LED.
-ExecStartPre=-${PLANT_DIR}/.venv/bin/plantsvc led off
 # Never `uv run` here: at 05:50 it may try to resolve/sync over the network. uv is an install-time tool.
 ExecStart=${PLANT_DIR}/.venv/bin/plantsvc serve --host 0.0.0.0 --port ${PLANT_PORT}
-ExecStopPost=-${PLANT_DIR}/.venv/bin/plantsvc led off
 Restart=always
 RestartSec=5
 KillSignal=SIGINT

@@ -1,5 +1,5 @@
 [Unit]
-Description=Plant capture - LED warm-up (when installed), shoot, measure, publish (dawn/pm)
+Description=Plant capture - shoot, measure, publish (dawn/pm)
 After=network-online.target time-sync.target plantsvc.service
 Wants=network-online.target
 # Intentionally no Wants=/Requires=plantsvc.service: the capture must run even when the API is down.
@@ -15,7 +15,5 @@ Environment=PLANT_PORT=${PLANT_PORT}
 Environment=PYTHONUNBUFFERED=1
 Environment=GPIOZERO_PIN_FACTORY=lgpio
 ExecStart=${PLANT_DIR}/.venv/bin/plantsvc capture --phase auto
-# Runs even when ExecStart failed or was SIGKILLed on timeout -> the LED can never stay on.
-ExecStopPost=-${PLANT_DIR}/.venv/bin/plantsvc led off
-# = LED warm-up (${LED_WARMUP_S}s) + 3x30s camera retries + capture/measure/publish + margin
+# = 3x30s camera retries + capture/measure/publish + margin
 TimeoutStartSec=${SNAP_TIMEOUT_S}

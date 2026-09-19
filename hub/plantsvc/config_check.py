@@ -98,21 +98,9 @@ def check(cfg: Config | dict[str, Any]) -> dict[str, Any]:
             warn.append(f"ROI 가 화분 지름의 {side_cm / pot:.1f} 배뿐입니다 — 6주 뒤 잎이 박스 밖으로 "
                         "나가면 그때부터 면적이 잘립니다 (1.5~2 배 권장)")
 
-    # -- schedule / led --------------------------------------------------------
-    led = C.get("led", {})
+    # -- schedule ---------------------------------------------------------------
     sched = C.get("schedule", {})
     line("스케줄", "dawn / pm", f'{sched.get("dawn")} / {sched.get("pm")}', f'tz {C.get("tz")}')
-    line("LED", "enabled / driver", f'{led.get("enabled")} / {led.get("driver")}',
-         f'pin {led.get("pin")} warm-up {led.get("warmup_s")}s')
-    if led.get("enabled"):
-        try:
-            from .timeutil import add_minutes, seconds_between_hhmm
-            shot = add_minutes(sched.get("dawn", "05:50"), int(led.get("warmup_s", 300)) // 60 + 2)
-            if seconds_between_hhmm(shot, "06:00") < 0:
-                warn.append(f"dawn {sched.get('dawn')} + 워밍업 {led.get('warmup_s')}s 면 촬영이 "
-                            f"06:00 을 넘습니다 ({shot}) — dawn 을 앞당기세요")
-        except Exception:
-            pass
 
     return {"bad": bad, "warn": warn, "lines": lines, "ok": not bad}
 
