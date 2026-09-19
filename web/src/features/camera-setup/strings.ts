@@ -14,7 +14,7 @@ export const ss = {
   exposure: '노출 (µs)', gain: '게인', wb: '화이트밸런스', lens: '렌즈 위치',
   scaleReadout: (ppc: string, cm: number) => `${ppc} px/cm (${cm} cm 기준)`,
   measureOn: '두 점 찍기 (진행 중)', measureOff: '두 점 찍기',
-  potNow: (cm: number) => `현재 ${cm} cm`,
+  potNow: (cm: number) => `현재 ${cm} cm — 배율(두 점 찍기)에는 쓰이지 않고, 잰 배율이 말이 되는지 검산 경고에만 씁니다`,
   naming: '이름 매기는 중',
   shuffleNeedsEven: '화분 수가 짝수여야 무작위 배정할 수 있습니다',
   shuffleNeedsPots: 'ROI 가 먼저 있어야 합니다',

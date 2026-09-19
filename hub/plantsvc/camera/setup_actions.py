@@ -205,7 +205,7 @@ class SetupSession:
         def _u(c):
             c.layout.pot_cm = cm
         self.store.update(_u)
-        return f"화분 지름 {cm:g} cm 기록 — 배율 검산에 쓰입니다"
+        return f"화분 한 변 {cm:g} cm 기록 — 배율 검산에만 쓰입니다"
 
     def act_shoot(self, p):
         cfg = self.store.get()

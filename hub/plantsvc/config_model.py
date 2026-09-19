@@ -26,7 +26,7 @@ CONFIG_VERSION = 2
 class Layout(BaseModel):
     cols: int = 3
     rows: int = 2
-    pot_cm: float = 15.0     # ruler-measured pot diameter; used only to sanity-check the scale
+    pot_cm: float = 15.0     # ruler-measured pot side (square pots); used only to sanity-check the scale
     gap_cm: float = 20.0
 
 

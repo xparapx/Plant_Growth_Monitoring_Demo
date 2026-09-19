@@ -78,7 +78,7 @@ const ACTIONS: Record<string, (st: MockState, p: Body) => string> = {
     const cm = num(p, 'pot_cm')
     if (cm <= 0) return '0보다 큰 값을 넣으세요'
     bumpConfig(st, (c) => { c.layout.pot_cm = cm })
-    return `화분 지름 ${g(cm)} cm 기록 — 배율 검산에 쓰입니다`
+    return `화분 한 변 ${g(cm)} cm 기록 — 배율 검산에만 쓰입니다`
   },
   shoot(st) {
     st.calibExists = true

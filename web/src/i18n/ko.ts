@@ -69,7 +69,7 @@ export const ko = {
     steps: ['노출 · 초점', '스케일 마커', 'ROI 잡기', '처리군 배정', '기준사진 촬영 (calib.jpg)'],
     stepDone: { focus: (exp: string, lens: string, gain: string) => `${exp}µs · ${lens} · g${gain}`, scale: (cm: number, ppc: string) => `${cm}cm → ${ppc} px/cm`, roi: (n: number) => `ROI ${n}`, treat: (mode: string) => mode, shot: 'calib.jpg' },
     inProgress: '진행 중', live: '● LIVE PREVIEW', saveConfig: '저장 → config.json', saved: '저장됨',
-    auto: '자동 측정 → 고정', converging: '수렴 중…', lengthCm: '길이 (cm)', potCm: '화분 지름 (cm)', record: '기록', measurePts: '두 점 찍기', clearPts: '점 지우기',
+    auto: '자동 측정 → 고정', converging: '수렴 중…', lengthCm: '길이 (cm)', potCm: '화분 한 변 (cm) — 선택, 배율 검산용', record: '기록', measurePts: '두 점 찍기', clearPts: '점 지우기',
     findLeaf: 'FIND LEAF', grid: 'AUTO ROI', cols: '열', rows: '행', rename: '이름 다시 매기기', cancelNaming: '취소',
     roiHint: (pot: number, gap: number) => `pot ${pot} cm · gap ${gap} cm`,
     shuffle: 'SHUFFLE', stable: '꾸준', fluct: '널뜀', shoot: '5 · 기준사진 촬영 (calib.jpg)', shootAgain: '기준 사진을 덮어씁니다 — 6주 밀림 판정의 기준이 바뀝니다',
