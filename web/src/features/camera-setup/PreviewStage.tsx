@@ -129,13 +129,13 @@ export function PreviewStage({ cm, className = '' }: { cm: number; className?: s
       </svg>
       {MOCK && <span className="pointer-events-none absolute left-3 top-3 rounded-full bg-dummy-bg px-2 py-0.5 text-[10px] font-bold tracking-wider text-dummy">{ss.mockLabel}</span>}
       {live && <span className="pointer-events-none absolute right-3 top-3 rounded-full bg-accent/90 px-2.5 py-1 text-[10px] font-medium text-white">{ko.setup.live}</span>}
-      <div className="absolute bottom-3 right-3 flex gap-1.5">
+      <div className="absolute bottom-4 right-3 flex gap-2">
         <button
           type="button"
           title={ss.lightTitle}
           disabled={disabled}
           onClick={() => void run('light', { on: true })}
-          className="rounded-full bg-black/55 px-3 py-1.5 text-[11px] font-medium text-white backdrop-blur-sm transition hover:bg-black/75 disabled:opacity-40"
+          className="rounded-full bg-amber-400 px-4 py-2 text-[13px] font-bold text-black shadow-lg transition hover:bg-amber-300 disabled:opacity-40"
         >
           💡 {ss.lightOn}
         </button>
@@ -144,7 +144,7 @@ export function PreviewStage({ cm, className = '' }: { cm: number; className?: s
           title={ss.lightTitle}
           disabled={disabled}
           onClick={() => void run('light', { on: false })}
-          className="rounded-full bg-black/55 px-3 py-1.5 text-[11px] font-medium text-white backdrop-blur-sm transition hover:bg-black/75 disabled:opacity-40"
+          className="rounded-full bg-white/90 px-4 py-2 text-[13px] font-bold text-black shadow-lg transition hover:bg-white disabled:opacity-40"
         >
           {ss.lightOff}
         </button>
@@ -152,7 +152,7 @@ export function PreviewStage({ cm, className = '' }: { cm: number; className?: s
           type="button"
           title={ss.rotateTitle}
           onClick={rotateView}
-          className="rounded-full bg-black/55 px-3 py-1.5 text-[11px] font-medium text-white backdrop-blur-sm transition hover:bg-black/75"
+          className="rounded-full bg-accent px-4 py-2 text-[13px] font-bold text-white shadow-lg transition hover:opacity-85"
         >
           ⟳ {ss.rotate}
         </button>
