@@ -141,10 +141,11 @@ svg{display:block;width:100%;height:auto;font-family:inherit}
 
 /* ---- DB 스키마 ---- */
 #dbsvg{margin:0 auto}
-.db .side{fill:var(--line)}.db .top{fill:var(--sand)}.db .face{fill:var(--surface);stroke:var(--line)}
-.db .title{font-size:14.5px;font-weight:800;fill:var(--ink)}
+.db .face{fill:var(--surface);stroke:color-mix(in srgb,var(--dbc,var(--line)) 45%,var(--line));stroke-width:1.2;filter:drop-shadow(0 2px 5px var(--shc))}
+.db .dot{fill:var(--dbc,var(--acc))}
+.db .title{font-size:15px;font-weight:800;fill:var(--ink)}
 .tbl{cursor:pointer}
-.tbl rect{fill:var(--sand);stroke:none;rx:8}
+.tbl rect{fill:color-mix(in srgb,var(--dbc,var(--sand)) 14%,var(--sand));stroke:none;rx:9}
 .tbl.on rect{fill:var(--acc)}.tbl.on text{fill:#fff}
 .tbl text{font-size:12px;fill:var(--ink)}
 .rel{fill:none;stroke:var(--acc);stroke-width:1.7;stroke-dasharray:5 4;opacity:0;pointer-events:none}
@@ -430,11 +431,10 @@ function gotoNode(id){
   svg.style.maxWidth=Math.min(VW*1.2,1500)+'px';           // 1-DB 소형 지도가 전폭으로 확대되는 것 방지
   const tpos={};const gDb=el('g',{}),gRel=el('g',{});svg.append(gDb,gRel);
   DBS.forEach(d=>{
-    const H=d._h,x=d._x,y=d._y,g=el('g',{class:'db'});
-    g.appendChild(el('path',{class:'side',d:`M${x+W},${y+OFF} l${OFF},-${OFF} v${H} l-${OFF},${OFF} z`}));
-    g.appendChild(el('path',{class:'top',d:`M${x},${y+OFF} l${OFF},-${OFF} h${W} l-${OFF},${OFF} z`}));
-    g.appendChild(el('rect',{class:'face',x,y:y+OFF,width:W,height:H,rx:6}));
-    const tt=el('text',{x:x+14,y:y+OFF+24,class:'title'});tt.textContent='🗄 '+d.name;g.appendChild(tt);
+    const H=d._h,x=d._x,y=d._y,i=DBS.indexOf(d),g=el('g',{class:'db',style:'--dbc:var(--l'+(i%6)+')'});
+    g.appendChild(el('rect',{class:'face',x,y:y+OFF,width:W,height:H,rx:16}));
+    g.appendChild(el('circle',{class:'dot',cx:x+22,cy:y+OFF+19,r:5.5}));
+    const tt=el('text',{x:x+36,y:y+OFF+24,class:'title'});tt.textContent=d.name;g.appendChild(tt);
     d._wl.forEach((ln,i)=>{const w=el('text',{x:x+14,y:y+OFF+42+i*15,class:'writer'});w.textContent=ln;g.appendChild(w)});
     const tbase=y+OFF+48+d._wl.length*15+4;
     d.tables.forEach((t,i)=>{
