@@ -308,8 +308,12 @@ if(DATA.glossary===false)document.getElementById('glossbtn').hidden=true;
 if((DATA.scenarios||[]).length)document.getElementById('scbtn').hidden=false;
 if(DATA.ops)document.getElementById('opsbtn').hidden=false;
 if((DATA.lineage||[]).length)document.getElementById('dblabel').textContent='데이터 (여정 · 스키마)';
+const curTheme=()=>document.documentElement.getAttribute('data-theme')||'light';
+function applyEmbedTheme(f){try{f.contentDocument&&f.contentDocument.documentElement.setAttribute('data-theme',curTheme())}catch(err){}}
+function syncEmbedThemes(){document.querySelectorAll('.embed-frame').forEach(applyEmbedTheme)}
 (DATA.embeds||[]).forEach(e=>{
   const f=document.createElement('iframe');f.className='embed-frame';f.title=e.label;
+  f.addEventListener('load',()=>applyEmbedTheme(f));  // archify 등 내장 문서 테마를 부모와 동기화
   let loaded=false;  // 무거운 내장 문서는 첫 방문 때만 파싱
   const load=()=>{if(!loaded){f.srcdoc=e.html;loaded=true}};
   if(e.into){  // 기존 탭(section id) 상단에 삽입 — 요약 시각 자료 먼저, 상세는 아래
@@ -337,6 +341,7 @@ document.getElementById('thm').addEventListener('click',()=>{
   const t=document.documentElement.getAttribute('data-theme')==='dark'?'light':'dark';
   document.documentElement.setAttribute('data-theme',t);
   try{localStorage.setItem('pm-theme',t)}catch(e){}
+  syncEmbedThemes();
 });
 const esc=s=>String(s??'').replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
 let selectNode=null;
