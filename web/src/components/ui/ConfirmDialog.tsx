@@ -26,14 +26,14 @@ export function ConfirmDialog({ open, title, body, confirmLabel = ko.common.conf
       ref={ref}
       onCancel={(e) => { e.preventDefault(); onCancel() }}
       onClick={(e) => { if (e.target === ref.current) onCancel() }}
-      className="m-auto w-[min(92vw,420px)] rounded-lg border border-border-soft bg-elev p-0 text-ink shadow-2"
+      className="m-auto w-[min(92vw,420px)] overscroll-contain rounded-lg border border-border-soft bg-elev p-0 text-ink shadow-2"
     >
       <div className="p-5">
         <h3 className="text-[16px] font-bold">{title}</h3>
         {body && <div className="mt-2 text-[13px] text-muted">{body}</div>}
         <div className="mt-5 flex justify-end gap-2">
-          <Button variant="ghost" onClick={onCancel} disabled={busy}>{ko.common.cancel}</Button>
-          <Button variant={tone} onClick={onConfirm} busy={busy} autoFocus>{confirmLabel}</Button>
+          <Button variant="ghost" onClick={onCancel} disabled={busy} autoFocus>{ko.common.cancel}</Button>
+          <Button variant={tone} onClick={onConfirm} busy={busy}>{confirmLabel}</Button>
         </div>
       </div>
     </dialog>

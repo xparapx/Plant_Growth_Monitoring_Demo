@@ -102,7 +102,7 @@ function Editor({ doc, refetch }: { doc: ConfigDoc; refetch: () => void }) {
       ) : (
         <div className="flex flex-col gap-2">
           <textarea
-            className="num min-h-[420px] w-full resize-y rounded-md border border-border-soft bg-elev p-3 text-[12.5px] leading-relaxed text-ink outline-none focus:border-primary"
+            className="num min-h-[420px] w-full resize-y rounded-md border border-border-soft bg-elev p-3 text-[12.5px] leading-relaxed text-ink focus:border-primary"
             value={jsonText}
             onChange={(e) => onJson(e.target.value)}
             spellCheck={false}

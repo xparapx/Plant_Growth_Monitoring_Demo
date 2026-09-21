@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
 import { Toggle } from '@/components/ui/Toggle'
 
-const INPUT = 'num h-10 w-full rounded-md border border-border-soft bg-elev px-2.5 text-[14px] text-ink outline-none focus:border-primary disabled:opacity-60'
+const INPUT = 'num h-10 w-full rounded-md border border-border-soft bg-elev px-2.5 text-[14px] text-ink focus:border-primary disabled:opacity-60'
 
 export function TextField({ label, value, onChange, placeholder, readOnly, mono = true }: { label: string; value: string; onChange?: (v: string) => void; placeholder?: string; readOnly?: boolean; mono?: boolean }) {
   const id = `tf-${label.replace(/\s+/g, '-')}`

@@ -19,7 +19,7 @@ export function NumberField({ label, value, onChange, unit, className = '', id, 
           inputMode="decimal"
           value={value}
           onChange={(e) => onChange(e.target.value === '' ? '' : Number(e.target.value))}
-          className="num h-10 w-full rounded-md border border-border-soft bg-elev px-2.5 text-[14px] text-ink outline-none focus:border-primary"
+          className="num h-10 w-full rounded-md border border-border-soft bg-elev px-2.5 text-[14px] text-ink focus:border-primary"
           {...rest}
         />
         {unit && <span className="text-muted">{unit}</span>}

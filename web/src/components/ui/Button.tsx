@@ -25,6 +25,7 @@ export function Button({ variant = 'primary', size = 'md', busy, icon, className
     <button
       type="button"
       disabled={disabled || busy}
+      aria-busy={busy || undefined}
       className={`inline-flex items-center justify-center gap-1.5 rounded-[9px] border font-semibold transition-[filter,background-color] duration-[var(--dur-fast)] disabled:cursor-not-allowed disabled:opacity-50 ${V[variant]} ${S[size]} ${className}`}
       {...rest}
     >

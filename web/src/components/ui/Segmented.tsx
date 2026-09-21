@@ -11,6 +11,7 @@ export function Segmented<T extends string>({ options, value, onChange, size = '
             type="button"
             role="radio"
             aria-checked={on}
+            tabIndex={on ? 0 : -1}
             disabled={o.disabled}
             onClick={() => onChange(o.value)}
             onKeyDown={(e) => {
@@ -18,6 +19,7 @@ export function Segmented<T extends string>({ options, value, onChange, size = '
               const i = options.findIndex((x) => x.value === value)
               const j = (i + (e.key === 'ArrowRight' ? 1 : -1) + options.length) % options.length
               onChange(options[j].value)
+              e.currentTarget.parentElement?.querySelectorAll('button')[j]?.focus()
             }}
             className={`rounded-full font-medium transition-colors ${size === 'sm' ? 'h-7 px-2.5 text-[11.5px]' : 'h-8 px-3 text-[12.5px]'} ${on ? 'bg-ink text-bg' : 'text-muted hover:text-ink'} disabled:opacity-40`}
           >
