@@ -8,7 +8,7 @@
     "views": [
       {
         "id": "sensing",
-        "label": "Sensing path",
+        "label": "센싱 경로",
         "focus": [
           "envn",
           "watn",
@@ -16,11 +16,11 @@
           "coll",
           "pdb"
         ],
-        "note": "Nodes publish over MQTT; one collector is the only writer of plant.db."
+        "note": "노드가 MQTT 로 발행하고, 수집기 하나만 plant.db 를 쓴다."
       },
       {
         "id": "capture",
-        "label": "Capture path",
+        "label": "촬영 경로",
         "focus": [
           "tmr",
           "capt",
@@ -29,18 +29,18 @@
           "coll",
           "pdb"
         ],
-        "note": "The timer shoots, measures canopy area, and publishes — storage still goes through the collector."
+        "note": "타이머가 촬영·면적 측정·발행까지 — 저장은 여전히 수집기를 거친다."
       },
       {
         "id": "serve",
-        "label": "Serve path",
+        "label": "조회 경로",
         "focus": [
           "web",
           "svc",
           "pdb",
           "cfg"
         ],
-        "note": "The web app reads plant.db read-only and owns config.json."
+        "note": "웹 앱은 plant.db 를 읽기 전용으로 보고 config.json 을 소유한다."
       }
     ]
   },
@@ -311,29 +311,29 @@
   "cards": [
     {
       "dot": "emerald",
-      "title": "Independence",
+      "title": "노드 독립",
       "items": [
-        "Watering completes inside the node",
-        "Lighting runs on the env node clock",
-        "Broker down = logs lost, nothing else"
+        "급수는 노드 안에서 완결된다",
+        "조명은 환경노드 시계로 독립 점등",
+        "브로커가 죽어도 잃는 건 로그뿐"
       ]
     },
     {
       "dot": "cyan",
-      "title": "Single writer",
+      "title": "writer 는 하나",
       "items": [
-        "run_collector is the only plant.db writer",
-        "plantsvc reads the same file read-only",
-        "Capture publishes — never writes the DB"
+        "plant.db 를 쓰는 건 run_collector 뿐",
+        "plantsvc 는 같은 파일을 읽기 전용으로",
+        "촬영은 발행만 — DB 를 직접 쓰지 않는다"
       ]
     },
     {
       "dot": "rose",
-      "title": "Fixed optics",
+      "title": "광학 고정",
       "items": [
-        "Exposure and focus locked for 6 weeks",
-        "Dawn LED window 05:45–06:15",
-        "px_per_cm drift raises an alarm"
+        "노출·초점을 6주간 고정",
+        "새벽 LED 창 05:45~06:15",
+        "px_per_cm 이 튀면 밀림 경보"
       ]
     }
   ]

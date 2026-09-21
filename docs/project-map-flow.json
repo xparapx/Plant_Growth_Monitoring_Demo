@@ -14,7 +14,7 @@
     "views": [
       {
         "id": "sensing",
-        "label": "Sensing facts",
+        "label": "센싱 데이터",
         "focus": [
           "envn",
           "watn",
@@ -22,11 +22,11 @@
           "coll",
           "pdb"
         ],
-        "note": "Environment and soil facts publish over MQTT into the single-writer store."
+        "note": "환경·토양 측정값이 MQTT 를 거쳐 단일 writer 저장소로 들어간다."
       },
       {
         "id": "vision",
-        "label": "Vision facts",
+        "label": "비전 데이터",
         "focus": [
           "cam",
           "capt",
@@ -34,17 +34,17 @@
           "coll",
           "pdb"
         ],
-        "note": "Canopy area is measured at the camera and re-enters through the same collector."
+        "note": "캐노피 면적은 카메라에서 측정되어 같은 수집기로 재진입한다."
       },
       {
         "id": "read",
-        "label": "Read side",
+        "label": "읽기 측",
         "focus": [
           "pdb",
           "anly",
           "webui"
         ],
-        "note": "Analytics reads the store read-only and derives RGR, validity and dashboards."
+        "note": "분석이 저장소를 읽기 전용으로 보고 RGR·Validity·대시보드를 파생한다."
       }
     ]
   },
@@ -219,26 +219,26 @@
   "cards": [
     {
       "dot": "emerald",
-      "title": "One-way reporting",
+      "title": "단방향 보고",
       "items": [
-        "Nodes publish facts; nothing commands them",
-        "Broker loss costs logs, never watering"
+        "노드는 사실만 발행 — 누구도 노드를 명령하지 않는다",
+        "브로커 장애의 대가는 로그뿐, 급수는 계속"
       ]
     },
     {
       "dot": "cyan",
-      "title": "Single writer",
+      "title": "writer 는 하나",
       "items": [
-        "All four topics funnel into run_collector",
-        "plant.db has exactly one writing process"
+        "토픽 4종이 전부 run_collector 로 모인다",
+        "plant.db 를 쓰는 프로세스는 정확히 하나"
       ]
     },
     {
       "dot": "amber",
-      "title": "Derived screens",
+      "title": "파생 화면",
       "items": [
-        "RGR uses dawn rows only",
-        "Empty tables render as DUMMY until real rows arrive"
+        "RGR 은 dawn 행만 쓴다",
+        "빈 테이블은 실데이터가 올 때까지 DUMMY 로 표시"
       ]
     }
   ]
