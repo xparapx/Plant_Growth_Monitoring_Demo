@@ -4,6 +4,7 @@
 
 ## 2026-09
 
+- **09-22 archify 고품질판 내장** — architecture(시스템 맵 11노드, showcase 통과)·dataflow(파이프라인 9노드, trace 애니메이션) 를 archify 로 생성해 설계 맵·연결 지도 탭 상단에 iframe 내장(`embeds`). 스펙은 `docs/project-map-arch.json`·`project-map-flow.json`. 다크 테마 노드 대비 보정(틴트 13%+틴트 테두리·본문 텍스트 확대 13px).
 - **09-22 지도 디자인 v3 전면 개편** — 컨셉(파스텔 그라디언트·유리질 카드·큰 타이포) 기준으로 템플릿 스타일 전체 재작성: 라이트 퍼스트(파스텔 6색 팔레트 + 네이비 다크 보조), 배경 radial glow, 사이드바 blur 유리질, 기본 16px·헤딩 800, 레인/여정은 파스텔 밴드+흰 카드(color-mix), 연결 지도 노드 카드 확대(212×52·행 82)+drop-shadow, 탭 배지 파스텔 통일. 6개 탭 디자인 일관성 확보.
 - **09-22 프로젝트 지도 생성·6뷰 확장** — `docs/project-map.html`(+`project-map.json`, 29노드·35간선·DB 2) — 설계 맵 5레인·**시나리오 2종(새벽 촬영·급수 사이클, 노드 점프)**·스크립트 연결 지도·**데이터 여정 4줄+스키마**·**운영·배포(기기 4대 카드)**·핵심 기술 탭. project-map 스킬을 6뷰 체계로 개편(scenarios/lineage/ops/diff_ignore 필드, `scan.py --diff` 신선도 검사 — 현재 clean/exit 0). design-craft §3c 필터: SVG 노드 `:focus-visible` 링 템플릿 수정 1건, 나머지 통과. 갱신은 json 을 고쳐 `render.py` 재실행.
 - **09-19 급수노드(water_node) 현장 운용 개선** — ① 처리군을 컴파일 스위치에서 **터치 선택 칩([STBL][FLCT], NVS 저장)** 으로 — 같은 펌웨어를 전 노드에 올리고 현장 지정(노드별 수정은 `NODE_ID`/`PLANT_ID` 두 줄뿐, wN↔pN 동번호 매핑). ② 급수 트리거 확인(10초×연속 3회 RAW_ON 초과) — 좁은 stable 밴드(40카운트)에서 센서 요동 오급수 차단. ③ SAFE 화면 초기 젖음 게이지(1750~1800: POUR/DRAINING/OK→AUTO) — 전 화분 동일 출발선 절차를 화면이 안내. ④ 수동 펌프(PUMP) 세션을 `reason=prime` 이벤트로 DB 기록. ⑤ UI 3버튼(AUTO/PUMP/RESET 1.5초 홀드) + 탭 판정 wasClicked 통일(STOP 미동작 대응). 파이는 학교 공유기(192.168.1.214, school-cne)로 이전 완료, 환경노드 조명(4구×2, 핀8·9) 실물 점등 테스트 완료.

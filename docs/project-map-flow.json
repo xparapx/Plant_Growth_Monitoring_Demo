@@ -1,0 +1,245 @@
+{
+  "schema_version": 1,
+  "diagram_type": "dataflow",
+  "meta": {
+    "title": "Plant Data Pipeline",
+    "output": "project-map-flow.html",
+    "viewBox": [
+      1080,
+      640
+    ],
+    "animation": "trace",
+    "visual_preset": "signal-flow",
+    "quality_profile": "showcase",
+    "views": [
+      {
+        "id": "sensing",
+        "label": "Sensing facts",
+        "focus": [
+          "envn",
+          "watn",
+          "topics",
+          "coll",
+          "pdb"
+        ],
+        "note": "Environment and soil facts publish over MQTT into the single-writer store."
+      },
+      {
+        "id": "vision",
+        "label": "Vision facts",
+        "focus": [
+          "cam",
+          "capt",
+          "topics",
+          "coll",
+          "pdb"
+        ],
+        "note": "Canopy area is measured at the camera and re-enters through the same collector."
+      },
+      {
+        "id": "read",
+        "label": "Read side",
+        "focus": [
+          "pdb",
+          "anly",
+          "webui"
+        ],
+        "note": "Analytics reads the store read-only and derives RGR, validity and dashboards."
+      }
+    ]
+  },
+  "stages": [
+    {
+      "label": "Sources"
+    },
+    {
+      "label": "Transit"
+    },
+    {
+      "label": "Store"
+    },
+    {
+      "label": "Derive"
+    },
+    {
+      "label": "Consume"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "envn",
+      "type": "external",
+      "label": "ENV NODE",
+      "sublabel": "temp·hum·CO2·lux",
+      "stage": 0,
+      "row": 0,
+      "tag": "5-min avg"
+    },
+    {
+      "id": "watn",
+      "type": "external",
+      "label": "WATER NODE",
+      "sublabel": "soil raw · pump",
+      "stage": 0,
+      "row": 1,
+      "tag": "closed-loop"
+    },
+    {
+      "id": "cam",
+      "type": "external",
+      "label": "CAMERA",
+      "sublabel": "dawn · pm frames",
+      "stage": 0,
+      "row": 2,
+      "tag": "locked optics"
+    },
+    {
+      "id": "capt",
+      "type": "backend",
+      "label": "CAPTURE",
+      "sublabel": "ExG + Otsu area",
+      "stage": 1,
+      "row": 2,
+      "tag": "no DB write"
+    },
+    {
+      "id": "topics",
+      "type": "messagebus",
+      "label": "plant/#",
+      "sublabel": "mosquitto :1883",
+      "stage": 1,
+      "row": 0,
+      "tag": "report-only"
+    },
+    {
+      "id": "coll",
+      "type": "backend",
+      "label": "COLLECT",
+      "sublabel": "run_collector.py",
+      "stage": 2,
+      "row": 0,
+      "tag": "only writer"
+    },
+    {
+      "id": "pdb",
+      "type": "database",
+      "label": "PLANT DB",
+      "sublabel": "4 tables (SQLite)",
+      "stage": 2,
+      "row": 2,
+      "tag": "UTC rows"
+    },
+    {
+      "id": "anly",
+      "type": "backend",
+      "label": "ANALYTICS",
+      "sublabel": "RGR · validity · droop",
+      "stage": 3,
+      "row": 1,
+      "tag": "read-only"
+    },
+    {
+      "id": "webui",
+      "type": "frontend",
+      "label": "WEB UI",
+      "sublabel": "React :8080",
+      "stage": 4,
+      "row": 1,
+      "tag": "5 pages"
+    }
+  ],
+  "flows": [
+    {
+      "from": "envn",
+      "to": "topics",
+      "label": "env",
+      "classification": "5-min bucket",
+      "variant": "emphasis",
+      "route": "straight",
+      "labelDy": -22
+    },
+    {
+      "from": "watn",
+      "to": "topics",
+      "label": "soil · pump",
+      "classification": "raw ADC",
+      "variant": "emphasis",
+      "route": "vertical-channel",
+      "labelDy": 34
+    },
+    {
+      "from": "cam",
+      "to": "capt",
+      "label": "frame",
+      "classification": "fixed exposure",
+      "variant": "default",
+      "route": "straight"
+    },
+    {
+      "from": "capt",
+      "to": "topics",
+      "label": "growth",
+      "classification": "area_cm2",
+      "variant": "default",
+      "route": "vertical-channel"
+    },
+    {
+      "from": "topics",
+      "to": "coll",
+      "label": "subscribe",
+      "classification": "4 topics",
+      "variant": "emphasis",
+      "route": "straight"
+    },
+    {
+      "from": "coll",
+      "to": "pdb",
+      "label": "INSERT",
+      "classification": "single writer",
+      "variant": "emphasis",
+      "route": "vertical-channel"
+    },
+    {
+      "from": "pdb",
+      "to": "anly",
+      "label": "SELECT",
+      "classification": "read-only",
+      "variant": "default",
+      "route": "vertical-channel"
+    },
+    {
+      "from": "anly",
+      "to": "webui",
+      "label": "JSON · /ws",
+      "classification": "derived",
+      "variant": "emphasis",
+      "route": "straight"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "emerald",
+      "title": "One-way reporting",
+      "items": [
+        "Nodes publish facts; nothing commands them",
+        "Broker loss costs logs, never watering"
+      ]
+    },
+    {
+      "dot": "cyan",
+      "title": "Single writer",
+      "items": [
+        "All four topics funnel into run_collector",
+        "plant.db has exactly one writing process"
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "Derived screens",
+      "items": [
+        "RGR uses dawn rows only",
+        "Empty tables render as DUMMY until real rows arrive"
+      ]
+    }
+  ]
+}

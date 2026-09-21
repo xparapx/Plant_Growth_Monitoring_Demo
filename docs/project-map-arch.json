@@ -1,0 +1,340 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "Plant Growth Monitoring — System Map",
+    "output": "project-map-arch.html",
+    "quality_profile": "showcase",
+    "views": [
+      {
+        "id": "sensing",
+        "label": "Sensing path",
+        "focus": [
+          "envn",
+          "watn",
+          "mqtt",
+          "coll",
+          "pdb"
+        ],
+        "note": "Nodes publish over MQTT; one collector is the only writer of plant.db."
+      },
+      {
+        "id": "capture",
+        "label": "Capture path",
+        "focus": [
+          "tmr",
+          "capt",
+          "cam",
+          "mqtt",
+          "coll",
+          "pdb"
+        ],
+        "note": "The timer shoots, measures canopy area, and publishes — storage still goes through the collector."
+      },
+      {
+        "id": "serve",
+        "label": "Serve path",
+        "focus": [
+          "web",
+          "svc",
+          "pdb",
+          "cfg"
+        ],
+        "note": "The web app reads plant.db read-only and owns config.json."
+      }
+    ]
+  },
+  "components": [
+    {
+      "id": "envn",
+      "type": "external",
+      "label": "ENV NODE",
+      "sublabel": "UNO R4 WiFi",
+      "pos": [
+        40,
+        120
+      ],
+      "size": [
+        150,
+        64
+      ],
+      "tag": "5-min publish"
+    },
+    {
+      "id": "watn",
+      "type": "external",
+      "label": "WATER NODE",
+      "sublabel": "M5 Core S3",
+      "pos": [
+        40,
+        260
+      ],
+      "size": [
+        150,
+        64
+      ],
+      "tag": "closed-loop"
+    },
+    {
+      "id": "web",
+      "type": "frontend",
+      "label": "BROWSER",
+      "sublabel": "React SPA",
+      "pos": [
+        40,
+        470
+      ],
+      "size": [
+        150,
+        64
+      ]
+    },
+    {
+      "id": "mqtt",
+      "type": "messagebus",
+      "label": "MQTT",
+      "sublabel": "mosquitto :1883",
+      "pos": [
+        300,
+        190
+      ],
+      "size": [
+        150,
+        64
+      ]
+    },
+    {
+      "id": "coll",
+      "type": "backend",
+      "label": "COLLECT",
+      "sublabel": "run_collector.py",
+      "pos": [
+        540,
+        190
+      ],
+      "size": [
+        150,
+        64
+      ],
+      "tag": "only writer"
+    },
+    {
+      "id": "pdb",
+      "type": "database",
+      "label": "PLANT DB",
+      "sublabel": "SQLite",
+      "pos": [
+        780,
+        190
+      ],
+      "size": [
+        150,
+        64
+      ]
+    },
+    {
+      "id": "tmr",
+      "type": "cloud",
+      "label": "TIMER",
+      "sublabel": "systemd 05:50 · 15:00",
+      "pos": [
+        300,
+        350
+      ],
+      "size": [
+        150,
+        64
+      ]
+    },
+    {
+      "id": "capt",
+      "type": "backend",
+      "label": "CAPTURE",
+      "sublabel": "plantsvc capture",
+      "pos": [
+        540,
+        350
+      ],
+      "size": [
+        150,
+        64
+      ]
+    },
+    {
+      "id": "cam",
+      "type": "external",
+      "label": "CAMERA",
+      "sublabel": "Pi Camera 3",
+      "pos": [
+        780,
+        350
+      ],
+      "size": [
+        150,
+        64
+      ],
+      "tag": "locked exposure"
+    },
+    {
+      "id": "svc",
+      "type": "backend",
+      "label": "PLANTSVC",
+      "sublabel": "FastAPI :8080",
+      "pos": [
+        300,
+        470
+      ],
+      "size": [
+        150,
+        64
+      ]
+    },
+    {
+      "id": "cfg",
+      "type": "database",
+      "label": "CONFIG",
+      "sublabel": "config.json",
+      "pos": [
+        540,
+        470
+      ],
+      "size": [
+        150,
+        64
+      ],
+      "tag": "single source"
+    }
+  ],
+  "boundaries": [
+    {
+      "kind": "region",
+      "label": "Raspberry Pi 5 (hub)",
+      "wraps": [
+        "mqtt",
+        "coll",
+        "pdb",
+        "tmr",
+        "capt",
+        "svc",
+        "cfg"
+      ]
+    }
+  ],
+  "connections": [
+    {
+      "id": "env-pub",
+      "from": "envn",
+      "to": "mqtt",
+      "label": "env",
+      "variant": "dashed"
+    },
+    {
+      "id": "wat-pub",
+      "from": "watn",
+      "to": "mqtt",
+      "label": "soil · pump",
+      "variant": "dashed"
+    },
+    {
+      "id": "sub",
+      "from": "mqtt",
+      "to": "coll",
+      "label": "subscribe",
+      "variant": "emphasis"
+    },
+    {
+      "id": "ins",
+      "from": "coll",
+      "to": "pdb",
+      "label": "INSERT",
+      "variant": "emphasis"
+    },
+    {
+      "id": "shoot",
+      "from": "capt",
+      "to": "cam",
+      "label": "shoot"
+    },
+    {
+      "id": "trig",
+      "from": "tmr",
+      "to": "capt",
+      "label": "run"
+    },
+    {
+      "id": "gpub",
+      "from": "capt",
+      "to": "mqtt",
+      "label": "growth",
+      "variant": "dashed",
+      "fromSide": "top",
+      "toSide": "bottom",
+      "labelDx": -60,
+      "labelDy": 30
+    },
+    {
+      "id": "read",
+      "from": "svc",
+      "to": "pdb",
+      "label": "read-only",
+      "variant": "dashed",
+      "fromSide": "bottom",
+      "toSide": "right",
+      "via": [
+        [
+          375,
+          592
+        ],
+        [
+          985,
+          592
+        ],
+        [
+          985,
+          222
+        ]
+      ]
+    },
+    {
+      "id": "owns",
+      "from": "svc",
+      "to": "cfg",
+      "label": "owns"
+    },
+    {
+      "id": "http",
+      "from": "web",
+      "to": "svc",
+      "label": "HTTPS :8080"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "emerald",
+      "title": "Independence",
+      "items": [
+        "Watering completes inside the node",
+        "Lighting runs on the env node clock",
+        "Broker down = logs lost, nothing else"
+      ]
+    },
+    {
+      "dot": "cyan",
+      "title": "Single writer",
+      "items": [
+        "run_collector is the only plant.db writer",
+        "plantsvc reads the same file read-only",
+        "Capture publishes — never writes the DB"
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "Fixed optics",
+      "items": [
+        "Exposure and focus locked for 6 weeks",
+        "Dawn LED window 05:45–06:15",
+        "px_per_cm drift raises an alarm"
+      ]
+    }
+  ]
+}
