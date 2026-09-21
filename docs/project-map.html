@@ -126,6 +126,9 @@ svg{display:block;width:100%;height:auto;font-family:inherit}
 table.cols{width:100%;border-collapse:collapse;font-size:12.5px;margin-top:6px}
 table.cols td{padding:3px 4px;border-bottom:1px solid var(--line);vertical-align:top}
 table.cols td:first-child{font-family:ui-monospace,Menlo,Consolas,monospace;word-break:break-all;max-width:180px}
+.gloss table.cols{font-size:14px;margin-top:10px}
+.gloss table.cols td{padding:9px 10px;line-height:1.6}
+.gloss table.cols td:first-child{max-width:230px;min-width:150px;font-size:13.5px}
 
 /* ---- 시나리오 (시간 축) ---- */
 .sc p.intro{max-width:860px;margin:0 0 16px;color:var(--ink2)}
@@ -155,29 +158,29 @@ table.cols td:first-child{font-family:ui-monospace,Menlo,Consolas,monospace;word
 .lin i{font-style:normal;color:var(--foot);align-self:center}
 
 /* ---- 운영 · 배포 ---- */
-#opsbody p.intro{max-width:900px;margin:0 0 18px;color:var(--ink2)}
-.opsgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(330px,1fr));gap:14px;max-width:1250px}
-.dev{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:16px 18px;box-shadow:0 1px 2px var(--shc),0 8px 24px var(--shc)}
-.dev h2{font-size:15px;margin:0}
-.dev .host{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;color:var(--ink2);margin-top:2px}
-table.svc{width:100%;border-collapse:collapse;font-size:12.5px;margin-top:10px}
-table.svc td{padding:5px 6px;border-bottom:1px solid var(--line);vertical-align:top}
+#opsbody p.intro{max-width:1000px;margin:0 0 20px;color:var(--ink2);font-size:15.5px}
+.opsgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(380px,1fr));gap:18px}
+.dev{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:20px 22px;box-shadow:0 1px 2px var(--shc),0 8px 24px var(--shc)}
+.dev h2{font-size:16.5px;margin:0}
+.dev .host{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12.5px;color:var(--ink2);margin-top:5px;line-height:1.5}
+table.svc{width:100%;border-collapse:collapse;font-size:13.5px;margin-top:12px}
+table.svc td{padding:8px 8px;border-bottom:1px solid var(--line);vertical-align:top;line-height:1.55}
 table.svc td:first-child{font-family:ui-monospace,Menlo,Consolas,monospace;white-space:nowrap;font-weight:600}
-table.svc .meta{color:var(--ink2);font-size:11.5px}
-.dev ul{margin:10px 0 0;padding-left:18px;font-size:12.5px;color:var(--ink2)}
-.dev ul li{margin:2px 0}
+table.svc .meta{color:var(--ink2);font-size:12.5px;margin-top:2px}
+.dev ul{margin:12px 0 0;padding-left:18px;font-size:13.5px;color:var(--ink2);line-height:1.65}
+.dev ul li{margin:5px 0}
 
 /* ---- 핵심 기술 · 용어 ---- */
-.gloss{max-width:980px}
-.gloss h2{font-size:18px;margin:18px 0 6px}
+.gloss{max-width:1250px;font-size:15.5px}
+.gloss h2{font-size:19px;margin:26px 0 10px}
 .gloss .flow{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin:14px 0}
-.gloss .flow div{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:10px 12px;font-size:13px;box-shadow:0 1px 2px var(--shc);position:relative}
-.gloss .flow div b{display:block;font-size:12px;color:var(--ink2);font-weight:600;margin-bottom:2px}
+.gloss .flow div{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px 16px;font-size:14px;line-height:1.55;box-shadow:0 1px 2px var(--shc);position:relative}
+.gloss .flow div b{display:block;font-size:13px;color:var(--ink2);font-weight:600;margin-bottom:4px}
 .gloss .flow div.hl{outline:2px solid var(--teal)}
 .gloss .flow div+div::before{content:"→";position:absolute;left:-13px;top:14px;color:var(--foot)}
 .gloss p{margin:8px 0}
 .gloss code,.panel code{background:var(--sand);padding:1px 6px;border-radius:6px;font-size:13px}
-.note{border-left:3px solid var(--melon);background:var(--melon-t);border-radius:0 12px 12px 0;padding:12px 16px;margin-top:16px;font-size:14px}
+.note{border-left:3px solid var(--melon);background:var(--melon-t);border-radius:0 12px 12px 0;padding:14px 18px;margin-top:20px;font-size:14.5px;line-height:1.65}
 @media(max-width:700px){.gloss .flow{grid-template-columns:1fr 1fr}.gloss .flow div+div::before{display:none}}
 @media(max-width:900px){.app{grid-template-columns:1fr}.sidebar{position:static;height:auto}.tabs{flex-direction:row;flex-wrap:wrap}main{padding:18px 16px 50px}}
 @media(prefers-reduced-motion:no-preference){.edge,.node,.tbl rect,.rel{transition:opacity .18s,stroke-width .18s,fill .18s}}
