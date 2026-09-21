@@ -1,0 +1,378 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Plant Growth Monitoring — 프로젝트 지도</title>
+<style>
+/* tokens: multinode_aq dashboard 팔레트 · 레이아웃: training_manual_v1 (사이드 패널 + 메인) */
+:root, :root[data-theme=dark]{
+  --paper:#1a1d24; --side:#14171d; --surface:#242832; --sand:#2b303b; --line:#3a414e;
+  --ink:#e6e8ec; --ink2:#aab2bd; --foot:#6b7482;
+  --teal:#12CBC4; --teal-t:rgba(18,203,196,.15);
+  --melon:#ED4C67; --melon-t:rgba(237,76,103,.16);
+  --sky:#a1c9f4; --sky-t:rgba(161,201,244,.13);
+  --gold:#FFB300; --gold-t:rgba(255,179,0,.13);
+  --green:#8de5a1; --purple:#d0bbff; --cyan:#b9f2f0; --orange:#ffb482; --badge-ink:#111;
+  --l0:#8de5a1; --l1:#b9f2f0; --l2:#ffb482; --l3:#a1c9f4; --l4:#d0bbff; --l5:#FFB300;
+  --shc:rgba(0,0,0,.32);
+  --r:14px; color-scheme:dark;
+}
+:root[data-theme=light]{
+  --paper:#f5f6f8; --side:#eaedf1; --surface:#ffffff; --sand:#eef0f3; --line:#d9dde3;
+  --ink:#1a1d24; --ink2:#5b6472; --foot:#8a929e;
+  --teal:#0fa8a2; --teal-t:rgba(15,168,162,.12);
+  --melon:#d63f5a; --melon-t:rgba(214,63,90,.11);
+  --sky:#3d7cc9; --sky-t:rgba(61,124,201,.11);
+  --gold:#b87a00; --gold-t:rgba(184,122,0,.12);
+  --green:#1f9d8a; --purple:#8b6fd6; --cyan:#2aa3a0; --orange:#d97a2e; --badge-ink:#fff;
+  --l0:#1f9d8a; --l1:#2aa3a0; --l2:#d97a2e; --l3:#3d7cc9; --l4:#8b6fd6; --l5:#b87a00;
+  --shc:rgba(51,49,45,.07);
+  color-scheme:light;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--paper);color:var(--ink);font:15px/1.6 "Noto Sans KR","Pretendard",system-ui,sans-serif}
+
+/* ---- shell: 사이드 패널 + 메인 (training_manual_v1 골격) ---- */
+.app{display:grid;grid-template-columns:248px minmax(0,1fr);min-height:100vh}
+.sidebar{background:var(--side);border-right:1px solid var(--line);padding:20px 14px;position:sticky;top:0;height:100vh;overflow:auto;display:flex;flex-direction:column}
+.brand{padding:2px 8px 14px;border-bottom:1px solid var(--line)}
+.brand small{display:block;font-size:11px;color:var(--foot);letter-spacing:.04em}
+.brand b{display:block;font-size:15.5px;font-weight:700;line-height:1.4;margin-top:3px}
+.tabs{display:flex;flex-direction:column;gap:4px;margin-top:18px}
+.tabs button{display:flex;gap:10px;align-items:center;text-align:left;border:0;background:transparent;color:var(--ink2);font:inherit;font-size:13.5px;font-weight:600;padding:9px 10px;border-radius:9px;cursor:pointer}
+.tabs button .n{flex:0 0 22px;height:20px;border-radius:6px;display:grid;place-items:center;background:var(--line);color:var(--ink);font-size:11px;font-weight:700}
+.tabs button:hover{background:var(--surface);color:var(--ink)}
+.tabs button[aria-selected=true]{background:var(--surface);color:var(--ink);box-shadow:inset 0 0 0 1px var(--line)}
+.tabs button[data-tab=ov][aria-selected=true] .n{background:var(--l0);color:var(--badge-ink)}
+.tabs button[data-tab=map][aria-selected=true] .n{background:var(--l1);color:var(--badge-ink)}
+.tabs button[data-tab=db][aria-selected=true] .n{background:var(--l3);color:var(--badge-ink)}
+.tabs button[data-tab=gloss][aria-selected=true] .n{background:var(--l5);color:var(--badge-ink)}
+.tabs button[data-tab^="em-"][aria-selected=true] .n{background:var(--l4);color:var(--badge-ink)}
+.embed-frame{display:block;width:100%;height:calc(100vh - 150px);min-height:540px;border:1px solid var(--line);border-radius:14px;background:var(--surface)}
+.embed-frame.inline{height:68vh;min-height:460px;margin-bottom:20px}
+.tabs button:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+.node:focus-visible,.tbl:focus-visible{outline:2px solid var(--gold);outline-offset:2px;border-radius:4px}
+.sidefoot{margin-top:auto;padding:14px 8px 2px;font-size:11px;color:var(--foot);line-height:1.6}
+#thm{display:flex;align-items:center;gap:8px;width:100%;background:var(--surface);border:1px solid var(--line);color:var(--ink2);font:inherit;font-size:12px;padding:7px 12px;border-radius:9px;cursor:pointer;margin-bottom:10px}
+#thm .m{display:none}
+:root[data-theme=light] #thm .s{display:none}
+:root[data-theme=light] #thm .m{display:inline}
+main{min-width:0;padding:26px 34px 60px}
+main h1{margin:0 0 18px;font-size:21px;font-weight:700;letter-spacing:-.01em}
+main h1 small{font-weight:400;color:var(--ink2);font-size:13.5px;margin-left:10px}
+section[hidden]{display:none}
+
+/* ---- 지도/스키마 공용: 무대 + 우측 상세 패널 ---- */
+.wrap{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:20px}
+@media(max-width:1100px){.wrap{grid-template-columns:1fr}}
+.stage{background:var(--surface);border-radius:var(--r);border:1px solid var(--line);box-shadow:0 1px 2px var(--shc),0 8px 24px var(--shc);padding:16px;overflow:auto}
+svg{display:block;width:100%;height:auto;font-family:inherit}
+.panel{background:var(--surface);border-radius:var(--r);border:1px solid var(--line);box-shadow:0 1px 2px var(--shc),0 8px 24px var(--shc);padding:20px;position:sticky;top:16px;align-self:start;min-height:200px}
+.panel h2{font-size:16px;margin:0 0 4px}
+.panel .path{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12.5px;color:var(--ink2);word-break:break-all}
+.panel p{margin:10px 0 0;font-size:14px}
+.panel p.desc{background:var(--sand);border-radius:10px;padding:10px 12px;margin-top:12px}
+.panel h3{font-size:13px;color:var(--ink2);margin:16px 0 4px;font-weight:600}
+.panel ul{margin:0;padding-left:18px;font-size:13.5px}
+.panel li b{font-weight:600}
+.chip{display:inline-block;font-size:12px;padding:2px 10px;border-radius:999px;margin:2px 4px 2px 0;background:var(--sand)}
+.chip.w{background:var(--melon-t);color:var(--melon)}.chip.r{background:var(--teal-t);color:var(--teal)}.chip.t{background:var(--gold-t);color:var(--gold)}
+.legend{display:flex;flex-wrap:wrap;gap:14px;font-size:12.5px;color:var(--ink2);padding:8px 4px 0}
+.legend span::before{content:"";display:inline-block;width:22px;height:0;border-top:3px solid;margin-right:6px;vertical-align:middle}
+.legend .call::before{border-color:var(--ink)}.legend .imp::before{border-color:var(--ink2);border-top-style:dashed}
+.legend .wr::before{border-color:var(--melon)}.legend .rd::before{border-color:var(--teal)}.legend .http::before{border-color:var(--sky)}
+
+/* ---- 설계 맵: 레인별 색상 ---- */
+.ov p.intro{max-width:900px;margin:0 0 20px;font-size:15px;color:var(--ink2)}
+.lane{display:flex;align-items:stretch;gap:8px;margin:0 0 12px;flex-wrap:wrap;padding:12px 14px;background:var(--surface);border:1px solid var(--line);border-left:4px solid var(--lc,var(--line));border-radius:12px;box-shadow:0 1px 2px var(--shc)}
+.lane em{font-style:normal;font-size:12.5px;color:var(--lc,var(--ink2));width:118px;flex:none;font-weight:700;align-self:center}
+.lane .n{background:var(--sand);border-radius:10px;border-top:3px solid var(--lc,var(--line));padding:8px 14px;min-width:150px;flex:1 1 0}
+.lane .n b{display:block;font-size:13px}.lane .n span{font-size:11.5px;color:var(--ink2)}
+.lane i{font-style:normal;color:var(--foot);font-size:15px;align-self:center}
+
+/* ---- 연결 지도 SVG ---- */
+.node{cursor:pointer}
+.node rect{fill:var(--surface);stroke:var(--line);stroke-width:1.2;rx:10}
+.node.on rect{stroke:var(--ink);stroke-width:2}
+.node.dim{opacity:.22}
+.node text{font-size:12px;fill:var(--ink)}
+.node text.sub{font-size:10px;fill:var(--ink2)}
+.node.c0 rect{fill:var(--gold-t)}.node.c1 rect{fill:var(--sand)}.node.c2 rect{fill:var(--surface)}
+.node.c3 rect{fill:var(--melon-t)}.node.c4 rect{fill:var(--teal-t)}.node.c5 rect{fill:var(--sky-t)}.node.c6 rect{fill:var(--sand)}
+.col-label{font-size:12px;fill:var(--ink2);font-weight:600}
+.edge{fill:none;stroke-width:1.6;opacity:.35;pointer-events:none}
+.edge.call{stroke:var(--ink)}.edge.imp{stroke:var(--ink2);stroke-dasharray:4 4}
+.edge.wr{stroke:var(--melon)}.edge.rd{stroke:var(--teal)}.edge.http{stroke:var(--sky)}
+.edge.on{opacity:1;stroke-width:2.6}.edge.dim{opacity:.05}
+.edge-label{font-size:10px;fill:var(--ink2);pointer-events:none;opacity:0}
+.edge-label.on{opacity:1}
+
+/* ---- DB 스키마 ---- */
+#dbsvg{margin:0 auto}
+.db .side{fill:var(--line)}.db .top{fill:var(--sand)}.db .face{fill:var(--surface);stroke:var(--line)}
+.db .title{font-size:14px;font-weight:700;fill:var(--ink)}
+.tbl{cursor:pointer}
+.tbl rect{fill:var(--sand);stroke:none;rx:6}
+.tbl.on rect{fill:var(--teal)}.tbl.on text{fill:var(--badge-ink)}
+.tbl text{font-size:11.5px;fill:var(--ink)}
+.rel{fill:none;stroke:var(--teal);stroke-width:1.6;stroke-dasharray:5 4;opacity:0;pointer-events:none}
+.rel.on{opacity:1}
+.writer{font-size:10.5px;fill:var(--melon);font-weight:600}
+.reader{font-size:11px;fill:var(--teal);font-weight:600}
+.db text{fill:var(--ink2)}
+table.cols{width:100%;border-collapse:collapse;font-size:12.5px;margin-top:6px}
+table.cols td{padding:3px 4px;border-bottom:1px solid var(--line);vertical-align:top}
+table.cols td:first-child{font-family:ui-monospace,Menlo,Consolas,monospace;word-break:break-all;max-width:180px}
+
+/* ---- 핵심 기술 · 용어 ---- */
+.gloss{max-width:980px}
+.gloss h2{font-size:18px;margin:18px 0 6px}
+.gloss .flow{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin:14px 0}
+.gloss .flow div{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:10px 12px;font-size:13px;box-shadow:0 1px 2px var(--shc);position:relative}
+.gloss .flow div b{display:block;font-size:12px;color:var(--ink2);font-weight:600;margin-bottom:2px}
+.gloss .flow div.hl{outline:2px solid var(--teal)}
+.gloss .flow div+div::before{content:"→";position:absolute;left:-13px;top:14px;color:var(--foot)}
+.gloss p{margin:8px 0}
+.gloss code,.panel code{background:var(--sand);padding:1px 6px;border-radius:6px;font-size:13px}
+.note{border-left:3px solid var(--melon);background:var(--melon-t);border-radius:0 12px 12px 0;padding:12px 16px;margin-top:16px;font-size:14px}
+@media(max-width:700px){.gloss .flow{grid-template-columns:1fr 1fr}.gloss .flow div+div::before{display:none}}
+@media(max-width:900px){.app{grid-template-columns:1fr}.sidebar{position:static;height:auto}.tabs{flex-direction:row;flex-wrap:wrap}main{padding:18px 16px 50px}}
+@media(prefers-reduced-motion:no-preference){.edge,.node,.tbl rect,.rel{transition:opacity .18s,stroke-width .18s,fill .18s}}
+@media(prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+<script>try{document.documentElement.setAttribute('data-theme',localStorage.getItem('pm-theme')||'dark')}catch(e){document.documentElement.setAttribute('data-theme','dark')}</script>
+</head>
+<body>
+<div class="app">
+<aside class="sidebar">
+  <div class="brand"><small>project-map</small><b id="brand"></b></div>
+  <nav class="tabs" role="tablist">
+    <button role="tab" aria-selected="true" data-tab="ov"><span class="n">1</span>설계 맵 (큰 그림)</button>
+    <button role="tab" aria-selected="false" data-tab="map"><span class="n">2</span>스크립트 연결 지도</button>
+    <button role="tab" aria-selected="false" data-tab="db"><span class="n">3</span>DB 스키마</button>
+    <button role="tab" aria-selected="false" data-tab="gloss" id="glossbtn"><span class="n">4</span><span id="glosslabel">핵심 기술 · 용어</span></button>
+  </nav>
+  <div class="sidefoot">
+    <button id="thm" type="button" aria-label="테마 전환"><span class="s">☀</span><span class="m">🌙</span><span>테마 전환</span></button>
+    <span id="foot"></span>
+  </div>
+</aside>
+<main>
+<h1 id="title"></h1>
+
+<section id="ov"><div class="ov" id="ovbody"></div></section>
+
+<section id="map" hidden>
+  <div class="wrap">
+    <div class="stage">
+      <svg id="mapsvg" role="img" aria-label="스크립트 연결 지도"></svg>
+      <div class="legend">
+        <span class="call">실행/호출</span><span class="imp">import</span>
+        <span class="wr">파일 쓰기 (파일당 쓰기 주체 하나)</span><span class="rd">파일 읽기</span><span class="http">HTTP / 소켓</span>
+      </div>
+    </div>
+    <aside class="panel" id="mappanel">
+      <h2>노드를 선택하세요</h2>
+      <p>세로 열은 "누가 시작시키는가"에서 "누가 최종 소비하는가"까지의 순서입니다. 노드를 클릭하면 그 파일의 역할 요약과, 무엇을 부르고 누가 부르는지가 나옵니다.</p>
+      <p>공용 모듈 열은 스스로 실행되는 일이 없습니다 — 다른 스크립트가 <code>import</code> 해서 함수만 빌려 씁니다.</p>
+    </aside>
+  </div>
+</section>
+
+<section id="db" hidden>
+  <div class="wrap">
+    <div class="stage">
+      <svg id="dbsvg" role="img" aria-label="DB 스키마"></svg>
+      <div class="legend"><span class="wr">쓰기 주체 (writer)</span><span class="rd">읽기만 (reader)</span><span class="imp">테이블 클릭 → 컬럼 + 같은 키로 이어지는 테이블</span></div>
+    </div>
+    <aside class="panel" id="dbpanel">
+      <h2>테이블을 선택하세요</h2>
+      <p>DB 파일마다 쓰기 주체(writer)를 하나로 두면 잠금 경합이 없고, 파일이 잘못됐을 때 의심할 프로그램이 하나로 좁혀집니다.</p>
+      <p>파일 사이 점선은 외래키가 아니라 같은 값(보통 날짜·시각 문자열)으로 코드에서 조인하는 관계입니다.</p>
+    </aside>
+  </div>
+</section>
+
+<section id="gloss" hidden><div class="gloss" id="glossbody">
+    <h2>"API" 는 스크립트도, DB 호출도 아닙니다</h2>
+    <p>API 는 "서버가 클라이언트에게 약속한 <b>주소와 응답 모양</b>" 입니다. 어떤 스크립트가 만들었는지, 뒤에서 DB 를 읽는지 JSON 파일을 읽는지는 약속에 들어가지 않습니다.</p>
+    <div class="flow">
+      <div><b>실행 주체</b>타이머 / 서비스</div>
+      <div><b>스크립트</b>계산해서 저장</div>
+      <div><b>데이터 파일</b>결과가 놓이는 곳</div>
+      <div class="hl"><b>엔드포인트</b>서버가 여는 문<br><code>GET /api/…</code></div>
+      <div><b>소비자</b>브라우저가 fetch</div>
+    </div>
+    <table class="cols">
+      <tr><td>API</td><td>추상적 약속. "이 주소에 이런 JSON 이 온다"</td></tr>
+      <tr><td>엔드포인트</td><td>그 약속의 한 줄. 메서드+경로 하나 = 라우터 함수 하나</td></tr>
+      <tr><td>스크립트 / 잡</td><td>타이머가 돌리는 독립 프로세스. HTTP 와 무관, 파일을 남기고 종료</td></tr>
+    </table>
+    <div class="note"><b>안내</b> — 이 탭은 <code>glossary_html</code> 로 프로젝트 맞춤 내용(핵심 구현 기술 + 용어)으로 교체하도록 설계되어 있습니다.</div>
+</div></section>
+</main>
+</div>
+
+<script>
+const DATA = {"title": "Plant Growth Monitoring — 프로젝트 지도", "subtitle": "수분 변동성 생장 실험 · 센싱 → 폐루프 급수 → 카메라 계측 → 분석 (2026-09-22, fe06c19)", "overview": {"intro": "환경·토양수분을 MQTT 로 모으고 카메라가 투영 캐노피 면적을 매일 재는 폐루프 급수 시스템. '평균은 같게, 변동성만 다르게' 두 처리군(stable/fluct)의 생장 차이를 RGR 로 검정한다. 파이는 hub(수집·계측·웹) 역할만 하고, 급수·조명은 노드가 독립 수행한다.", "lanes": [{"label": "① 센싱 — 노드 → 브로커 → 수집", "items": ["환경노드 (UNO R4)|BME688·SCD41·BH1750 5분 평균 발행 + 네오픽셀 시간 점등", "급수노드 (M5 Core S3)|폐루프 급수(0.2s 펄스+2.5s 측정) + soil·pump 발행 — 브로커가 죽어도 급수는 계속", "mosquitto :1883|보고 채널이지 제어 채널이 아니다", "run_collector.py|구독 → SQLite 저장. plant.db 의 유일한 writer"]}, {"label": "② 촬영 — 타이머 → 계측 → 발행", "items": ["plantsnap.timer|05:50(dawn)·15:00(pm) + 부팅 시 catchup", "plantsvc capture|촬영 → ExG+Otsu 면적 측정 → growth.jsonl → MQTT 발행", "run_collector|growth 토픽도 같은 경로로 수신 → plant.db (writer 단일성 유지)"]}, {"label": "③ 조회 — 브라우저 → API → 분석", "items": ["React SPA (:8080)|개요·처리·생장·카메라·시스템 5페이지, PWA", "plantsvc api|/api/* REST + /ws 실시간 + MJPEG 미리보기", "analytics|plant.db 읽기 전용 — RGR·Validity·톱니·처짐 계산, 빈 테이블은 DUMMY 합성"]}, {"label": "④ 설정·카메라 — 5단계 세팅", "items": ["camera/setup|노출 → 배율 → ROI → 처리군 → 기준 사진", "config_store|data/config.json 소유 — 밴드·스케줄·처리군 배정의 단일 출처", "camera.manager|고정 노출·초점 잠금, phase 별 노출 프로필"]}, {"label": "⑤ 배포 — 로컬 PC → GitHub → 파이", "items": ["deploy.ps1|push → 파이 pull --ff-only → install.sh --update → 헬스체크", "install.sh|systemd 유닛을 현재 사용자·경로로 렌더 — 어느 파이든 클론 그대로 설치", "web/dist|파이에 node 없음 — PC 빌드 업로드 또는 릴리스 tarball"]}]}, "columns": [{"id": "timer", "label": "실행 주체"}, {"id": "job", "label": "프로세스"}, {"id": "lib", "label": "plantsvc 모듈"}, {"id": "data", "label": "데이터 파일"}, {"id": "api", "label": "API · 브로커"}, {"id": "web", "label": "브라우저 · 노드"}], "nodes": {"sysd.planthub": {"c": "timer", "n": "planthub.service", "s": "systemd", "d": "수집기 상주 실행. 유닛은 install.sh 가 템플릿에서 현재 사용자·경로로 렌더한다.", "row": 0}, "sysd.plantsvc": {"c": "timer", "n": "plantsvc.service", "s": "systemd", "d": "웹·API 서버 상주 실행. Restart=always 라 배포 시 pkill 만으로 재기동된다.", "row": 2}, "sysd.plantsnap": {"c": "timer", "n": "plantsnap.timer (+catchup)", "s": "05:50 dawn · 15:00 pm", "d": "촬영 타이머. 부팅 시 plantsnap-catchup 이 그날 놓친 phase 를 복구한다 — 정전 대비.", "row": 4}, "ps.deploy": {"c": "timer", "n": "deploy.ps1 / install.sh", "s": "PC → 파이 배포", "d": "push → 파이 pull --ff-only → install --update → 헬스체크 를 한 번에. 파이 작업트리는 항상 clean(배포 전용).", "row": 6}, "hub.run_collector": {"c": "job", "n": "hub/run_collector.py", "s": "MQTT → SQLite", "d": "plant.db 의 유일한 writer. 토픽 4종(env·soil·pump·growth)을 구독해 1행씩 저장한다. writer 를 하나로 강제해 잠금·정합 문제를 원천 차단.", "row": 0}, "hub.plantsvc.app": {"c": "job", "n": "plantsvc serve (app.py)", "s": "FastAPI :8080", "d": "웹 UI + API + 카메라 + 촬영 루틴을 하나의 앱으로. 예전 Streamlit(:8501)·setup_camera(:8000)를 대체했다.", "row": 2}, "hub.plantsvc.cli": {"c": "job", "n": "plantsvc CLI", "s": "capture·doctor·seed·render-units", "d": "systemd 가 부르는 진입점 모음. capture 는 타이머가, doctor·seed 는 사람이 부른다.", "row": 4}, "pkg.api": {"c": "lib", "n": "plantsvc/api/*", "s": "REST 라우터", "d": "dashboard·camera·capture·config·system·ws 라우터. 읽기는 analytics 로, 쓰기는 config_store·camera 로 위임한다.", "row": 2}, "pkg.analytics": {"c": "lib", "n": "plantsvc/analytics/*", "s": "읽기 전용 분석", "d": "RGR(ln A 기울기)·Validity(Δμ/σ비)·톱니·처짐 계산. plant.db 를 읽기만 하고, 빈 테이블은 DUMMY 합성으로 채워 배지를 띄운다.", "row": 3}, "pkg.camera": {"c": "lib", "n": "plantsvc/camera/*", "s": "picamera2 관리", "d": "고정 노출·초점 잠금·phase 별 노출 프로필·MJPEG 미리보기. 가짜 카메라(PLANT_FAKE_HW=1)로 하드웨어 없이도 전 경로 시험 가능.", "row": 5}, "pkg.capture": {"c": "lib", "n": "plantsvc/capture/*", "s": "촬영 루틴", "d": "촬영 → 측정 → growth.jsonl 기록 → MQTT 발행. 가짜 프레임의 측정값은 절대 발행하지 않는다.", "row": 4}, "pkg.vision": {"c": "lib", "n": "plantsvc/vision/*", "s": "ExG+Otsu · 정렬", "d": "투영 캐노피 면적 측정(leaf_measure)과 프레임 밀림 보정(frame_align). 순수 함수 위주라 하드웨어 없이 테스트된다.", "row": 6}, "mod.config": {"c": "lib", "n": "config_store · config_model", "s": "config.json 소유", "d": "밴드·스케줄·처리군 배정의 단일 출처. 웹 UI 시스템 페이지에서 편집하고 pydantic 으로 검증한다.", "row": 7}, "mod.db": {"c": "lib", "n": "db.py · schema.py", "s": "SQLite 헬퍼", "d": "schema.py 가 테이블 4종을 정의(수집기·분석 공용). CREATE TABLE 은 컬럼을 추가하지 않으므로 WANT 목록으로 마이그레이션한다.", "row": 1}, "mod.mqtt": {"c": "lib", "n": "mqtt_bridge.py", "s": "발행 전용", "d": "capture 의 growth 발행과 조명 원격 점등(plant/light/set)을 브로커로 내보낸다. 구독은 collector 몫 — 방향을 섞지 않는다.", "row": 8}, "mod.realtime": {"c": "lib", "n": "realtime.py · events.py", "s": "/ws · 작업 로그", "d": "실시간 푸시(/ws)와 촬영 잡 진행 상태. 자체 기록은 events.db 로 분리해 plant.db 의 writer 단일성을 지킨다.", "row": 9}, "mod.doctor": {"c": "lib", "n": "doctor.py", "s": "자가 점검", "d": "venv·카메라·DB·브로커·타이머·시간대 점검표. install.sh 마지막 단계와 검증 루프의 독립 확인 경로.", "row": 10}, "file.plantdb": {"c": "data", "n": "data/plant.db", "s": "측정 원본 (SQLite)", "d": "readings·soil·pump_log·growth 4테이블. writer 는 run_collector 하나뿐이고 나머지는 전부 읽기 전용.", "row": 0}, "file.eventsdb": {"c": "data", "n": "data/events.db", "s": "잡·이벤트 로그", "d": "촬영 잡 진행·시스템 이벤트. plantsvc 전용이라 plant.db 와 분리했다.", "row": 9}, "file.config": {"c": "data", "n": "data/config.json", "s": "설정 단일 출처", "d": "tz·밴드·스케줄·카메라 고정값·처리군 배정. config.example.json 에서 시드되고 git 에는 들어가지 않는다.", "row": 7}, "file.photos": {"c": "data", "n": "data/photos/ · calib.jpg", "s": "raw · mask · debug", "d": "촬영 원본과 마스크. growth.img_file 이 raw/<file> 로 증거 사진과 행을 잇는다.", "row": 5}, "file.webdist": {"c": "data", "n": "web/dist", "s": "프론트 빌드 산출물", "d": "파이에 node 가 없어 PC 빌드 업로드 또는 GitHub 릴리스 tarball 로 공급된다. plantsvc 가 정적 서빙.", "row": 3}, "api.rest": {"c": "api", "n": "/api/*", "s": "REST", "d": "대시보드 데이터·설정 편집·촬영 지시·시스템 상태. OpenAPI 는 /api/openapi.json.", "row": 2}, "api.ws": {"c": "api", "n": "/ws", "s": "실시간", "d": "새 측정·잡 진행을 브라우저로 푸시. 폴링 없이 DUMMY 배지가 실데이터로 전환된다.", "row": 3}, "api.mjpeg": {"c": "api", "n": "카메라 미리보기", "s": "MJPEG 스트림", "d": "세팅 5단계의 실시간 프리뷰. 수동 끄기 버튼으로 예약 촬영에 카메라를 즉시 양보한다.", "row": 5}, "broker": {"c": "api", "n": "mosquitto :1883", "s": "MQTT 브로커", "d": "보고 채널이지 제어 채널이 아니다 — 유일한 예외는 조명 점등(plant/light/set). 브로커가 죽어도 급수는 계속된다(잃는 건 로그뿐).", "row": 0}, "web.app": {"c": "web", "n": "React SPA (web/src)", "s": "개요·처리·생장·카메라·시스템", "d": "Vite+TS+Tailwind v4+ECharts. plantlab 네이비 디자인 시스템, ?mock=1 로 백엔드 없이 시연 가능.", "row": 2}, "node.env": {"c": "web", "n": "환경노드 (UNO R4 WiFi)", "s": "펌웨어 plant_env_r4wifi.ino", "d": "환경 5종 5분 평균 발행 + 네오픽셀 시간 점등(05:45~06:15 독립 운용). 오프라인 큐 8건으로 발행 실패를 복구한다.", "row": 0}, "node.water": {"c": "web", "n": "급수노드 (M5 Core S3)", "s": "펌웨어 water_node.ino", "d": "폐루프 급수 상태기계 — 0.2s 펄스+2.5s 측정 분할, 적응 도즈 학습, RAW_ON 연속 3회 확인. WiFi 가 죽어도 급수는 계속.", "row": 1}}, "edges": [["sysd.planthub", "hub.run_collector", "call", ""], ["sysd.plantsvc", "hub.plantsvc.app", "call", ""], ["sysd.plantsnap", "hub.plantsvc.cli", "call", "capture"], ["ps.deploy", "file.webdist", "wr", "빌드 업로드"], ["hub.run_collector", "file.plantdb", "wr", "유일 writer"], ["hub.run_collector", "broker", "http", "subscribe plant/#"], ["hub.run_collector", "mod.db", "imp", "schema"], ["hub.plantsvc.app", "pkg.api", "imp", ""], ["hub.plantsvc.app", "file.webdist", "rd", "정적 서빙"], ["hub.plantsvc.cli", "pkg.capture", "imp", ""], ["hub.plantsvc.cli", "mod.doctor", "imp", ""], ["pkg.api", "pkg.analytics", "imp", ""], ["pkg.api", "pkg.camera", "imp", ""], ["pkg.api", "mod.config", "imp", ""], ["pkg.api", "mod.realtime", "imp", ""], ["pkg.analytics", "mod.db", "imp", ""], ["mod.db", "file.plantdb", "rd", "읽기 전용"], ["mod.config", "file.config", "wr", "소유"], ["pkg.camera", "mod.config", "imp", "고정값"], ["pkg.capture", "pkg.camera", "imp", ""], ["pkg.capture", "pkg.vision", "imp", ""], ["pkg.capture", "file.photos", "wr", "raw·mask"], ["pkg.capture", "mod.mqtt", "imp", "growth 발행"], ["pkg.vision", "file.photos", "rd", ""], ["mod.mqtt", "broker", "http", "publish"], ["mod.realtime", "file.eventsdb", "wr", ""], ["mod.doctor", "file.plantdb", "rd", "점검"], ["pkg.api", "api.rest", "http", ""], ["mod.realtime", "api.ws", "http", ""], ["pkg.camera", "api.mjpeg", "http", ""], ["web.app", "api.rest", "http", "fetch"], ["web.app", "api.ws", "http", ""], ["web.app", "api.mjpeg", "http", ""], ["node.env", "broker", "http", "plant/<n>/env"], ["node.water", "broker", "http", "soil · pump"]], "dbs": [{"id": "plant", "name": "data/plant.db", "writer": "run_collector.py (유일)", "readers": ["plantsvc analytics (읽기 전용)", "doctor", "check_db.py"], "tables": [{"n": "readings", "pk": "id", "d": "환경 = 재배 상자 전체. 노드 하나, soil 없음.", "cols": [["ts", "TEXT · 버킷 시각(UTC)"], ["node", "TEXT"], ["temp", "REAL · ℃ (BME688)"], ["hum", "REAL · %"], ["press", "REAL · hPa"], ["vpd", "REAL · kPa — 증산→건조 속도를 끄는 값"], ["lux", "REAL · PAR 아님(프록시)"], ["co2", "REAL · ppm (SCD41)"], ["n", "INTEGER · 버킷 표본 수(품질)"]]}, {"n": "soil", "pk": "id", "d": "화분별 1행. raw 가 보존 대상, pct 는 편의값.", "cols": [["ts", "TEXT"], ["node", "TEXT"], ["plant_id", "TEXT · p1..p6"], ["treat", "TEXT · witness — 출처는 config.json"], ["raw", "REAL · ADC 원값 — 비교·분석의 기준"], ["pct", "REAL · 노드·날짜 간 비교 금지"], ["n", "INTEGER"]]}, {"n": "pump_log", "pk": "id", "d": "급수 이벤트. reason 으로 정상/고장을 가른다.", "cols": [["ts", "TEXT"], ["node", "TEXT"], ["plant_id", "TEXT"], ["treat", "TEXT"], ["dur_ms", "INTEGER"], ["raw_before / raw_after", "INTEGER · 급수 전후 원값"], ["shots", "INTEGER · MAX_SHOTS 도달 = verify fail"], ["reason", "TEXT · filled | dosed | no rise | verify fail | manual | prime"]]}, {"n": "growth", "pk": "id", "d": "카메라 계측. RGR 은 dawn 만 쓰고 pm 은 처짐용.", "cols": [["ts", "TEXT"], ["plant_id", "TEXT"], ["treat", "TEXT"], ["phase", "TEXT · dawn | pm"], ["area_cm2", "REAL · 투영 캐노피 면적(잎면적 아님)"], ["px_per_cm", "REAL · 추적성 + 밀림 경보"], ["img_file", "TEXT · raw/<file> 증거 사진 링크"], ["contour", "TEXT · JSON 외곽선"], ["ok", "INTEGER"]]}]}, {"id": "events", "name": "data/events.db", "writer": "plantsvc (events.py)", "readers": ["plantsvc api/system", "웹 UI 카메라 페이지"], "tables": [{"n": "jobs", "pk": "id", "d": "촬영 잡 진행 단계", "cols": [["kind", "TEXT"], ["state", "TEXT"], ["detail", "TEXT"]]}, {"n": "events", "pk": "id", "d": "시스템 이벤트 로그", "cols": [["msg", "TEXT"]]}]}], "rels": [["plant.soil", "plant.growth", "plant_id (p1..p6)"], ["plant.soil", "plant.pump_log", "node + plant_id"], ["plant.growth", "plant.growth", "img_file → photos/raw"]], "glossary_label": "핵심 기술 · 용어", "glossary_html": "<h2>설계 문법<\/h2><div class='flow'><div class='card'>노드가 잰다<small>측정·급수는 노드 독립 — 허브가 죽어도 실험은 계속<\/small><\/div><div class='card'>브로커로 보고한다<small>MQTT 는 보고 채널, 제어 채널이 아니다<\/small><\/div><div class='card hl'>writer 는 하나<small>plant.db 는 run_collector 만 쓴다 — 나머지 전부 읽기 전용<\/small><\/div><div class='card'>화면은 파생이다<small>analytics 가 읽어 계산, 빈 곳은 DUMMY 로 채우고 배지<\/small><\/div><div class='card'>결론은 사전등록<small>가설·분석·효과크기를 파종 전에 못 박는다<\/small><\/div><\/div><h2>채택 기술 — 왜 이 선택인가<\/h2><table class='cols'><tr><td>MQTT (mosquitto)<\/td><td>노드 → 허브 단방향 보고. 제어를 싣지 않아 네트워크 장애가 급수를 못 막는다. 유일한 예외는 조명 점등 토픽 하나.<\/td><\/tr><tr><td>SQLite 단일 writer<\/td><td>서버 DB 없이 파일 하나 + writer 프로세스 하나. 동시 쓰기 잠금 문제를 구조로 제거했다.<\/td><\/tr><tr><td>FastAPI + React 단일 앱<\/td><td>Streamlit·setup_camera 두 포트를 :8080 하나로. 파이에 node 가 없어 빌드는 PC/릴리스에서 온다.<\/td><\/tr><tr><td>systemd 템플릿 렌더<\/td><td>유닛에 사용자·경로를 하드코딩하지 않고 설치 시 렌더 — 어느 파이든 클론 그대로 설치된다.<\/td><\/tr><tr><td>ExG + Otsu<\/td><td>초록 초과 지수로 잎을 분리해 투영 면적을 잰다. 조명 고정(노출 잠금 + 새벽 LED)이 전제 조건.<\/td><\/tr><tr><td>RGR (상대생장률)<\/td><td>ln(면적)의 일수 기울기. 큰 개체가 절대량으로 더 자라는 편향을 제거해 처리군을 공정 비교한다.<\/td><\/tr><\/table><h2>도메인 용어<\/h2><table class='cols'><tr><td>stable / fluct<\/td><td>꾸준군/널뜀군. 밴드 중심은 같고 폭만 다르다 — 변동성만이 처리다.<\/td><\/tr><tr><td>RAW 밴드 (RAW_ON/OFF)<\/td><td>급수 시작/정지 ADC 원값 문턱. pct 가 아니라 raw 로 정한다.<\/td><\/tr><tr><td>phase (dawn/pm)<\/td><td>하루 2회 촬영. RGR 은 dawn 만, pm 은 정오 처짐 지수용.<\/td><\/tr><tr><td>DUMMY 배지<\/td><td>빈 테이블을 합성 데이터로 채웠다는 표시. 실측 유입 시 테이블별로 꺼진다.<\/td><\/tr><tr><td>Validity<\/td><td>Δμ 정렬(평균 같음) / σ 비(변동 다름) — 실험 전제가 지켜지는지의 감시값.<\/td><\/tr><tr><td>px_per_cm<\/td><td>촬영 시점 배율. 값이 튀면 카메라가 밀렸다는 경보다.<\/td><\/tr><\/table><p class='note'>가장 오해하기 쉬운 것: <b>area_cm2 는 잎면적이 아니라 위에서 본 투영 면적<\/b>이다. 잎이 겹치면 과소평가되므로 절대값이 아니라 같은 개체의 시간 변화(RGR)로만 해석한다.<\/p>"};
+document.getElementById('title').innerHTML=(DATA.title||'프로젝트 지도')+(DATA.subtitle?`<small>${DATA.subtitle}</small>`:'');
+document.getElementById('brand').textContent=DATA.title||'프로젝트 지도';
+document.getElementById('foot').textContent=DATA.subtitle||'';
+document.title=DATA.title||'프로젝트 지도';
+if(DATA.glossary_html)document.getElementById('glossbody').innerHTML=DATA.glossary_html;
+if(DATA.glossary_label)document.getElementById('glosslabel').textContent=DATA.glossary_label;
+if(DATA.glossary===false)document.getElementById('glossbtn').hidden=true;
+(DATA.embeds||[]).forEach(e=>{
+  const f=document.createElement('iframe');f.className='embed-frame';f.title=e.label;
+  let loaded=false;  // 무거운 내장 문서는 첫 방문 때만 파싱
+  const load=()=>{if(!loaded){f.srcdoc=e.html;loaded=true}};
+  if(e.into){  // 기존 탭(section id) 상단에 삽입 — 요약 시각 자료 먼저, 상세는 아래
+    const s=document.getElementById(e.into); if(!s) return;
+    f.classList.add('inline'); s.prepend(f);
+    if(!s.hidden) load();
+    else{const b=document.querySelector('.tabs button[data-tab='+e.into+']'); b&&b.addEventListener('click',load);}
+    return;
+  }
+  const nav=document.querySelector('.tabs');
+  const b=document.createElement('button');
+  b.setAttribute('role','tab');b.setAttribute('aria-selected','false');b.dataset.tab='em-'+e.id;
+  const n=document.createElement('span');n.className='n';n.textContent=nav.children.length+1;
+  b.append(n,e.label);nav.append(b);
+  const s=document.createElement('section');s.id='em-'+e.id;s.hidden=true;
+  s.append(f);document.querySelector('main').append(s);
+  b.addEventListener('click',load);
+});
+document.querySelectorAll('.tabs button').forEach(b=>b.addEventListener('click',()=>{
+  document.querySelectorAll('.tabs button').forEach(x=>x.setAttribute('aria-selected',x===b));
+  document.querySelectorAll('main>section').forEach(s=>s.hidden = s.id!==b.dataset.tab);
+}));
+document.getElementById('thm').addEventListener('click',()=>{
+  const t=document.documentElement.getAttribute('data-theme')==='dark'?'light':'dark';
+  document.documentElement.setAttribute('data-theme',t);
+  try{localStorage.setItem('pm-theme',t)}catch(e){}
+});
+const esc=s=>String(s??'').replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+
+/* ---------- 설계 맵: 레인별 색상 ---------- */
+(function(){
+  const ov=DATA.overview||{};const el=document.getElementById('ovbody');
+  let h=ov.intro?`<p class="intro">${esc(ov.intro)}</p>`:'';
+  (ov.lanes||[]).forEach((l,li)=>{
+    h+=`<div class="lane" style="--lc:var(--l${li%6})"><em>${esc(l.label)}</em>`
+      +l.items.map((it,i)=>{const [b,s]=String(it).split('|');return (i?'<i>→</i>':'')+`<div class="n"><b>${esc(b)}</b><span>${esc(s||'')}</span></div>`}).join('')+'</div>';
+  });
+  el.innerHTML=h||'<p>overview.lanes 가 비어 있습니다.</p>';
+})();
+
+/* ---------- 스크립트 연결 지도 ---------- */
+(function(){
+  const NODES=DATA.nodes||{},EDGES=DATA.edges||[],COLS=DATA.columns||[];
+  const NW=200,NH=44,ROW=70,CW=230;
+  const svg=document.getElementById('mapsvg'),NS='http://www.w3.org/2000/svg';
+  const el=(t,a)=>{const e=document.createElementNS(NS,t);for(const k in a)e.setAttribute(k,a[k]);return e};
+  const colIdx=Object.fromEntries(COLS.map((c,i)=>[c.id,i]));
+  const used={};let maxRow=0;
+  Object.values(NODES).forEach(n=>{if(n.row!=null){(used[n.c]??=new Set()).add(n.row);maxRow=Math.max(maxRow,n.row)}});
+  Object.values(NODES).forEach(n=>{if(n.row==null){let r=0;const u=(used[n.c]??=new Set());while(u.has(r))r++;u.add(r);n.row=r;maxRow=Math.max(maxRow,r)}});
+  const W=20+COLS.length*CW,H=60+(maxRow+1)*ROW;
+  svg.setAttribute('viewBox',`0 0 ${W} ${H}`);
+  COLS.forEach((c,i)=>{const t=el('text',{x:20+i*CW,y:22,class:'col-label'});t.textContent=c.label;svg.appendChild(t)});
+  const pos=id=>{const n=NODES[id];return {x:20+colIdx[n.c]*CW,y:40+n.row*ROW}};
+  const gE=el('g',{}),gL=el('g',{}),gN=el('g',{});svg.append(gE,gL,gN);
+  const edgeEls=[];
+  EDGES.forEach(([f,t,ty,lab])=>{
+    if(!NODES[f]||!NODES[t]){console.warn('unknown edge',f,t);return}
+    const a=pos(f),b=pos(t),fw=b.x>=a.x;
+    const x1=fw?a.x+NW:a.x,x2=fw?b.x:b.x+NW,y1=a.y+NH/2,y2=b.y+NH/2,dx=Math.max(40,Math.abs(x2-x1)/2);
+    const d=`M${x1},${y1} C${x1+(fw?dx:-dx)},${y1} ${x2-(fw?dx:-dx)},${y2} ${x2},${y2}`;
+    const p=el('path',{d,class:'edge '+ty});gE.appendChild(p);
+    const lb=el('text',{x:(x1+x2)/2,y:(y1+y2)/2-4,class:'edge-label','text-anchor':'middle'});lb.textContent=lab||'';gL.appendChild(lb);
+    edgeEls.push({p,lb,f,t,ty,lab});
+  });
+  Object.entries(NODES).forEach(([id,n])=>{
+    const {x,y}=pos(id);
+    const g=el('g',{class:'node c'+colIdx[n.c],'data-id':id,tabindex:0,role:'button'});
+    g.appendChild(el('rect',{x,y,width:NW,height:NH}));
+    const t1=el('text',{x:x+10,y:y+18,'font-weight':600});t1.textContent=n.n;
+    const t2=el('text',{x:x+10,y:y+34,class:'sub'});t2.textContent=n.s||'';
+    g.append(t1,t2);gN.appendChild(g);
+    const sel=()=>select(id);
+    g.addEventListener('click',sel);g.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();sel()}});
+  });
+  const TY={call:'실행',imp:'import',wr:'쓰기',rd:'읽기',http:'HTTP/소켓'};
+  function select(id){
+    const linked=new Set([id]);
+    edgeEls.forEach(e=>{const on=e.f===id||e.t===id;e.p.classList.toggle('on',on);e.p.classList.toggle('dim',!on);e.lb.classList.toggle('on',on);if(on){linked.add(e.f);linked.add(e.t)}});
+    gN.querySelectorAll('.node').forEach(g=>{const k=g.dataset.id;g.classList.toggle('on',k===id);g.classList.toggle('dim',!linked.has(k))});
+    const n=NODES[id],out=edgeEls.filter(e=>e.f===id),inn=edgeEls.filter(e=>e.t===id);
+    const li=e=>{const o=e.f===id?e.t:e.f;return `<li><span class="chip ${e.ty==='wr'?'w':e.ty==='rd'?'r':e.ty==='call'?'t':''}">${TY[e.ty]||e.ty}</span><b>${esc(NODES[o].n)}</b>${e.lab?' — '+esc(e.lab):''}</li>`};
+    document.getElementById('mappanel').innerHTML=`<h2>${esc(n.n)}</h2><div class="path">${esc(n.s||'')}</div>
+      ${n.d?`<p class="desc">${esc(n.d)}</p>`:''}
+      <h3>이 노드가 하는 것 (→)</h3><ul>${out.map(li).join('')||'<li>없음</li>'}</ul>
+      <h3>이 노드를 부르는/읽는 것 (←)</h3><ul>${inn.map(li).join('')||'<li>없음 — 진입점</li>'}</ul>`;
+  }
+})();
+
+/* ---------- DB 스키마 ---------- */
+(function(){
+  const DBS=DATA.dbs||[],RELS=DATA.rels||[];
+  const svg=document.getElementById('dbsvg'),NS='http://www.w3.org/2000/svg';
+  const el=(t,a)=>{const e=document.createElementNS(NS,t);for(const k in a)e.setAttribute(k,a[k]);return e};
+  const W=340,TH=26,GAP=8,OFF=14,COLW=400,PER=3;
+  // writer 문자열 줄바꿈 (실린더 폭 안에서)
+  const wrap=(s,n)=>{const out=[];let cur='';String(s).split(/\s+/).forEach(w=>{if((cur+' '+w).trim().length>n){if(cur)out.push(cur);cur=w}else cur=(cur+' '+w).trim()});if(cur)out.push(cur);return out};
+  const colY=[60,60,60];let maxY=0;
+  DBS.forEach((d,i)=>{d._wl=wrap('writer · '+d.writer,52);
+    const H=48+d._wl.length*15+8+d.tables.length*(TH+GAP)+12+(d.readers.length+1)*16;
+    const c=i%PER;d._x=d.x??(30+c*COLW);d._y=d.y??colY[c];d._h=H;colY[c]=d._y+H+OFF+40;maxY=Math.max(maxY,d._y+H+OFF+20)});
+  const VW=Math.max(1,Math.min(DBS.length,PER))*COLW+60;
+  svg.setAttribute('viewBox',`0 0 ${VW} ${maxY+20}`);
+  svg.style.maxWidth=Math.min(VW*1.2,1500)+'px';           // 1-DB 소형 지도가 전폭으로 확대되는 것 방지
+  const tpos={};const gDb=el('g',{}),gRel=el('g',{});svg.append(gDb,gRel);
+  DBS.forEach(d=>{
+    const H=d._h,x=d._x,y=d._y,g=el('g',{class:'db'});
+    g.appendChild(el('path',{class:'side',d:`M${x+W},${y+OFF} l${OFF},-${OFF} v${H} l-${OFF},${OFF} z`}));
+    g.appendChild(el('path',{class:'top',d:`M${x},${y+OFF} l${OFF},-${OFF} h${W} l-${OFF},${OFF} z`}));
+    g.appendChild(el('rect',{class:'face',x,y:y+OFF,width:W,height:H,rx:6}));
+    const tt=el('text',{x:x+14,y:y+OFF+24,class:'title'});tt.textContent='🗄 '+d.name;g.appendChild(tt);
+    d._wl.forEach((ln,i)=>{const w=el('text',{x:x+14,y:y+OFF+42+i*15,class:'writer'});w.textContent=ln;g.appendChild(w)});
+    const tbase=y+OFF+48+d._wl.length*15+4;
+    d.tables.forEach((t,i)=>{
+      const ty=tbase+i*(TH+GAP),id=d.id+'.'+t.n;
+      const tg=el('g',{class:'tbl','data-id':id,tabindex:0,role:'button'});
+      tg.appendChild(el('rect',{x:x+14,y:ty,width:W-28,height:TH}));
+      const tx=el('text',{x:x+24,y:ty+17});tx.textContent=t.n;tg.appendChild(tx);
+      const pk=el('text',{x:x+W-24,y:ty+17,'text-anchor':'end','font-size':10});pk.textContent=t.pk?'PK '+t.pk:'';tg.appendChild(pk);
+      tpos[id]={x:x+14,y:ty,w:W-28,h:TH,db:d,t};
+      const sel=()=>select(id);tg.addEventListener('click',sel);tg.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();sel()}});
+      g.appendChild(tg);
+    });
+    let ry=tbase+d.tables.length*(TH+GAP)+12;
+    const rl=el('text',{x:x+14,y:ry,class:'reader'});rl.textContent='readers';g.appendChild(rl);
+    d.readers.forEach(r=>{ry+=16;const t=el('text',{x:x+26,y:ry,'font-size':11});t.textContent='· '+r;g.appendChild(t)});
+    gDb.appendChild(g);
+  });
+  const relEls=RELS.filter(([a,b])=>tpos[a]&&tpos[b]).map(([a,b,k])=>{
+    const A=tpos[a],B=tpos[b],same=A.db===B.db;
+    const d=same?`M${A.x+A.w},${A.y+A.h/2} C${A.x+A.w+30},${A.y+A.h/2} ${B.x+B.w+30},${B.y+B.h/2} ${B.x+B.w},${B.y+B.h/2}`
+                :`M${A.x+A.w},${A.y+A.h/2} C${(A.x+B.x)/2+60},${A.y+A.h/2} ${(A.x+B.x)/2-60},${B.y+B.h/2} ${B.x},${B.y+B.h/2}`;
+    const p=el('path',{d,class:'rel'});gRel.appendChild(p);
+    const lb=el('text',{x:same?A.x+A.w+34:(A.x+A.w+B.x)/2,y:(A.y+B.y)/2+A.h/2,class:'edge-label'});lb.textContent=k||'';gRel.appendChild(lb);
+    return {p,lb,a,b,k};
+  });
+  function select(id){
+    const rel=relEls.filter(r=>r.a===id||r.b===id);
+    relEls.forEach(r=>{const on=rel.includes(r);r.p.classList.toggle('on',on);r.lb.classList.toggle('on',on)});
+    const linked=new Set([id,...rel.flatMap(r=>[r.a,r.b])]);
+    svg.querySelectorAll('.tbl').forEach(g=>g.classList.toggle('on',linked.has(g.dataset.id)));
+    const {db,t}=tpos[id];
+    document.getElementById('dbpanel').innerHTML=`<h2>${esc(t.n)}</h2><div class="path">${esc(db.name)}${t.pk?' · PK '+esc(t.pk):''}</div>
+      <span class="chip w">writer ${esc(db.writer)}</span>${t.d?`<p class="desc">${esc(t.d)}</p>`:''}
+      <table class="cols">${(t.cols||[]).map(([c,d])=>`<tr><td>${esc(c)}</td><td>${esc(d)}</td></tr>`).join('')}</table>
+      <h3>이어지는 테이블</h3><ul>${rel.map(r=>`<li><b>${esc((r.a===id?r.b:r.a).split('.').slice(1).join('.'))}</b> — ${esc(r.k)}</li>`).join('')||'<li>없음</li>'}</ul>`;
+  }
+})();
+</script>
+</body>
+</html>

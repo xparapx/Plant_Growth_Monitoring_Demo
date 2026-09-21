@@ -4,6 +4,7 @@
 
 ## 2026-09
 
+- **09-22 프로젝트 지도 생성** — `docs/project-map.html`(+`project-map.json`, 29노드·35간선·DB 2) — 설계 맵 5레인·스크립트 연결 지도·plant.db/events.db 스키마·핵심 기술 탭. project-map 스킬 §3c design-craft 품질 필터 첫 적용: SVG 노드 `:focus-visible` 링을 템플릿에 추가(수정 1건), 나머지 통과. 갱신은 json 을 고쳐 `render.py` 재실행.
 - **09-19 급수노드(water_node) 현장 운용 개선** — ① 처리군을 컴파일 스위치에서 **터치 선택 칩([STBL][FLCT], NVS 저장)** 으로 — 같은 펌웨어를 전 노드에 올리고 현장 지정(노드별 수정은 `NODE_ID`/`PLANT_ID` 두 줄뿐, wN↔pN 동번호 매핑). ② 급수 트리거 확인(10초×연속 3회 RAW_ON 초과) — 좁은 stable 밴드(40카운트)에서 센서 요동 오급수 차단. ③ SAFE 화면 초기 젖음 게이지(1750~1800: POUR/DRAINING/OK→AUTO) — 전 화분 동일 출발선 절차를 화면이 안내. ④ 수동 펌프(PUMP) 세션을 `reason=prime` 이벤트로 DB 기록. ⑤ UI 3버튼(AUTO/PUMP/RESET 1.5초 홀드) + 탭 판정 wasClicked 통일(STOP 미동작 대응). 파이는 학교 공유기(192.168.1.214, school-cne)로 이전 완료, 환경노드 조명(4구×2, 핀8·9) 실물 점등 테스트 완료.
 - **09-19 조명 체계 정리** — ① 카메라 설정 UI: 보기 전용 90° 회전(브라우저 표시만, 사진·좌표 원본 유지), 조명 켬/끔 버튼(→ MQTT `plant/light/set`, 노드 30분 자동 소등), 카메라 수동 켜기/끄기 버튼. ② 환경노드 정식 펌웨어: RGB 4구×2(핀 8·9), 시간 창 + MQTT 원격 점등 + 시리얼 테스트. ③ hub 의 옛 GPIO LED 훅(config `led` 절·LedController·`plantsvc led` CLI·촬영 루틴 점등 단계·systemd led off·웹 LED 카드) 전면 제거 — 조명 코드는 노드 펌웨어에만 존재. 학교망 이슈: Tailscale 컨트롤·GitHub SSH 차단 확인 → 파이 remote HTTPS 전환, 급식실 파이는 `mb-cf`(Cloudflare) 경로 사용.
 
