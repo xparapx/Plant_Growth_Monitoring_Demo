@@ -2,7 +2,7 @@
 
 > 환경·토양수분을 **MQTT**로 모으고, 카메라가 **투영 캐노피 면적**을 매일 재는 폐루프 급수 시스템. "얼마나 젖었나(평균)"가 아니라 **"수분이 얼마나 흔들렸나(변동성)"**가 생장을 바꾸는지 검정하는 프로젝트.
 
-🔗 **프로젝트개요:** https://xparapx.github.io/Plant_Growth_Monitoring_Demo/
+🔗 **프로젝트 지도(설계·연결·데이터·운영):** https://xparapx.github.io/Plant_Growth_Monitoring_Demo/project-map.html
 📘 **매뉴얼:** https://xparapx.github.io/Plant_Growth_Monitoring_Demo/manual.html
 🖥️ **웹 UI 데모(목 데이터):** https://xparapx.github.io/Plant_Growth_Monitoring_Demo/app/
 
@@ -92,7 +92,7 @@ deploy/systemd/ *.service.tmpl / *.timer.tmpl — 사용자명·경로가 없는
 scripts/        install.sh · deploy.ps1 · migrate_legacy.sh · fetch_web.sh · rollback.sh
 tests/          pytest (하드웨어 없이 실행)
 firmware/       노드 펌웨어 (.ino) + 검증·보정 스케치(diagnostics/)
-docs/           프로젝트개요(index.html) · 구축 가이드(manual.html)
+docs/           프로젝트 지도(project-map.html, 지속 갱신) · 구축 가이드(manual.html)
 data/           런타임 데이터(git 제외): plant.db · events.db · config.json · calib.jpg · photos/
 ```
 
