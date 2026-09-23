@@ -16,7 +16,7 @@
  *      루프가 멈춰 샘플이 통째로 빠졌습니다. 이제 10초에 한 번, 1회만 시도.
  *    · 발행 실패 = 유실이던 것을 오프라인 큐(8건)로 — 타임스탬프는
  *      payload 에 이미 박혀 있으므로 늦게 발행돼도 시각이 안 밀립니다.
- *    · String 제거(힙 단편화) · WDT(5초) · NTP 하루 1회 재동기화.
+ *    · String 제거(힙 단편화) · WDT(5.6초, WiFi 대기 2.5초로 제한) · NTP 하루 1회 재동기화.
  *    · 촬영 조명 — RGB 네오픽셀 4구 × 2 (핀 8·9), KST 05:45~06:15 시간
  *      기반 점등 + 원격 제어(MQTT plant/<id>/light/set "1"/"0", 30분
  *      자동 소등) + 시리얼 1/0 테스트 (USE_LIGHT=1).
@@ -354,25 +354,30 @@ void onMqtt(char* t, byte* payload, unsigned int len) {
 }
 
 void setup() {
-  Serial.begin(115200);
-  Wire.begin();                            // R4 : Base Shield I2C (SDA/SCL 고정)
-  initSensors();
-
 #if USE_LIGHT
+  // 리셋 직후 데이터 핀이 떠 있는 동안 스트립이 제멋대로 켜질 수 있다 — 무엇보다 먼저 소등
   strip1.begin(); strip2.begin();
   strip1.setBrightness(LIGHT_BRIGHT);      // 매일 같은 값 — 전류 제한 겸 조명 고정
   strip2.setBrightness(LIGHT_BRIGHT);
   strip1.clear(); strip1.show();           // 부팅은 반드시 소등으로
   strip2.clear(); strip2.show();
 #endif
+  Serial.begin(115200);
+  Wire.begin();                            // R4 : Base Shield I2C (SDA/SCL 고정)
+  initSensors();
 
   // ★ 여기서 기다리지 않습니다 — 연결·NTP·nodeId 확정은 전부 loop 에서 논블로킹으로.
+  // ★ WiFiS3 의 WiFi.begin() 은 AP 가 안 잡히면 최대 ~10초를 <블로킹>한다.
+  //   5초 워치독과 겹치면 "재접속 시도 중 리셋 → 부팅 → 재시도 → 리셋" 루프에
+  //   빠지고, 리셋 순간 데이터 핀이 떠서 네오픽셀이 제멋대로 켜진다(2026-09-23 실제 발생).
+  //   접속 대기를 2.5초로 잘라 워치독 안에 반드시 돌아오게 한다.
+  WiFi.setTimeout(2500);
   WiFi.begin(WIFI_SSID, WIFI_PASS);
   client.setServer(BROKER, PORT);
   client.setCallback(onMqtt);              // 원격 점등 명령 수신
   client.setKeepAlive(60);
 
-  WDT.begin(5000);                         // 5초 워치독 — I2C/소켓이 얼면 리셋
+  WDT.begin(5592);                         // 워치독(R4 최대치) — I2C/소켓이 얼면 리셋. WiFi 대기(2.5s)+루프 여유
   Serial.println("[BOOT] env node — 논블로킹 접속, 큐 8건, WDT 5s, LIGHT 4구x2 핀8·9 (mqtt/serial 제어)");
 }
 
