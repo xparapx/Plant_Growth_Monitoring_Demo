@@ -167,7 +167,9 @@ if [[ $NO_ENABLE -eq 1 || ! -x "$(command -v systemctl || true)" ]]; then
   echo "  skipped"
 elif [[ $HAVE_SUDO -eq 1 ]]; then
   sudo systemctl disable --now plantdash.service plantcam.service mjpeg.service 2>/dev/null || true
-  sudo systemctl enable --now planthub.service plantsvc.service plantlink.service plantsnap.timer plantsnap-catchup.service
+  sudo systemctl enable --now planthub.service plantsvc.service plantlink.service plantsnap.timer
+  # catch-up 은 재부팅용 oneshot — 지금 즉시 돌리면(--now) 세팅 전엔 촬영 실패로 install 이 중단되므로 enable 만
+  sudo systemctl enable plantsnap-catchup.service
   if [[ $UPDATE -eq 1 ]]; then sudo systemctl restart planthub.service plantsvc.service plantlink.service; fi
   sudo systemctl enable --now systemd-time-wait-sync.service 2>/dev/null || true
   systemctl --no-pager --no-legend list-timers plantsnap.timer || true
