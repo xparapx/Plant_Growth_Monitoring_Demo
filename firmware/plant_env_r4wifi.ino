@@ -17,7 +17,7 @@
  *    · 발행 실패 = 유실이던 것을 오프라인 큐(8건)로 — 타임스탬프는
  *      payload 에 이미 박혀 있으므로 늦게 발행돼도 시각이 안 밀립니다.
  *    · String 제거(힙 단편화) · WDT(5.6초, WiFi 대기 2.5초로 제한) · NTP 하루 1회 재동기화.
- *    · 촬영 조명 — RGB 네오픽셀 4구 × 2 (핀 8·9), KST 05:45~06:15 시간
+ *    · 촬영 조명 — RGBW 네오픽셀 61구 (핀 9, W 칩만 점등), KST 05:45~06:15 시간
  *      기반 점등 + 원격 제어(MQTT plant/<id>/light/set "1"/"0", 30분
  *      자동 소등) + 시리얼 1/0 테스트 (USE_LIGHT=1).
  * ═══════════════════════════════════════════════════════════
@@ -57,40 +57,55 @@ const unsigned long SAMPLE_MS = 10000;      // 5분에 n≈30
 // NTP는 UTC로 저장, hub에서 +9h. 아래 KST 는 조명 창 계산에만 씁니다.
 // ════════════════════════════════
 
-// ══════════ 촬영 조명 — RGB 네오픽셀 4구 × 2 (핀 8·9) ══════════
+// ══════════ 촬영 조명 — RGBW 네오픽셀 61구 스트립 × 1 (핀 9) ══════════
 // 네오픽셀은 LED마다 드라이버 내장 -> 데이터 핀 직결, 릴레이/MOSFET 불요.
+//   · 백색은 전용 W 칩만 켭니다 (R/G/B=0). RGB 합성 백색보다 스펙트럼이
+//     넓어 ExG 마스크가 안정하고, LED당 전류도 1/3 수준.
 //   · 기본 동작은 시간 기반 독립 점등 — 창(05:45~06:15)이 최우선이고,
 //     창 점등은 어떤 명령으로도 못 끕니다 (실험 데이터 보호).
 //   · 원격 제어: MQTT plant/<id>/light/set 에 "1"/"0" (또는 on/off).
 //     시리얼 모니터 1/0 도 같은 효과. 둘 다 <명령 점등>으로 취급되어
 //     LIGHT_CMD_MAX_MS 뒤 자동 소등 — 켜 두고 잊어도 남지 않습니다.
+//   · 시리얼 't' = 색순서 검사: 앞 4구가 빨강·초록·파랑·백색 순으로 켜져야 정상.
+//     다르면 LIGHT_ORDER 를 NEO_RGBW 등으로 바꿔 재업로드 (5초 뒤 자동 복귀).
 //   · 상태 보고: 바뀔 때마다 plant/<id>/light 로 {"state":..,"by":..} 발행.
 //   · NTP 실패(timeOK=false)면 창 점등은 하지 않음 (안전측).
-//   · 전류: 풀 화이트 LED당 ~60mA -> 8구 풀밝기 ~480mA. 화면 밝기·USB 전원
-//     여유를 확인하고, 부족 징후(리셋·색 틀어짐)가 보이면 별도 5V 급전.
-//   · RGB 합성 백색은 스펙트럼이 뾰족함 — 설치 후 새벽 시험 촬영으로
-//     ExG 마스크가 안정한지 확인할 것 (매뉴얼 패널 19).
+//   · ★ 전류: W 칩 풀밝기 LED당 ~18mA -> 61구 255 면 ~1.1A. UNO R4 의 5V 핀은
+//     USB 급전 시 0.5A 남짓이라 그대로는 브라운아웃(리셋·색 틀어짐) 납니다.
+//     기본 LIGHT_BRIGHT=80(~0.35A)로 시작하고, 광량이 부족하면 스트립 5V/GND 를
+//     별도 5V 2A 어댑터에 물리고(GND 는 보드와 공통) 밝기를 올리세요.
 #define USE_LIGHT 1
 #if USE_LIGHT
   #include <Adafruit_NeoPixel.h>
-  const int     LIGHT_PIN1   = 8;           // ★ 스트립 1 데이터 핀
-  const int     LIGHT_PIN2   = 9;           // ★ 스트립 2 데이터 핀
-  const int     LIGHT_N      = 4;           // ★ 스트립당 LED 개수
-  const uint8_t LIGHT_BRIGHT = 255;         // 0~255 — 매일 같은 값으로 고정 (전류 제한 겸)
+  const int     LIGHT_PIN    = 9;           // ★ 스트립 데이터 핀 (D9)
+  const int     LIGHT_N      = 61;          // ★ LED 개수
+  const uint8_t LIGHT_BRIGHT = 80;          // 0~255 — 매일 같은 값으로 고정 (전류 제한 겸)
+  #define       LIGHT_ORDER    NEO_GRBW     // ★ SK6812 RGBW 표준 순서. 't' 검사로 확인
   const long    LIGHT_ON_S   = 5*3600L + 45*60L;   // KST 05:45
   const long    LIGHT_OFF_S  = 6*3600L + 15*60L;   // KST 06:15 (촬영 05:50 이 창 안)
   const unsigned long LIGHT_CMD_MAX_MS = 1800000UL;   // 명령 점등 자동 소등 (30분)
-  Adafruit_NeoPixel strip1(LIGHT_N, LIGHT_PIN1, NEO_GRB + NEO_KHZ800);  // RGB (백색 칩 없음)
-  Adafruit_NeoPixel strip2(LIGHT_N, LIGHT_PIN2, NEO_GRB + NEO_KHZ800);
+  const unsigned long LIGHT_TEST_MS    = 5000UL;      // 색순서 검사 표시 시간
+  Adafruit_NeoPixel strip(LIGHT_N, LIGHT_PIN, LIGHT_ORDER + NEO_KHZ800);
   bool lit = false;                         // 현재 실제 상태
   bool cmdOn = false;                       // 원격/시리얼 명령 점등 중
   unsigned long tCmd = 0;                   // 명령 점등 시작 시각
+  unsigned long tTest = 0;                  // 색순서 검사 시작 시각 (0=검사 아님)
   const char* litBy = "off";                // "window" | "cmd" | "off" — 상태 보고용
 
-  void setLight(bool on) {                  // 점등/소등 한 곳에서 — RGB 합성 백색
-    uint32_t c = on ? Adafruit_NeoPixel::Color(255, 255, 255) : 0;
-    for (int i = 0; i < LIGHT_N; i++) { strip1.setPixelColor(i, c); strip2.setPixelColor(i, c); }
-    strip1.show(); strip2.show();
+  void setLight(bool on) {                  // 점등/소등 한 곳에서 — W 칩만 사용
+    uint32_t c = on ? Adafruit_NeoPixel::Color(0, 0, 0, 255) : 0;
+    strip.fill(c, 0, LIGHT_N);
+    strip.show();
+  }
+  void lightOrderTest() {                   // 앞 4구 R·G·B·W — 색순서 육안 검사
+    strip.clear();
+    strip.setPixelColor(0, Adafruit_NeoPixel::Color(255, 0, 0, 0));
+    strip.setPixelColor(1, Adafruit_NeoPixel::Color(0, 255, 0, 0));
+    strip.setPixelColor(2, Adafruit_NeoPixel::Color(0, 0, 255, 0));
+    strip.setPixelColor(3, Adafruit_NeoPixel::Color(0, 0, 0, 255));
+    strip.show();
+    tTest = millis(); if (tTest == 0) tTest = 1;
+    Serial.println(F("[LIGHT] order test: LED0 red, LED1 green, LED2 blue, LED3 white ?"));
   }
 #endif
 
@@ -324,6 +339,10 @@ void lightTick() {
     Serial.println("[LIGHT] cmd timeout — auto off");
   }
   bool want = window || cmdOn;
+  if (tTest) {                                          // 색순서 검사 중 — 5초 뒤 실제 상태로 복귀
+    if (millis() - tTest < LIGHT_TEST_MS) return;
+    tTest = 0; lit = !want;                             // 강제 재적용
+  }
   if (want == lit) return;
   lit = want;
   litBy = lit ? (window ? "window" : "cmd") : "off";
@@ -333,11 +352,12 @@ void lightTick() {
   publishLightState();
 }
 
-// 시리얼 테스트: 모니터(115200)에서 1 = 켜기, 0 = 끄기.
+// 시리얼 테스트: 모니터(115200)에서 1 = 켜기, 0 = 끄기, t = 색순서 검사(R·G·B·W).
 void lightSerialTest() {
   if (!Serial.available()) return;
   char ch = Serial.read();
   if (ch == '1' || ch == '0') lightCommand(ch == '1', "serial");
+  else if (ch == 't' || ch == 'T') lightOrderTest();
 }
 #endif
 
@@ -356,11 +376,9 @@ void onMqtt(char* t, byte* payload, unsigned int len) {
 void setup() {
 #if USE_LIGHT
   // 리셋 직후 데이터 핀이 떠 있는 동안 스트립이 제멋대로 켜질 수 있다 — 무엇보다 먼저 소등
-  strip1.begin(); strip2.begin();
-  strip1.setBrightness(LIGHT_BRIGHT);      // 매일 같은 값 — 전류 제한 겸 조명 고정
-  strip2.setBrightness(LIGHT_BRIGHT);
-  strip1.clear(); strip1.show();           // 부팅은 반드시 소등으로
-  strip2.clear(); strip2.show();
+  strip.begin();
+  strip.setBrightness(LIGHT_BRIGHT);       // 매일 같은 값 — 전류 제한 겸 조명 고정
+  strip.clear(); strip.show();             // 부팅은 반드시 소등으로
 #endif
   Serial.begin(115200);
   Wire.begin();                            // R4 : Base Shield I2C (SDA/SCL 고정)
@@ -378,7 +396,7 @@ void setup() {
   client.setKeepAlive(60);
 
   WDT.begin(5592);                         // 워치독(R4 최대치) — I2C/소켓이 얼면 리셋. WiFi 대기(2.5s)+루프 여유
-  Serial.println("[BOOT] env node — 논블로킹 접속, 큐 8건, WDT 5s, LIGHT 4구x2 핀8·9 (mqtt/serial 제어)");
+  Serial.println("[BOOT] env node — 논블로킹 접속, 큐 8건, WDT 5.6s, LIGHT RGBW 61구 핀9 (mqtt/serial 제어, t=색순서)");
 }
 
 void loop() {

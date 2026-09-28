@@ -7122,7 +7122,7 @@ uv run plantsvc seed --days 14               <span class="c"># 통째로 더미�
   <!-- ════════ sL ════════ -->
   <section class="panel" id="sL">
     <h2 class="title"><span class="badge">19</span>LED 촬영 조명 (자리)</h2>
-    <p class="lead">새벽 촬영 조명은 <b>환경노드(UNO R4 WiFi)의 RGB 네오픽셀 4구 스트립</b>(핀 9 직결)이 맡습니다 — 노드가 자체 타이머로
+    <p class="lead">새벽 촬영 조명은 <b>환경노드(UNO R4 WiFi)의 RGBW 네오픽셀 61구 스트립</b>(핀 9 직결, 백색은 W 칩만 점등)이 맡습니다 — 노드가 자체 타이머로
     <b>05:45 점등 → 06:15 소등</b> 하고, 파이는 그 창 안(05:50)에서 평소처럼 찍기만 합니다. 펌웨어는 <code class="in">plant_env_r4wifi.ino</code> 의
     <code class="in">USE_LIGHT=1</code> 블록(<code class="in">lightTick</code>)에 들어 있습니다.
     hub 쪽 GPIO LED 훅은 2026-09-19 에 제거되어 조명 관련 코드·설정은 노드 펌웨어에만 있습니다.</p>
@@ -7131,8 +7131,8 @@ uv run plantsvc seed --days 14               <span class="c"># 통째로 더미�
       <span class="lbl">왜 조명이 필요한가 — 패널 11 의 &ldquo;날씨가 섞이는&rdquo; 문제</span>
       노출을 고정했으니 어두운 아침엔 사진이 어둡고, Otsu 임계값이 올라 마스크가 잎 안쪽으로 파고듭니다(같은 잎이 −18%).
       촬영 시각을 고정하는 것보다 <b>조명을 고정하는 것</b>이 확실합니다. 새벽 촬영 시각에 백색 LED 가 켜져 있으면 6주 내내 같은 빛으로 찍힙니다.
-      보라색 재배등은 안 됩니다 — G 성분이 없어 ExG 가 작동하지 않습니다. Grove 스틱은 <b>RGB(백색 칩 없음)</b>라 합성 백색의 스펙트럼이 뾰족합니다 —
-      설치 후 새벽 시험 촬영으로 ExG 마스크가 안정한지 반드시 확인하고, 문제가 보이면 RGBW 스트립으로 교체를 검토합니다.
+      보라색 재배등은 안 됩니다 — G 성분이 없어 ExG 가 작동하지 않습니다. 스트립은 <b>RGBW(전용 백색 칩)</b>라 W 칩만 켜서 넓은 스펙트럼의 백색을 얻습니다(2026-09-28 RGB 4구×2 에서 교체) —
+      설치 후 새벽 시험 촬영으로 ExG 마스크가 안정한지 확인합니다.
     </div>
 
     <div class="box tip">
@@ -7170,14 +7170,15 @@ uv run plantsvc seed --days 14               <span class="c"># 통째로 더미�
 
     <h3>3) 스틱을 달 때 — 설치 절차</h3>
     <div class="box warn">
-      <span class="lbl">전류와 스펙트럼 — RGB 4구 기준</span>
-      네오픽셀은 LED 마다 드라이버 내장이라 <b>데이터 핀 직결(스위칭 소자 불요)</b>. 풀 화이트 기준 LED 당 ~60 mA 로
-      4구 풀밝기(255)여도 <b>~240 mA — 보드 5 V 레일 직결 OK</b>.
+      <span class="lbl">전류와 스펙트럼 — RGBW 61구 기준</span>
+      네오픽셀은 LED 마다 드라이버 내장이라 <b>데이터 핀 직결(스위칭 소자 불요)</b>. W 칩만 켜면 LED 당 ~18 mA 지만
+      61구 풀밝기(255)면 <b>~1.1 A — USB 급전 R4 의 5 V 핀(≈0.5 A)으로는 브라운아웃(리셋·색 틀어짐)</b>.
+      기본 밝기 80(≈0.35 A)로 시작하고, 광량이 부족하면 스트립 5 V/GND 를 <b>별도 5 V 2 A 어댑터</b>에 물리고(GND 는 보드와 공통) 밝기를 올립니다.
       촬영 조명은 매일 같은 밝기로 고정합니다(<code class="in">LIGHT_BRIGHT</code>).
       광량 검증: 조명만 켠 상태에서 setup 의 <b>[자동 측정]</b> — gain ≤ 2 근처면 충분, gain &gt; 4 면 부족(밝기·거리 조정 또는 스트립 추가).
     </div>
     <ol style="margin:4px 0 0 18px; line-height:1.8;">
-      <li>RGB 네오픽셀 4구 스트립을 <b>핀 9</b> 에 연결(<code class="in">NEO_GRB</code>). <b>내장 12×8 매트릭스는 네오픽셀이 아니므로 외장 스트립 필수</b>. 시리얼 모니터에서 <code class="in">1</code>/<code class="in">0</code> 으로 점등 테스트</li>
+      <li>RGBW 네오픽셀 61구 스트립을 <b>핀 9</b> 에 연결(<code class="in">NEO_GRBW</code> — 시리얼 <code class="in">t</code> 로 앞 4구가 빨강·초록·파랑·백색 순인지 확인, 다르면 <code class="in">LIGHT_ORDER</code> 변경). <b>내장 12×8 매트릭스는 네오픽셀이 아니므로 외장 스트립 필수</b>. 시리얼 모니터에서 <code class="in">1</code>/<code class="in">0</code> 으로 점등 테스트</li>
       <li><code class="in">plant_env_r4wifi.ino</code> 의 <code class="in">USE_LIGHT=1</code> 확인 후 업로드 — NTP 동기화(부팅 + 하루 1회), KST 초단위 창 비교로 <b>05:45 점등 / 06:15 소등</b>, 창 밖·NTP 실패 시 무조건 소등(자체 watchdog). 라이브러리 Adafruit NeoPixel 필요</li>
       <li>hub(config.json) 에는 조명 설정이 없습니다 — 조명 상수(핀·개수·밝기·창)는 전부 노드 펌웨어에 있습니다</li>
       <li>새벽 저널에서 촬영(05:50)이 점등 창 안에 있는지, 사진이 조명 아래 찍혔는지 확인</li>
