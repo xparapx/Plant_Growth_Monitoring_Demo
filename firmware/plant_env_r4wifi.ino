@@ -10,6 +10,13 @@
  *  Base Shield 전원 스위치는 반드시 5V 위치.
  *
  *  전송 : plant/<nodeId>/env    NTP(UTC) 정각 격자 5분 평균
+ *
+ *  ★ 링크 방식 (LINK_MODE)
+ *    1 = USB 직결 (기본, 2026-09-28~) : 파이 USB 에 꽂고 시리얼로 "PUB <topic> <json>" 한 줄씩.
+ *        파이의 plantlink 서비스(hub/serial_bridge.py)가 그대로 로컬 MQTT 로 올려 주고,
+ *        시각("T <epoch>")과 조명 명령("L 1/0")을 내려준다. Wi-Fi·NTP·브로커 IP 전부 불필요 —
+ *        학교 메시 Wi-Fi 의 기기 간 격리와 WiFiS3 블로킹→WDT 리셋 루프를 모두 비켜간다.
+ *    0 = Wi-Fi/MQTT (예비) : 아래 사용자 설정의 SSID·BROKER 사용.
  * ═══════════════════════════════════════════════════════════
  *  ★ 2026-09 개정 — water_node.ino 에서 배운 것들을 이식
  *    · 재접속이 <절대 기다리지 않음> — 예전 판은 끊길 때마다 최대 85초
@@ -30,15 +37,20 @@
  *              Adafruit BME680(BME688 호환) / BH1750 / Adafruit NeoPixel
  * ═══════════════════════════════════════════════════════════
  */
+#define LINK_MODE 1                          // ★ 1 = USB 직결(파이), 0 = Wi-Fi/MQTT  (헤더 설명 참고)
+#if !LINK_MODE
 #include <WiFiS3.h>
 #include <PubSubClient.h>
+#endif
 #include <Wire.h>
 #include <SensirionI2cScd4x.h>          // 신버전: I2c 소문자
 #include <Adafruit_BME680.h>
 #include <BH1750.h>
 #include <RTC.h>                         // R4 내장 RTC (NTP 시각 보관)
 #include <WDT.h>                         // R4 내장 워치독
+#if !LINK_MODE
 #include <FspTimer.h>                    // 워치독 보호창용 하드웨어 타이머 (아래 netGuard)
+#endif
 
 #ifdef NO_ERROR                          // SCD4x 신버전 매크로 충돌 방지
 #undef NO_ERROR
@@ -46,7 +58,11 @@
 #define NO_ERROR 0
 const uint8_t SCD41_ADDR = 0x62;
 
-// ══════════ 사용자 설정 ══════════
+#if LINK_MODE
+const char* SERIAL_NODE_ID = "env_F09338";  // ★ USB 모드는 MAC 을 못 읽으므로 고정 (DB 연속성 위해 기존 id 유지)
+#endif
+
+// ══════════ 사용자 설정 (LINK_MODE=0 일 때만 사용) ══════════
 const char* WIFI_SSID = "your-hotspot";       // ★ 2.4GHz SSID
 const char* WIFI_PASS = "your-password";
 const char* BROKER    = "192.168.0.15";     // ★ 브로커 IP — 파이 확정 후 교체 (Pi: hostname -I / PC: ipconfig)
@@ -110,8 +126,10 @@ const unsigned long SAMPLE_MS = 10000;      // 5분에 n≈30
   }
 #endif
 
+#if !LINK_MODE
 WiFiClient net;
 PubSubClient client(net);
+#endif
 SensirionI2cScd4x scd4x;                 // 신버전 클래스명
 Adafruit_BME680  bme;
 BH1750           lightMeter;
@@ -128,30 +146,6 @@ unsigned long lastSample = 0;
 int failStreak = 0;
 const int FAIL_LIMIT = 12;
 
-// ── 워치독 보호창 ──
-//   WiFiS3 의 TCP 접속(client.connect)은 브로커가 안 닿으면 모뎀 응답을 최대 10초
-//   <블로킹>하고, setConnectionTimeout 도 모뎀 펌웨어가 무시한다(2026-09-28 실측).
-//   R4 워치독은 5.6초가 최대라 접속 시도마다 리셋 루프에 빠졌다.
-//   해법: 접속 시도 직전에 보호창(최대 NET_GUARD_MS)을 열면 2Hz 타이머 ISR 이 그 동안만
-//   WDT 를 대신 갱신한다. 창이 닫히면 ISR 은 손을 떼므로 다른 멈춤은 여전히 리셋된다.
-const unsigned long NET_GUARD_MS = 12000UL;   // 모뎀 타임아웃 10s + 여유
-volatile unsigned long guardUntil = 0;        // 0 = 보호창 닫힘
-FspTimer guardTimer;
-void guardIsr(timer_callback_args_t*) {
-  unsigned long u = guardUntil;
-  if (u && (long)(millis() - u) < 0) WDT.refresh();
-}
-void netGuardOpen()  { guardUntil = millis() + NET_GUARD_MS; if (!guardUntil) guardUntil = 1; }
-void netGuardClose() { guardUntil = 0; }
-bool guardTimerBegin() {
-  // 50Hz — AGT(16비트)·GPT 어느 쪽이 배정돼도 표현 가능한 주파수
-  uint8_t type; int8_t ch = FspTimer::get_available_timer(type);
-  if (ch < 0) ch = FspTimer::get_available_timer(type, true);
-  if (ch < 0) return false;
-  if (!guardTimer.begin(TIMER_MODE_PERIODIC, type, (uint8_t)ch, 50.0f, 50.0f, guardIsr)) return false;
-  if (!guardTimer.setup_overflow_irq()) return false;
-  return guardTimer.open() && guardTimer.start();
-}
 // 리셋 원인 — RA4M1 RSTSR1: bit0 IWDT, bit1 WDT, bit2 SW / RSTSR0: bit0 POR(전원)
 void printResetCause() {
   uint8_t r0 = R_SYSTEM->RSTSR0, r1 = R_SYSTEM->RSTSR1;
@@ -182,6 +176,55 @@ int  pqHead = 0, pqCount = 0;
 float esat(float t)            { return 0.6108f * expf(17.27f*t/(t+237.3f)); }   // kPa
 float vpdOf(float t, float rh) { return esat(t) * (1.0f - rh/100.0f); }          // kPa
 
+#if LINK_MODE
+// ══════════ USB 직결 링크 ══════════
+//   송신: "PUB <topic> <json>\n"  — 파이 plantlink 가 MQTT 로 그대로 발행
+//   수신: "T <epoch>" 시각 설정(UTC) · "L 1"/"L 0" 조명 명령 · 단문자 1/0/t 는 테스트용 그대로
+const unsigned long TIME_STALE_S = 3*3600L;    // 이 시간 넘게 T 를 못 받으면 timeOK 해제 (창 점등 안전측)
+long lastTimeRx = 0;
+bool linkUp() { return true; }                 // USB 는 항상 "연결" — 큐는 즉시 비워짐
+bool publishRaw(const char* t, const char* m) {
+  Serial.print("PUB "); Serial.print(t); Serial.print(' '); Serial.println(m);
+  return true;
+}
+void setTimeFromHost(unsigned long epoch) {
+  RTC.begin();
+  RTCTime rt((time_t)epoch);
+  RTC.setTime(rt);
+  lastTimeRx = (long)epoch;
+  if (!timeOK) Serial.println("TIME OK (host)");
+  timeOK = true;
+}
+void timeTick() {                              // 호스트 시각이 오래 끊기면 창 점등을 멈춤
+  if (!timeOK) return;
+  RTCTime t; RTC.getTime(t);
+  if ((long)t.getUnixTime() - lastTimeRx > TIME_STALE_S) { timeOK = false; Serial.println("TIME stale"); }
+}
+#else
+// ── 워치독 보호창 ──
+//   WiFiS3 의 TCP 접속(client.connect)은 브로커가 안 닿으면 모뎀 응답을 최대 10초
+//   <블로킹>하고, setConnectionTimeout 도 모뎀 펌웨어가 무시한다(2026-09-28 실측).
+//   R4 워치독은 5.6초가 최대라 접속 시도마다 리셋 루프에 빠졌다.
+//   해법: 접속 시도 직전에 보호창(최대 NET_GUARD_MS)을 열면 2Hz 타이머 ISR 이 그 동안만
+//   WDT 를 대신 갱신한다. 창이 닫히면 ISR 은 손을 떼므로 다른 멈춤은 여전히 리셋된다.
+const unsigned long NET_GUARD_MS = 12000UL;   // 모뎀 타임아웃 10s + 여유
+volatile unsigned long guardUntil = 0;        // 0 = 보호창 닫힘
+FspTimer guardTimer;
+void guardIsr(timer_callback_args_t*) {
+  unsigned long u = guardUntil;
+  if (u && (long)(millis() - u) < 0) WDT.refresh();
+}
+void netGuardOpen()  { guardUntil = millis() + NET_GUARD_MS; if (!guardUntil) guardUntil = 1; }
+void netGuardClose() { guardUntil = 0; }
+bool guardTimerBegin() {
+  // 50Hz — AGT(16비트)·GPT 어느 쪽이 배정돼도 표현 가능한 주파수
+  uint8_t type; int8_t ch = FspTimer::get_available_timer(type);
+  if (ch < 0) ch = FspTimer::get_available_timer(type, true);
+  if (ch < 0) return false;
+  if (!guardTimer.begin(TIMER_MODE_PERIODIC, type, (uint8_t)ch, 50.0f, 50.0f, guardIsr)) return false;
+  if (!guardTimer.setup_overflow_irq()) return false;
+  return guardTimer.open() && guardTimer.start();
+}
 // R4는 MAC을 WiFi.macAddress()로 얻음 (연결 후에 확정)
 void makeNodeId() {
   byte mac[6]; WiFi.macAddress(mac);
@@ -229,6 +272,8 @@ bool netReady() {
   Serial.print("MQTT rc="); Serial.println(client.state());   // -2 = 거부/방화벽
   return false;
 }
+bool linkUp() { return client.connected(); }
+bool publishRaw(const char* t, const char* m) { return client.publish(t, m); }
 
 // NTP → 내장 RTC (UTC epoch). 논블로킹 — 될 때까지 10초 간격으로 시도,
 // 성공 후에도 하루 한 번 다시 받아 RTC 드리프트를 지웁니다.
@@ -252,6 +297,8 @@ void ntpTick() {
   if (!timeOK) Serial.println("NTP OK");
   timeOK = true;
 }
+
+#endif  // !LINK_MODE
 
 long nowEpoch() {
   if (!timeOK) return 0;
@@ -331,7 +378,7 @@ void enqueuePayload(const char* p) {
 
 void flushQueue() {
   while (pqCount > 0) {
-    if (!client.publish(topic, pq[pqHead])) return;   // 실패하면 다음 기회에
+    if (!publishRaw(topic, pq[pqHead])) return;       // 실패하면 다음 기회에
     Serial.print("PUB(late): "); Serial.println(pq[pqHead]);
     pqHead = (pqHead + 1) % QUEUE_MAX; pqCount--;
   }
@@ -350,7 +397,7 @@ void publishAverage(long bucket) {
     nodeId, ts, sT/cb, sH/cb, sP/cb, sV/cb, sL/n, sC/cc, n);
   // ★ 먼저 담고, 발행은 되는 대로 — 끊겨 있어도 5분 평균이 유실되지 않습니다
   enqueuePayload(p);
-  if (client.connected()) flushQueue();
+  if (linkUp()) flushQueue();
   else Serial.print("QUEUED: "), Serial.println(p);
 }
 
@@ -359,12 +406,12 @@ void resetAccum() { sT=sH=sP=sV=sL=sC=0; n=0; nC=0; nB=0; }
 #if USE_LIGHT
 // 상태 보고 — 바뀔 때만 발행. 끊겨 있으면 조용히 넘어감(조명은 로컬이 진실).
 void publishLightState() {
-  if (!client.connected() || !idReady) return;
+  if (!linkUp() || !idReady) return;
   char t[48], m[96];
   snprintf(t, sizeof(t), "plant/%s/light", nodeId);
   snprintf(m, sizeof(m), "{\"node\":\"%s\",\"state\":\"%s\",\"by\":\"%s\"}",
            nodeId, lit ? "on" : "off", litBy);
-  client.publish(t, m);
+  publishRaw(t, m);
 }
 
 // 원격/시리얼 <명령 점등> 공통 진입점. 켜기는 워치독 타이머를 재장전한다.
@@ -401,15 +448,39 @@ void lightTick() {
   publishLightState();
 }
 
-// 시리얼 테스트: 모니터(115200)에서 1 = 켜기, 0 = 끄기, t = 색순서 검사(R·G·B·W).
-void lightSerialTest() {
-  if (!Serial.available()) return;
-  char ch = Serial.read();
-  if (ch == '1' || ch == '0') lightCommand(ch == '1', "serial");
-  else if (ch == 't' || ch == 'T') lightOrderTest();
-}
 #endif
 
+// 시리얼 입력 — 단문자 1/0/t(테스트) + 줄 명령 "T <epoch>"(시각) / "L 1|0"(조명, USB 모드에서 파이가 보냄)
+void serialTick() {
+  static char line[32]; static uint8_t len = 0;
+  while (Serial.available()) {
+    char ch = Serial.read();
+    if (ch == '\r') continue;
+    if (ch == '\n') {
+      line[len] = 0;
+      if (len == 1) {
+#if USE_LIGHT
+        if (line[0] == '1' || line[0] == '0') lightCommand(line[0] == '1', "serial");
+        else if (line[0] == 't' || line[0] == 'T') lightOrderTest();
+#endif
+      } else if (line[0] == 'T' && line[1] == ' ') {
+#if LINK_MODE
+        unsigned long e = strtoul(line + 2, nullptr, 10);
+        if (e > 1700000000UL) setTimeFromHost(e);
+#endif
+      } else if (line[0] == 'L' && line[1] == ' ') {
+#if USE_LIGHT
+        lightCommand(line[2] == '1', "host");
+#endif
+      }
+      len = 0;
+    } else if (len < sizeof(line) - 1) {
+      line[len++] = ch;
+    } else len = 0;                            // 너무 긴 줄은 버림
+  }
+}
+
+#if !LINK_MODE
 // MQTT 수신 — plant/<id>/light/set : "1"/"on" 켜기, "0"/"off" 끄기
 void onMqtt(char* t, byte* payload, unsigned int len) {
 #if USE_LIGHT
@@ -421,6 +492,7 @@ void onMqtt(char* t, byte* payload, unsigned int len) {
   if (!strcmp(v, "0") || !strcasecmp(v, "off")) lightCommand(false, "mqtt");
 #endif
 }
+#endif  // !LINK_MODE
 
 void setup() {
 #if USE_LIGHT
@@ -435,6 +507,14 @@ void setup() {
   Wire.begin();                            // R4 : Base Shield I2C (SDA/SCL 고정)
   initSensors();
 
+#if LINK_MODE
+  strncpy(nodeId, SERIAL_NODE_ID, sizeof(nodeId) - 1);
+  snprintf(topic, sizeof(topic), "plant/%s/env", nodeId);
+  idReady = true;
+  Serial.print("Node : "); Serial.println(nodeId);
+  Serial.print("Topic: "); Serial.println(topic);
+  Serial.println("LINK: usb-serial (waiting host 'T <epoch>')");
+#else
   // ★ 여기서 기다리지 않습니다 — 연결·NTP·nodeId 확정은 전부 loop 에서 논블로킹으로.
   // ★ WiFiS3 의 WiFi.begin() 은 AP 가 안 잡히면 최대 ~10초를 <블로킹>한다.
   //   5초 워치독과 겹치면 "재접속 시도 중 리셋 → 부팅 → 재시도 → 리셋" 루프에
@@ -451,18 +531,26 @@ void setup() {
   client.setKeepAlive(60);
 
   bool guardOK = guardTimerBegin();        // 접속 시도 구간 WDT 보호창 (netGuard 주석 참고)
-  WDT.begin(5592);                         // 워치독(R4 최대치) — I2C/소켓이 얼면 리셋
+#endif
+  WDT.begin(5592);                         // 워치독(R4 최대치) — I2C 가 얼면 리셋
+#if !LINK_MODE
   Serial.println(guardOK ? "[GUARD] timer OK" : "[WARN] guard timer 없음 — 브로커 불통 시 리셋 루프 가능");
-  Serial.println("[BOOT] env node — 논블로킹 접속, 큐 8건, WDT 5.6s+guard, LIGHT RGBW 61구 핀9 (mqtt/serial 제어, t=색순서)");
+#endif
+  Serial.println("[BOOT] env node — 논블로킹 접속, 큐 8건, WDT 5.6s, LIGHT RGBW 61구 핀9 (mqtt/serial 제어, t=색순서)");
 }
 
 void loop() {
   WDT.refresh();
 
+#if LINK_MODE
+  flushQueue();
+  timeTick();
+#else
   if (netReady()) { client.loop(); flushQueue(); }
   ntpTick();
+#endif
+  serialTick();
 #if USE_LIGHT
-  lightSerialTest();
   lightTick();
 #endif
 

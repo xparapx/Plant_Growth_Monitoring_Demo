@@ -1,0 +1,17 @@
+[Unit]
+Description=Plant link - env node USB serial to local MQTT (plantlink)
+After=mosquitto.service
+Requires=mosquitto.service
+
+[Service]
+Type=simple
+User=${PLANT_USER}
+WorkingDirectory=${PLANT_DIR}
+Environment=PLANT_DATA_DIR=${PLANT_DATA_DIR}
+Environment=PYTHONUNBUFFERED=1
+ExecStart=${PLANT_DIR}/.venv/bin/python hub/serial_bridge.py
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

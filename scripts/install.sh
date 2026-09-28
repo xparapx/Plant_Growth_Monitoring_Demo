@@ -166,12 +166,12 @@ if [[ $NO_ENABLE -eq 1 || ! -x "$(command -v systemctl || true)" ]]; then
   echo "  skipped"
 elif [[ $HAVE_SUDO -eq 1 ]]; then
   sudo systemctl disable --now plantdash.service plantcam.service mjpeg.service 2>/dev/null || true
-  sudo systemctl enable --now planthub.service plantsvc.service plantsnap.timer plantsnap-catchup.service
-  if [[ $UPDATE -eq 1 ]]; then sudo systemctl restart planthub.service plantsvc.service; fi
+  sudo systemctl enable --now planthub.service plantsvc.service plantlink.service plantsnap.timer plantsnap-catchup.service
+  if [[ $UPDATE -eq 1 ]]; then sudo systemctl restart planthub.service plantsvc.service plantlink.service; fi
   sudo systemctl enable --now systemd-time-wait-sync.service 2>/dev/null || true
   systemctl --no-pager --no-legend list-timers plantsnap.timer || true
 else
-  echo "  run: sudo systemctl enable --now planthub plantsvc plantsnap.timer plantsnap-catchup"
+  echo "  run: sudo systemctl enable --now planthub plantsvc plantlink plantsnap.timer plantsnap-catchup"
 fi
 
 step "timezone / clock"

@@ -13,6 +13,7 @@ dependencies = [
   "pydantic>=2.10,<2.11; sys_platform == 'win32'",
   "pydantic-settings>=2.3,<3",
   "paho-mqtt>=2.0,<3",
+  "pyserial>=3.5",
   "numpy>=1.26,<2.3",
   "pandas>=2.2,<3",
   "opencv-python-headless>=4.9,<5",
