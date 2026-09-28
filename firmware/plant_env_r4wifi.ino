@@ -144,11 +144,26 @@ void guardIsr(timer_callback_args_t*) {
 void netGuardOpen()  { guardUntil = millis() + NET_GUARD_MS; if (!guardUntil) guardUntil = 1; }
 void netGuardClose() { guardUntil = 0; }
 bool guardTimerBegin() {
+  // 50Hz — AGT(16비트)·GPT 어느 쪽이 배정돼도 표현 가능한 주파수
   uint8_t type; int8_t ch = FspTimer::get_available_timer(type);
+  if (ch < 0) ch = FspTimer::get_available_timer(type, true);
   if (ch < 0) return false;
-  if (!guardTimer.begin(TIMER_MODE_PERIODIC, type, (uint8_t)ch, 2.0f, 50.0f, guardIsr)) return false;
+  if (!guardTimer.begin(TIMER_MODE_PERIODIC, type, (uint8_t)ch, 50.0f, 50.0f, guardIsr)) return false;
   if (!guardTimer.setup_overflow_irq()) return false;
   return guardTimer.open() && guardTimer.start();
+}
+// 리셋 원인 — RA4M1 RSTSR1: bit0 IWDT, bit1 WDT, bit2 SW / RSTSR0: bit0 POR(전원)
+void printResetCause() {
+  uint8_t r0 = R_SYSTEM->RSTSR0, r1 = R_SYSTEM->RSTSR1;
+  Serial.print("[RST] ");
+  if (r1 & 0x02) Serial.print("WDT ");
+  if (r1 & 0x01) Serial.print("IWDT ");
+  if (r1 & 0x04) Serial.print("SW ");
+  if (r0 & 0x01) Serial.print("POR ");
+  if (!(r1 & 0x07) && !(r0 & 0x01)) Serial.print("other/pin ");
+  Serial.print("(RSTSR0=0x"); Serial.print(r0, HEX);
+  Serial.print(" RSTSR1=0x"); Serial.print(r1, HEX); Serial.println(")");
+  R_SYSTEM->RSTSR0 = 0; R_SYSTEM->RSTSR1 = 0;    // 다음 부팅을 위해 지움
 }
 
 // ── 네트워크 재시도·재동기화 ──
@@ -195,9 +210,11 @@ bool netReady() {
   tRetry = now;
   char cid[24];
   snprintf(cid, sizeof(cid), "%s-%04x", nodeId, (unsigned)random(0xffff));
+  Serial.print("[NET] mqtt connect @"); Serial.println(millis());
   netGuardOpen();                                // 접속 블로킹(≤10s) 동안만 WDT 대리 갱신
   bool ok = client.connect(cid);
   netGuardClose();
+  Serial.print("[NET] returned @"); Serial.println(millis());
   if (ok) {
     Serial.println("MQTT OK");
 #if USE_LIGHT
@@ -224,7 +241,9 @@ void ntpTick() {
   unsigned long now = millis();
   if (now - tNtp < RETRY_MS) return;
   tNtp = now;
-  unsigned long epoch = WiFi.getTime();         // 실패 시 0 (블로킹 없음)
+  netGuardOpen();                               // 모뎀 응답 대기(≤10s) 보호
+  unsigned long epoch = WiFi.getTime();         // 실패 시 0
+  netGuardClose();
   if (!epoch) { if (!timeOK) Serial.println("NTP 대기중"); return; }
   RTC.begin();
   RTCTime rt((time_t)epoch);
@@ -411,6 +430,8 @@ void setup() {
   strip.clear(); strip.show();             // 부팅은 반드시 소등으로
 #endif
   Serial.begin(115200);
+  delay(300);
+  printResetCause();
   Wire.begin();                            // R4 : Base Shield I2C (SDA/SCL 고정)
   initSensors();
 
@@ -431,8 +452,8 @@ void setup() {
 
   bool guardOK = guardTimerBegin();        // 접속 시도 구간 WDT 보호창 (netGuard 주석 참고)
   WDT.begin(5592);                         // 워치독(R4 최대치) — I2C/소켓이 얼면 리셋
-  if (!guardOK) Serial.println("[WARN] guard timer 없음 — 브로커 불통 시 리셋 루프 가능");
-  Serial.println("[BOOT] env node — 논블로킹 접속, 큐 8건, WDT 5.6s, LIGHT RGBW 61구 핀9 (mqtt/serial 제어, t=색순서)");
+  Serial.println(guardOK ? "[GUARD] timer OK" : "[WARN] guard timer 없음 — 브로커 불통 시 리셋 루프 가능");
+  Serial.println("[BOOT] env node — 논블로킹 접속, 큐 8건, WDT 5.6s+guard, LIGHT RGBW 61구 핀9 (mqtt/serial 제어, t=색순서)");
 }
 
 void loop() {
