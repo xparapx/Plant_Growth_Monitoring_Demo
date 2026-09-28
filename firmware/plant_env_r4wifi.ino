@@ -16,7 +16,7 @@
  *      루프가 멈춰 샘플이 통째로 빠졌습니다. 이제 10초에 한 번, 1회만 시도.
  *    · 발행 실패 = 유실이던 것을 오프라인 큐(8건)로 — 타임스탬프는
  *      payload 에 이미 박혀 있으므로 늦게 발행돼도 시각이 안 밀립니다.
- *    · String 제거(힙 단편화) · WDT(5.6초, WiFi 대기 2.5초로 제한) · NTP 하루 1회 재동기화.
+ *    · String 제거(힙 단편화) · WDT(5.6초, WiFi·MQTT 접속 대기 각 2.5초로 제한) · NTP 하루 1회 재동기화.
  *    · 촬영 조명 — RGBW 네오픽셀 61구 (핀 9, W 칩만 점등), KST 05:45~06:15 시간
  *      기반 점등 + 원격 제어(MQTT plant/<id>/light/set "1"/"0", 30분
  *      자동 소등) + 시리얼 1/0 테스트 (USE_LIGHT=1).
@@ -391,6 +391,10 @@ void setup() {
   //   접속 대기를 2.5초로 잘라 워치독 안에 반드시 돌아오게 한다.
   WiFi.setTimeout(2500);
   WiFi.begin(WIFI_SSID, WIFI_PASS);
+  // ★ MQTT 의 TCP 접속도 같은 함정 — 브로커가 안 닿으면(IP 오류·다른 메시 유닛·파이 꺼짐)
+  //   모뎀 기본 10초를 블로킹해 워치독 리셋 루프(2026-09-23~28 실제 발생, 5일간).
+  //   접속 대기를 2.5초로 제한해 실패해도 "MQTT rc=" 만 찍고 루프가 계속 돌게 한다.
+  net.setConnectionTimeout(2500);
   client.setServer(BROKER, PORT);
   client.setCallback(onMqtt);              // 원격 점등 명령 수신
   client.setKeepAlive(60);
