@@ -16,7 +16,7 @@
  *      루프가 멈춰 샘플이 통째로 빠졌습니다. 이제 10초에 한 번, 1회만 시도.
  *    · 발행 실패 = 유실이던 것을 오프라인 큐(8건)로 — 타임스탬프는
  *      payload 에 이미 박혀 있으므로 늦게 발행돼도 시각이 안 밀립니다.
- *    · String 제거(힙 단편화) · WDT(5.6초, WiFi·MQTT 접속 대기 각 2.5초로 제한) · NTP 하루 1회 재동기화.
+ *    · String 제거(힙 단편화) · WDT(5.6초, 접속 시도 구간은 타이머 ISR 이 대리 갱신) · NTP 하루 1회 재동기화.
  *    · 촬영 조명 — RGBW 네오픽셀 61구 (핀 9, W 칩만 점등), KST 05:45~06:15 시간
  *      기반 점등 + 원격 제어(MQTT plant/<id>/light/set "1"/"0", 30분
  *      자동 소등) + 시리얼 1/0 테스트 (USE_LIGHT=1).
@@ -38,6 +38,7 @@
 #include <BH1750.h>
 #include <RTC.h>                         // R4 내장 RTC (NTP 시각 보관)
 #include <WDT.h>                         // R4 내장 워치독
+#include <FspTimer.h>                    // 워치독 보호창용 하드웨어 타이머 (아래 netGuard)
 
 #ifdef NO_ERROR                          // SCD4x 신버전 매크로 충돌 방지
 #undef NO_ERROR
@@ -127,6 +128,29 @@ unsigned long lastSample = 0;
 int failStreak = 0;
 const int FAIL_LIMIT = 12;
 
+// ── 워치독 보호창 ──
+//   WiFiS3 의 TCP 접속(client.connect)은 브로커가 안 닿으면 모뎀 응답을 최대 10초
+//   <블로킹>하고, setConnectionTimeout 도 모뎀 펌웨어가 무시한다(2026-09-28 실측).
+//   R4 워치독은 5.6초가 최대라 접속 시도마다 리셋 루프에 빠졌다.
+//   해법: 접속 시도 직전에 보호창(최대 NET_GUARD_MS)을 열면 2Hz 타이머 ISR 이 그 동안만
+//   WDT 를 대신 갱신한다. 창이 닫히면 ISR 은 손을 떼므로 다른 멈춤은 여전히 리셋된다.
+const unsigned long NET_GUARD_MS = 12000UL;   // 모뎀 타임아웃 10s + 여유
+volatile unsigned long guardUntil = 0;        // 0 = 보호창 닫힘
+FspTimer guardTimer;
+void guardIsr(timer_callback_args_t*) {
+  unsigned long u = guardUntil;
+  if (u && (long)(millis() - u) < 0) WDT.refresh();
+}
+void netGuardOpen()  { guardUntil = millis() + NET_GUARD_MS; if (!guardUntil) guardUntil = 1; }
+void netGuardClose() { guardUntil = 0; }
+bool guardTimerBegin() {
+  uint8_t type; int8_t ch = FspTimer::get_available_timer(type);
+  if (ch < 0) return false;
+  if (!guardTimer.begin(TIMER_MODE_PERIODIC, type, (uint8_t)ch, 2.0f, 50.0f, guardIsr)) return false;
+  if (!guardTimer.setup_overflow_irq()) return false;
+  return guardTimer.open() && guardTimer.start();
+}
+
 // ── 네트워크 재시도·재동기화 ──
 const unsigned long RETRY_MS  = 10000UL;    // WiFi/MQTT/NTP 재시도 간격
 const unsigned long RESYNC_S  = 86400L;     // NTP 재동기화 주기 (RTC 드리프트 보정)
@@ -158,7 +182,10 @@ void makeNodeId() {
 bool netReady() {
   if (WiFi.status() != WL_CONNECTED) {
     unsigned long now = millis();
-    if (now - tRetry >= RETRY_MS) { tRetry = now; WiFi.begin(WIFI_SSID, WIFI_PASS); }
+    if (now - tRetry >= RETRY_MS) {
+      tRetry = now;
+      netGuardOpen(); WiFi.begin(WIFI_SSID, WIFI_PASS); netGuardClose();
+    }
     return false;
   }
   if (!idReady) makeNodeId();
@@ -168,7 +195,10 @@ bool netReady() {
   tRetry = now;
   char cid[24];
   snprintf(cid, sizeof(cid), "%s-%04x", nodeId, (unsigned)random(0xffff));
-  if (client.connect(cid)) {
+  netGuardOpen();                                // 접속 블로킹(≤10s) 동안만 WDT 대리 갱신
+  bool ok = client.connect(cid);
+  netGuardClose();
+  if (ok) {
     Serial.println("MQTT OK");
 #if USE_LIGHT
     char sub[48];
@@ -399,7 +429,9 @@ void setup() {
   client.setCallback(onMqtt);              // 원격 점등 명령 수신
   client.setKeepAlive(60);
 
-  WDT.begin(5592);                         // 워치독(R4 최대치) — I2C/소켓이 얼면 리셋. WiFi 대기(2.5s)+루프 여유
+  bool guardOK = guardTimerBegin();        // 접속 시도 구간 WDT 보호창 (netGuard 주석 참고)
+  WDT.begin(5592);                         // 워치독(R4 최대치) — I2C/소켓이 얼면 리셋
+  if (!guardOK) Serial.println("[WARN] guard timer 없음 — 브로커 불통 시 리셋 루프 가능");
   Serial.println("[BOOT] env node — 논블로킹 접속, 큐 8건, WDT 5.6s, LIGHT RGBW 61구 핀9 (mqtt/serial 제어, t=색순서)");
 }
 
