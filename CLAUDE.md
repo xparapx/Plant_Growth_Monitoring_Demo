@@ -6,12 +6,14 @@
 
 - 개발 메인은 **로컬 PC 작업 폴더**. 다른 PC 는 Claude Code 원격제어로 이 세션에 접속(파이에서 직접 편집 금지).
 - 배포: 로컬 커밋 → `git push` → 파이 `git pull --ff-only`. 전 과정은 `.\scripts\deploy.ps1` 한 번(푸시 + 파이 pull + `install.sh --update` + 헬스체크).
-- 파이(`jh@raspi`, Tailscale `100.80.188.63`, `~/plant`) 작업트리는 항상 clean 유지.
+- 파이(`jh@raspi`, Tailscale `100.80.188.63`, 학교 LAN 192.168.1.209 고정, `~/plant`) 작업트리는 항상 clean 유지.
 
 ## sudo 위임 (2026-09-19 등록)
 
 - 파이 `/etc/sudoers.d/plant` 에 다음 명령만 NOPASSWD 등록: `nmcli` · `systemctl` · `apt-get` · `timedatectl` · `install` · `usermod` — install.sh·deploy.ps1·네트워크 등록이 원격으로 도는 데 필요한 최소 집합. 그 외 sudo 작업(reboot 등)은 사람이 실행.
 - Wi-Fi 는 NetworkManager 프로필로 관리: `Home803`(집) + `school-cne`(학교 `wi_cne_class_S_2.4G`, 2.4GHz) 자동연결 공존. 새 기기는 같은 방식으로 `nmcli connection add` 등록.
+- **학교 Wi-Fi 는 메시 유닛 간 기기 격리** (2026-09-28 실측): 같은 SSID 라도 다른 유닛(BSSID)에 붙은 기기끼리는 ping·TCP 모두 불통, 같은 유닛이면 통함. 노드(Tailscale 없음)가 파이 브로커에 붙으려면 **파이와 같은 유닛**에 있어야 한다. 그래서 파이 `school-cne` 프로필을 실험실에서 가장 센 유닛 `06:29:D5:24:7E:72`(ch11) 에 BSSID 고정 + **정적 IP 192.168.1.209**(gw .1) 로 바꿨다. 펌웨어 BROKER 는 이 IP. 유닛 목록: 7E:42(교무실 PC 쪽)·7E:52·7E:72·7E:82. 파이 위치를 옮기면 `nmcli dev wifi list` 로 가장 센 BSSID 를 다시 고정할 것. PC→파이는 Tailscale(`pl`) 경로라 격리와 무관.
+- 사용자 업로드용 펌웨어 복사본을 만들 때 **WIFI_SSID·WIFI_PASS·BROKER 세 줄 모두** 실값으로 바꿀 것 — 9/23 에 BROKER 자리표시자(192.168.0.15) 그대로 보내 환경노드가 5일간 리셋 루프에 빠졌다.
 
 ## 에이전트 운용 규칙
 
