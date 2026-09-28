@@ -57,7 +57,8 @@ step "preflight"
 [[ "$(id -u)" -eq 0 ]] && { echo "run as the service user, not root"; exit 1; }
 ON_PI=0; [[ -f /proc/device-tree/model ]] && ON_PI=1 && tr -d '\0' </proc/device-tree/model && echo
 git -C "$ROOT" rev-parse --short HEAD >/dev/null 2>&1 || echo "  (not a git checkout — updates via git pull will not work)"
-HAVE_SUDO=0; sudo -n true 2>/dev/null && HAVE_SUDO=1
+# ★ sudoers 가 명령 화이트리스트(systemctl·install…)라 `sudo -n true` 는 실패한다 — 허용된 명령으로 판정
+HAVE_SUDO=0; sudo -n systemctl --version >/dev/null 2>&1 && HAVE_SUDO=1
 [[ $HAVE_SUDO -eq 0 ]] && echo "  sudo needs a password here: system steps will print the commands for you to run"
 [[ $DRY -eq 1 ]] && { echo "dry run: stopping after preflight"; exit 0; }
 

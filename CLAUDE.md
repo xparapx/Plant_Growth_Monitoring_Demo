@@ -12,6 +12,7 @@
 
 - 파이 `/etc/sudoers.d/plant` 에 다음 명령만 NOPASSWD 등록: `nmcli` · `systemctl` · `apt-get` · `timedatectl` · `install` · `usermod` — install.sh·deploy.ps1·네트워크 등록이 원격으로 도는 데 필요한 최소 집합. 그 외 sudo 작업(reboot 등)은 사람이 실행.
 - Wi-Fi 는 NetworkManager 프로필로 관리: `Home803`(집) + `school-cne`(학교 `wi_cne_class_S_2.4G`, 2.4GHz) 자동연결 공존. 새 기기는 같은 방식으로 `nmcli connection add` 등록.
+- **환경노드는 파이 USB 직결** (2026-09-28~): 펌웨어 `LINK_MODE=1`, 파이 `plantlink.service`(`hub/serial_bridge.py`)가 시리얼 `PUB <topic> <json>` 을 로컬 MQTT 로 올리고 시각(`T`)·조명(`L`)을 내려준다. Wi-Fi 자격·브로커 IP 불필요, 업로드용 복사본도 저장소 파일 그대로. 재플래싱은 PC 에서 하고 파이에 다시 꽂는다(파이엔 arduino-cli 없음). 급수노드 6대는 여전히 Wi-Fi.
 - **학교 Wi-Fi 는 메시 유닛 간 기기 격리** (2026-09-28 실측): 같은 SSID 라도 다른 유닛(BSSID)에 붙은 기기끼리는 ping·TCP 모두 불통, 같은 유닛이면 통함. 노드(Tailscale 없음)가 파이 브로커에 붙으려면 **파이와 같은 유닛**에 있어야 한다. 그래서 파이 `school-cne` 프로필을 실험실에서 가장 센 유닛 `06:29:D5:24:7E:72`(ch11) 에 BSSID 고정 + **정적 IP 192.168.1.209**(gw .1) 로 바꿨다. 펌웨어 BROKER 는 이 IP. 유닛 목록: 7E:42(교무실 PC 쪽)·7E:52·7E:72·7E:82. 파이 위치를 옮기면 `nmcli dev wifi list` 로 가장 센 BSSID 를 다시 고정할 것. PC→파이는 Tailscale(`pl`) 경로라 격리와 무관.
 - 사용자 업로드용 펌웨어 복사본을 만들 때 **WIFI_SSID·WIFI_PASS·BROKER 세 줄 모두** 실값으로 바꿀 것 — 9/23 에 BROKER 자리표시자(192.168.0.15) 그대로 보내 환경노드가 5일간 리셋 루프에 빠졌다.
 
@@ -43,10 +44,11 @@ cd web && npm run lint && npm run build
 - Windows Smart App Control 이 최신 pydantic-core DLL 을 막아 win32 에서만 `pydantic<2.11` 고정(pyproject). 파이는 최신.
 - PowerShell 5.1: `&&` 없음. 원격 파이썬 원라이너 따옴표가 깨지니 스크립트 파일을 scp 해서 실행한다.
 - 앱 내장 브라우저는 LAN 주소를 막는다 → 파이 화면 확인은 `ssh -N -L 8081:127.0.0.1:8080 raspi` 후 http://localhost:8081
+- 파이 sudoers 는 명령 화이트리스트라 `sudo -n true` 가 실패한다 — install.sh 는 `sudo -n systemctl --version` 으로 판정(09-28 수정 전엔 매번 "run: …" 만 찍고 유닛을 안 깔았다).
 - 파이에는 node 가 없음 → 웹은 PC 빌드 업로드(`deploy.ps1 -Web local`) 또는 GitHub 릴리스 tarball.
 
 ## 현재 상태 (2026-09-12)
 
 - `main` 이 유일한 브랜치. 웹 UI 통합 완료, GitHub Pages(개요·매뉴얼·`/app` 데모) 배포 중.
 - 파이는 main 최신으로 배포, 서비스 4개 active. 실험 장비(노드·LED)는 미설치 → 화면은 DUMMY DATA 배지 상태(실데이터 유입 시 테이블별 자동 전환).
-- 남은 일: ① 카메라 세팅 5단계(http://raspi:8080/camera/setup, 실물 트레이 필요) → 수동 촬영 1회 확인 ② 노드(ESP32) 연결 후 DUMMY 배지 꺼짐 확인 ③ LED: Grove RGB 스틱(5구)×2 를 환경노드 D4·D5 에 설치 → `USE_LIGHT=1` 펌웨어 업로드 → 새벽 시험 촬영으로 ExG 안정 확인(매뉴얼 패널 19) ④ 선택: 모바일 화분 카드 2열, 라이트 테마 대비 재점검, README 에 데모 스크린샷.
+- 남은 일: ① 카메라 세팅 5단계(http://raspi:8080/camera/setup, 실물 트레이 필요) → 수동 촬영 1회 확인 ② 노드(ESP32) 연결 후 DUMMY 배지 꺼짐 확인 ③ LED: RGBW 61구(핀 9) 설치 완료, 환경노드는 USB 직결 → 새벽 시험 촬영으로 ExG 안정 확인(매뉴얼 패널 19) ④ 선택: 모바일 화분 카드 2열, 라이트 테마 대비 재점검, README 에 데모 스크린샷.
