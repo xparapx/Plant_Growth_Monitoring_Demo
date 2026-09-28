@@ -49,7 +49,8 @@ const ACTIONS: Record<string, (st: MockState, p: Body) => string> = {
   light(st, p) {
     const on = !!p.on
     addEvent(st, 'light.cmd', { on })
-    return `조명 ${on ? '점등' : '소등'} 명령 발행 완료${on ? ' — 노드에서 30분 뒤 자동 소등' : ''}`
+    st.light = { state: on ? 'on' : 'off', by: on ? 'cmd' : 'off', node: 'env_MOCK', at: new Date().toISOString() }
+    return on ? '조명 켜짐 — 30분 뒤 자동 소등' : '조명 꺼짐'
   },
 
   rotate(st, p) {

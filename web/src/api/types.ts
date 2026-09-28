@@ -91,6 +91,7 @@ export interface CameraStatus {
   mode: 'random' | 'manual' | ''; naming: boolean; order: number[] | null
   pots: { id: string; treat: string }[]; rois: Roi[]; ppc: number; nroi: number; cm: number; pts: [number, number][]; pot_cm: number
   capture: CaptureSettings; last_auto: Record<string, unknown> | null
+  light?: { state: 'on' | 'off'; by: string; node: string; at: string | null } | null
   calib: { exists: boolean; mtime: number | null; url: string | null }; latest_raw: string | null
   state: 'closed' | 'opening' | 'open' | 'error'; driver: string; clients: number
   preview: 'live' | 'paused_capture' | 'unavailable'; paused_for: string | null; error: string | null
@@ -156,5 +157,5 @@ export interface EventRow { id: number; ts: string; type: string; data: Record<s
 export interface EventsList { events: EventRow[]; now: string }
 export interface LogLines { unit: string; lines: string[]; available: boolean; error?: string }
 
-export type LiveType = 'hello' | 'pong' | 'env' | 'soil' | 'pump' | 'growth' | 'capture.progress' | 'capture.done' | 'config.changed' | 'camera.state' | 'camera.setup' | 'mqtt.state'
+export type LiveType = 'hello' | 'pong' | 'env' | 'soil' | 'pump' | 'growth' | 'capture.progress' | 'capture.done' | 'config.changed' | 'camera.state' | 'camera.setup' | 'mqtt.state' | 'light'
 export interface LiveEvent<T = unknown> { type: LiveType; ts: string; data: T }

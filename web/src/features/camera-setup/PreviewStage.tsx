@@ -45,6 +45,8 @@ export function PreviewStage({ cm, camOn = true, className = '' }: { cm: number;
   const [fallback, setFallback] = useState(false)
   const [viewRot, setViewRot] = useState(loadViewRot)
   const live = status.preview === 'live'
+  const lightOn = status.light?.state === 'on'
+  const lightWindow = lightOn && status.light?.by === 'window'
   const [w, h] = status.preview_size
   const swap = viewRot % 180 !== 0
   const dw = swap ? h : w, dh = swap ? w : h            // 표시 좌표계 크기
@@ -135,21 +137,16 @@ export function PreviewStage({ cm, camOn = true, className = '' }: { cm: number;
       <div className="absolute bottom-4 right-3 flex gap-2">
         <button
           type="button"
-          title={ss.lightTitle}
-          disabled={disabled}
-          onClick={() => void run('light', { on: true })}
-          className="rounded-full bg-amber-400 px-4 py-2 text-[13px] font-bold text-black shadow-lg transition hover:bg-amber-300 disabled:opacity-40"
+          role="switch"
+          aria-checked={lightOn}
+          title={lightWindow ? ss.lightWindowTitle : ss.lightTitle}
+          disabled={disabled || lightWindow}
+          onClick={() => void run('light', { on: !lightOn })}
+          className={`rounded-full px-4 py-2 text-[13px] font-bold shadow-lg transition disabled:opacity-40 ${
+            lightOn ? 'bg-amber-400 text-black hover:bg-amber-300' : 'bg-zinc-700/90 text-white hover:bg-zinc-600'
+          }`}
         >
-          💡 {ss.lightOn}
-        </button>
-        <button
-          type="button"
-          title={ss.lightTitle}
-          disabled={disabled}
-          onClick={() => void run('light', { on: false })}
-          className="rounded-full bg-white/90 px-4 py-2 text-[13px] font-bold text-black shadow-lg transition hover:bg-white disabled:opacity-40"
-        >
-          {ss.lightOff}
+          {lightOn ? '💡 ' : '○ '}{lightWindow ? ss.lightWindow : lightOn ? ss.lightOn : status.light ? ss.lightOff : ss.lightUnknown}
         </button>
         <button
           type="button"

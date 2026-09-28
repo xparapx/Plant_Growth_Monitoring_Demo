@@ -70,6 +70,7 @@ class SetupSession:
                           "mtime": int(calib.stat().st_mtime) if calib.exists() else None,
                           "url": "/api/camera/calib.jpg" if calib.exists() else None},
                 "latest_raw": self.latest_raw(),
+                "light": getattr(self.mqtt, "light", None) if self.mqtt is not None else None,
                 **{k: cam[k] for k in ("state", "driver", "clients", "preview", "paused_for", "error",
                                         "preview_size", "capture_size", "scale", "lock_holder_pid",
                                         "ops_busy", "quiet_window")}}
@@ -154,9 +155,23 @@ class SetupSession:
         on = bool(p.get("on"))
         if self.mqtt is None or not getattr(self.mqtt, "connected", False):
             return "⚠ MQTT 브로커에 연결되어 있지 않습니다 — 조명 명령을 보낼 수 없습니다"
+        seq = getattr(self.mqtt, "light_seq", 0)
         if not self.mqtt.publish("plant/light/set", "1" if on else "0"):
             return "⚠ 조명 명령 발행 실패 — 브로커 상태를 확인하세요"
-        return f"조명 {'점등' if on else '소등'} 명령 발행 완료" + (" — 노드에서 30분 뒤 자동 소등" if on else "")
+        # 노드가 상태를 보고(plant/<id>/light)할 때까지 잠깐 기다려 토글이 실제 상태를 보이게 한다 (USB 직결 ~0.1s)
+        import time
+        for _ in range(20):
+            if getattr(self.mqtt, "light_seq", 0) != seq:
+                break
+            time.sleep(0.1)
+        st = getattr(self.mqtt, "light", None) or {}
+        if getattr(self.mqtt, "light_seq", 0) == seq:
+            return f"조명 {'점등' if on else '소등'} 명령을 보냈지만 노드 응답이 없습니다 — 환경노드 연결(plantlink)을 확인하세요"
+        if st.get("state") == "on":
+            return "조명 켜짐" + (" — 새벽 점등 창 (자동 소등 06:15)" if st.get("by") == "window" else " — 30분 뒤 자동 소등")
+        if on and st.get("state") == "off":
+            return "⚠ 노드가 켜지지 않았습니다 — 노드 로그를 확인하세요"
+        return "조명 꺼짐"
 
     def act_rotate(self, p):
         """90도 단위 화면 회전 — 카메라 설치 방향 보정. 인자 없으면 +90도씩 순환."""

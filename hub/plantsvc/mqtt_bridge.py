@@ -12,7 +12,7 @@ from typing import Any
 
 from .timeutil import iso_utc, now_utc
 
-TOPICS = ("plant/+/env", "plant/+/soil", "plant/+/pump", "plant/+/growth")
+TOPICS = ("plant/+/env", "plant/+/soil", "plant/+/pump", "plant/+/growth", "plant/+/light")
 
 
 class MqttBridge:
@@ -23,6 +23,9 @@ class MqttBridge:
         self.last_msg: str | None = None
         self.last_error: str | None = None
         self.count = 0
+        # 환경노드가 plant/<id>/light 로 보고하는 조명 상태 {"state","by","node","at"} — UI 토글의 진실
+        self.light: dict[str, Any] | None = None
+        self.light_seq = 0
         self._client = None
         self._thread: threading.Thread | None = None
         self._stop = threading.Event()
@@ -102,6 +105,11 @@ class MqttBridge:
         self.count += 1
         self.last_msg = iso_utc(now_utc())
         kind = msg.topic.rsplit("/", 1)[-1]
+        if kind == "light":
+            self.light = {"state": d.get("state"), "by": d.get("by"), "node": d.get("node"), "at": self.last_msg}
+            self.light_seq += 1
+            self.hub.broadcast("light", {"topic": msg.topic, "row": self.light})
+            return
         if kind not in ("env", "soil", "pump", "growth"):
             return
         if self.cache is not None:

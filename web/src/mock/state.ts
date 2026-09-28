@@ -16,6 +16,7 @@ export interface MockState {
   cam: { state: CameraStatus['state']; preview: CameraStatus['preview']; pausedFor: string | null; clients: number; opsBusy: string | null }
   setup: SetupSession
   job: Job | null; jobs: Job[]; events: EventRow[]; nextEventId: number; mqttMessages: number; startedAt: number
+  light: CameraStatus['light']
 }
 
 let state: MockState | null = null
@@ -32,6 +33,7 @@ export function getState(): MockState {
     cam: { state: 'closed', preview: 'live', pausedFor: null, clients: 0, opsBusy: null },
     setup: { msg: '준비됨', level: 'info', pts: [], ppcFixed: null, cm: 0, order: null, lastAuto: null },
     job: null, jobs: s.failedJob ? [failedJob(now)] : [], events: [], nextEventId: 1, mqttMessages: 0, startedAt: now - 6 * 60_000,
+    light: { state: 'off', by: 'off', node: 'env_MOCK', at: iso(now) },
   }
   seedEvents(state, now)
   return state
@@ -82,7 +84,7 @@ export function cameraStatus(st: MockState): CameraStatus {
     naming: s.order !== null, order: s.order ? [...s.order] : null, pots: c.rois.map((r) => ({ id: r.plant_id, treat: r.treat })),
     rois: c.rois.map((r) => ({ ...r, out: outOfFrame(r, cap) })), ppc: Math.round((s.ppcFixed ?? c.qc.px_per_cm_ref ?? 0) * 10) / 10,
     nroi: c.rois.length, cm: s.cm, pts: s.pts.map((p) => [...p] as [number, number]), pot_cm: c.layout.pot_cm,
-    capture: structuredClone(c.capture), last_auto: s.lastAuto,
+    capture: structuredClone(c.capture), last_auto: s.lastAuto, light: st.light ? { ...st.light } : null,
     calib: { exists: st.calibExists, mtime: st.calibMtime, url: st.calibExists ? '/api/camera/calib.jpg' : null }, latest_raw: latestRaw(st),
     state: st.cam.state, driver: 'mock', clients: st.cam.clients, preview: st.cam.preview, paused_for: st.cam.pausedFor, error: null,
     preview_size: prev, capture_size: cap, scale: Math.round(SCALE * 1e6) / 1e6,
