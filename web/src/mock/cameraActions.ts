@@ -57,10 +57,12 @@ const ACTIONS: Record<string, (st: MockState, p: Body) => string> = {
     const cur = (st.cfg.capture.rotation ?? 0) % 360
     const rot = (typeof p.rotation === 'number' ? p.rotation : cur + 90) % 360
     if (![0, 90, 180, 270].includes(rot)) return '회전은 0/90/180/270 만 됩니다'
-    if (rot === cur) return `이미 ${rot}° 입니다`
-    bumpConfig(st, (c) => { c.capture = { ...c.capture, rotation: rot } })
+    const aspect: [number, number] | null = p.aspect === 'full' || rot % 180 === 0 ? null : [4, 3]
+    if (rot === cur && JSON.stringify(aspect) === JSON.stringify(st.cfg.capture.rot_aspect ?? null)) return `이미 ${rot}° 입니다`
+    bumpConfig(st, (c) => { c.capture = { ...c.capture, rotation: rot, rot_aspect: aspect } })
     const stale = st.cfg.rois.length > 0 || !!st.cfg.qc.px_per_cm_ref || st.calibExists
-    return `화면 회전 ${rot}° 저장${stale ? '  ⚠ 좌표계가 바뀌었습니다 — 배율·ROI·기준사진(calib)을 다시 잡으세요' : ''}`
+    const [W, H] = cameraStatus(st).capture_size
+    return `설치 회전 ${rot}°${aspect ? ' (가운데 잘라 가로 4:3)' : ''} 저장 — 촬영본 ${W}×${H}${stale ? '  ⚠ 좌표계가 바뀌었습니다 — 배율·ROI·기준사진(calib)을 다시 잡으세요' : ''}`
   },
 
   point(st, p) {

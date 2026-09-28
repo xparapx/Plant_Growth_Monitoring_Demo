@@ -151,9 +151,7 @@ class CameraManager:
         cfg = self.store.get()
         holder = self.flock.holder_pid() if self.flock and not self.flock.held else None
         preview = "unavailable" if self.state == "error" else ("paused_capture" if self.paused_for else "live")
-        pw, ph = cfg.preview.size
-        if cfg.capture.rotation in (90, 270):
-            pw, ph = ph, pw
+        pw, ph = cfg.capture.eff_dims(*cfg.preview.size)
         return {"state": self.state, "driver": self.driver or self.probe_driver(), "clients": self.clients,
                 "preview": preview, "paused_for": self.paused_for, "error": self.error,
                 "rotation": cfg.capture.rotation,
@@ -259,10 +257,19 @@ class CameraManager:
     def _rotated(self, frame: np.ndarray) -> np.ndarray:
         """설치 방향 보정 — 센서(picamera2 Transform)는 90도 회전을 못 하므로 프레임을 돌린다.
         미리보기·촬영본이 같은 회전을 거치므로 ROI 좌표계는 항상 회전 후 기준으로 일관된다."""
-        rot = self.store.get().capture.rotation
-        if not rot:
+        cap = self.store.get().capture
+        return self._crop_rotate(frame, cap)
+
+    @staticmethod
+    def _crop_rotate(frame: np.ndarray, cap) -> np.ndarray:
+        """rot_aspect 크롭(가운데 세로띠) → 회전. 리샘플 없음."""
+        if not cap.rotation:
             return frame
-        return np.ascontiguousarray(np.rot90(frame, k=(-rot // 90) % 4))
+        h, w = frame.shape[:2]
+        x0, cw = cap.crop_cols(w, h)
+        if cw < w:
+            frame = frame[:, x0:x0 + cw]
+        return np.ascontiguousarray(np.rot90(frame, k=(-cap.rotation // 90) % 4))
 
     def apply_controls(self, capture) -> None:
         cap = capture.model_dump() if hasattr(capture, "model_dump") else dict(capture)
@@ -283,12 +290,11 @@ class CameraManager:
             assert self._backend is not None
             Path(path).parent.mkdir(parents=True, exist_ok=True)
             self._backend.capture_file(str(path))
-        rot = self.store.get().capture.rotation
-        if rot:
+        cap = self.store.get().capture
+        if cap.rotation:
             img = cv2.imread(str(path))
             if img is not None:
-                cv2.imwrite(str(path), np.ascontiguousarray(np.rot90(img, k=(-rot // 90) % 4)),
-                            [cv2.IMWRITE_JPEG_QUALITY, 95])
+                cv2.imwrite(str(path), self._crop_rotate(img, cap), [cv2.IMWRITE_JPEG_QUALITY, 95])
 
     def auto_cycle(self) -> dict[str, Any]:
         """Let the camera converge (AE/AWB/AF), read the values back, lock manual again."""

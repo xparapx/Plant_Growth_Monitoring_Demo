@@ -83,3 +83,13 @@ def test_check_flags_geometry_and_labels(store):
                 Roi(plant_id="p2", treat="fluct", x=1000, y=0, w=800, h=800)]
     rep = check(cfg)
     assert rep["ok"] is True and rep["lines"]
+
+
+def test_capture_rot_aspect_crop():
+    from plantsvc.config_model import Capture
+    c = Capture(size=(4608, 2592), rotation=90, rot_aspect=(4, 3))
+    assert c.crop_cols(4608, 2592) == ((4608 - 1944) // 2, 1944)
+    assert c.eff_size == (2592, 1944)                 # 90° 돌린 결과가 가로 4:3
+    assert c.eff_dims(1280, 720) == (720, 540)        # 미리보기도 같은 규칙, 배율 일치
+    assert Capture(size=(4608, 2592), rotation=90).eff_size == (2592, 4608)   # 크롭 없음 = 세로
+    assert Capture(size=(4608, 2592), rotation=0, rot_aspect=(4, 3)).eff_size == (4608, 2592)

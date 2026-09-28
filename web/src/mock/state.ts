@@ -74,11 +74,18 @@ export function latestRaw(st: MockState): string | null {
   return g?.img_file ?? null
 }
 
+/** 서버 Capture.eff_dims 와 동일: 90/270 이면 (rot_aspect 가 있을 때 가운데 띠를 잘라) 돌린 뒤의 [W,H]. */
+function effDims(cap: PlantConfig['capture'], [w, h]: readonly [number, number]): [number, number] {
+  const rot = (cap.rotation ?? 0) % 360
+  if (rot % 180 === 0) return [w, h]
+  const a = cap.rot_aspect
+  const cw = a ? Math.min(w, Math.round((h * a[1]) / a[0]) & ~1) : w
+  return [h, cw]
+}
+
 export function cameraStatus(st: MockState): CameraStatus {
   const c = st.cfg, d = stepDone(st), s = st.setup
-  const swap = (c.capture.rotation ?? 0) % 180 !== 0   // 90/270 = 세로 화면
-  const prev: [number, number] = swap ? [PREVIEW[1], PREVIEW[0]] : [...PREVIEW]
-  const cap: [number, number] = swap ? [CAP[1], CAP[0]] : [...CAP]
+  const prev = effDims(c.capture, PREVIEW), cap = effDims(c.capture, CAP)
   return {
     msg: s.msg, msg_level: s.level, done: d, all: Object.values(d).every(Boolean), mode: c.treat_mode as CameraStatus['mode'],
     naming: s.order !== null, order: s.order ? [...s.order] : null, pots: c.rois.map((r) => ({ id: r.plant_id, treat: r.treat })),

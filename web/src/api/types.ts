@@ -81,7 +81,7 @@ export interface Reference extends Meta { p05: number | null; p95: number | null
 export interface Roi { plant_id: string; treat: string; x: number; y: number; w: number; h: number; out?: boolean }
 export interface PhaseCtl { exposure_us: number; gain: number; colour_gains: [number, number] }
 export interface CaptureSettings {
-  size: [number, number]; rotation?: number; lens_position: number
+  size: [number, number]; rotation?: number; rot_aspect?: [number, number] | null; lens_position: number
   exposure_us: number; gain: number; colour_gains: [number, number]
   dawn?: PhaseCtl | null; pm?: PhaseCtl | null
 }

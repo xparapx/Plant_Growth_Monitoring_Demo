@@ -174,21 +174,26 @@ class SetupSession:
         return "조명 꺼짐"
 
     def act_rotate(self, p):
-        """90도 단위 화면 회전 — 카메라 설치 방향 보정. 인자 없으면 +90도씩 순환."""
+        """90도 단위 회전 — 카메라 설치 방향 보정. 인자 없으면 +90도씩 순환.
+        90/270 은 기본으로 가운데 3:4 띠를 잘라 <가로 4:3> 결과를 만든다(aspect="full" 이면 전체 세로)."""
         cfg = self.store.get()
         rot = int(p.get("rotation", (cfg.capture.rotation + 90) % 360))
         if rot % 360 not in (0, 90, 180, 270):
             return "회전은 0/90/180/270 만 됩니다"
-        if rot == cfg.capture.rotation:
+        aspect = None if p.get("aspect") == "full" or rot % 180 == 0 else (4, 3)
+        if rot == cfg.capture.rotation and aspect == cfg.capture.rot_aspect:
             return f"이미 {rot}° 입니다"
 
         def _u(c):
             c.capture.rotation = rot
+            c.capture.rot_aspect = aspect
         self.store.update(_u)
         self._drift_cache = None
         stale = bool(cfg.rois or cfg.qc.px_per_cm_ref or self.paths.calib.exists())
         tail = "  ⚠ 좌표계가 바뀌었습니다 — 배율·ROI·기준사진(calib)을 다시 잡으세요" if stale else ""
-        return f"화면 회전 {rot}° 저장{tail}"
+        W, H = self.store.get().capture.eff_size
+        how = " (가운데 잘라 가로 4:3)" if aspect else ""
+        return f"설치 회전 {rot}°{how} 저장 — 촬영본 {W}×{H}{tail}"
 
     def act_point(self, p):
         x, y, cm = float(p["x"]), float(p["y"]), float(p.get("cm", self.cm or 10))

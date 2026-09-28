@@ -42,6 +42,10 @@ class PhaseCtl(BaseModel):
 class Capture(BaseModel):
     size: tuple[int, int] = (4608, 2592)
     rotation: int = 0                  # 0|90|180|270 — 설치 방향 보정. 센서가 아니라 프레임을 돌린다
+    # 90/270 회전 시 결과 화면비. (4,3) 이면 원본의 가운데 3:4 세로띠만 잘라 돌려 <가로 4:3> 을 만든다 —
+    # CSI 케이블 때문에 카메라를 90° 눕혀 달아도 화면·사진이 세로로 길어지지 않는다(2026-09-28).
+    # 잘라내기만 하고 리샘플은 없다(왜곡 0). None 이면 전체 프레임을 그대로 돌린다(세로 화면).
+    rot_aspect: tuple[int, int] | None = None
     lens_position: float = 1.82        # dioptres = 1/m
     exposure_us: int = 20000
     gain: float = 2.0
@@ -65,11 +69,23 @@ class Capture(BaseModel):
             raise ValueError("rotation must be 0/90/180/270")
         return v % 360
 
+    def crop_cols(self, w: int, h: int) -> tuple[int, int]:
+        """원본 프레임(w×h)에서 회전 전에 남길 열 범위 (x0, cw). 회전 없음/전체면 (0, w)."""
+        if self.rotation in (90, 270) and self.rot_aspect:
+            aw, ah = self.rot_aspect
+            cw = min(w, int(round(h * ah / aw)) & ~1)      # 짝수 폭 (JPEG/YUV 친화)
+            return ((w - cw) // 2, cw)
+        return (0, w)
+
+    def eff_dims(self, w: int, h: int) -> tuple[int, int]:
+        """어떤 프레임 크기(w×h)든 크롭+회전 뒤의 (W, H)."""
+        _, cw = self.crop_cols(w, h)
+        return (h, cw) if self.rotation in (90, 270) else (w, h)
+
     @property
     def eff_size(self) -> tuple[int, int]:
         """회전 적용 후의 (W, H) — ROI·격자·프레임폭 계산은 전부 이걸 쓴다."""
-        w, h = self.size
-        return (h, w) if self.rotation in (90, 270) else (w, h)
+        return self.eff_dims(*self.size)
 
 
 class Roi(BaseModel):
