@@ -29,7 +29,7 @@ import paho.mqtt.client as mqtt
 BROKER = os.environ.get("PLANT_MQTT_HOST", "localhost")
 PORT = int(os.environ.get("PLANT_MQTT_PORT", "1883"))
 BAUD = 115200
-TIME_EVERY_S = 3600
+TIME_EVERY_S = 300   # R4 RTC 는 수정 발진자가 없어(LOCO) 시간당 1분 이상 흐른다 — 10/7 새벽 창이 44~90초 일찍 열리고 닫힌 것을 보고 5분으로
 LIGHT_TOPICS = ("plant/light/set", "plant/+/light/set")
 
 sys.stdout.reconfigure(line_buffering=True)
