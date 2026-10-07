@@ -1,5 +1,5 @@
 /*
-  water_node.ino — 급수 노드 폐루프 (2화분 데모)
+  water_node.ino — 급수 노드 폐루프 (화분당 1대, w1~w6 ↔ p1~p6)
   M5Stack Core S3 + Watering Unit U101      PUMP = G9 · SOIL = G8
 
   ■ 펄스 급수 — 연속 급수를 하지 않는 이유 넷
@@ -11,7 +11,7 @@
        (목표 raw 도달 시 즉시 중지) → 다 주면 3분 침투 검증 → 필요하면 반복
        0.2초/2.5초는 dry_probe 주기 측정 경험(2026-09)에서 온 값입니다.
 
-  ■ 노드마다 고칠 곳은 PLANT_ID 한 줄뿐입니다. 처리군(stable/fluct)은
+  ■ 노드마다 고칠 곳은 NODE_ID·PLANT_ID 두 줄(+ 저장소 자리표시자인 WIFI_SSID·WIFI_PASS·BROKER). 처리군(stable/fluct)은
     화면에서 지정합니다 — SAFE 상태에서 상단 라벨 탭 = 전환, NVS 저장.
 */
 #include <M5Unified.h>

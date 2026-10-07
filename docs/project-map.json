@@ -1,54 +1,56 @@
 {
  "title": "Plant Growth Monitoring — 프로젝트 지도",
- "subtitle": "수분 변동성 생장 실험 · 센싱 → 폐루프 급수 → 카메라 계측 → 분석 (기준 코드: 2026-09-22 · eda2b24)",
+ "subtitle": "물을 \"들쭉날쭉\" 주면 식물이 다르게 자랄까? — 센서 → 자동 급수 → 새벽 촬영 → 분석까지 한 장 (기준 코드: 2026-10-07 · 622318a)",
  "overview": {
-  "intro": "물을 '얼마나' 주는가가 아니라 '얼마나 들쭉날쭉하게' 주는가가 식물 생장을 바꾸는지 검정하는 자동화 실험. 센서 노드가 온실 환경과 흙 수분을 재서 필요할 때만 스스로 물을 주고(폐루프 급수), 카메라가 매일 위에서 본 잎 면적을 기록한다. 두 처리군 — 꾸준군(stable)·널뜀군(fluct) — 은 평균 수분은 같고 변동폭만 다르며, 생장 차이는 RGR(상대생장률: 잎 면적 로그값의 하루 증가 기울기)로 비교한다. 라즈베리파이는 수집·계측·화면(hub)만 맡고, 급수·조명은 각 노드가 독립 수행한다. 낯선 용어는 마지막 '핵심 기술 · 용어' 탭에 정리되어 있다.",
+  "intro": "이 프로젝트는 \"물을 얼마나 주느냐\"가 아니라 \"얼마나 들쭉날쭉하게 주느냐\"가 식물의 자람을 바꾸는지 확인하는 자동 실험 장치다. 화분 6개를 두 모둠으로 나눈다 — 꾸준군(stable)은 흙 수분을 좁은 범위에서, 널뜀군(fluct)은 넓은 범위에서 오르내리게 하되 평균 수분은 두 모둠이 같게 맞춘다. 각 화분의 작은 컴퓨터(급수노드)가 흙이 마르면 스스로 조금씩 물을 주고, 환경노드가 온도·습도·CO₂·빛을 재서 보고하며, 라즈베리파이의 카메라가 매일 새벽 같은 조명 아래서 잎을 위에서 찍어 면적을 잰다. 자람은 잎 면적이 하루에 몇 % 늘었는지(RGR, 상대생장률)로 두 모둠을 비교한다. 라즈베리파이(hub)는 \"모으고·재고·보여주는\" 일만 하고, 물 주기와 조명은 각 노드가 혼자서 해낸다 — 그래서 네트워크가 끊겨도 실험은 멈추지 않는다. 처음 보는 말은 마지막 \"핵심 기술 · 용어\" 탭에, 직접 해보는 순서는 \"시나리오\" 탭에 있다.",
   "stats": [
-   "기기 4대 (파이 1 · 노드 3)",
-   "화분 6개 (p1–p6)",
+   "기기 9대 (파이 1 · 환경노드 1 · 급수노드 6 · PC 1)",
+   "화분 6개 (p1–p6, 2×3)",
    "하루 2회 촬영 (새벽 05:50 · 오후 15:00)",
-   "처리군 2 (꾸준 stable · 널뜀 fluct)"
+   "처리군 2 (꾸준 stable · 널뜀 fluct)",
+   "조명 LED 61구(RGBW) · 05:45~06:15"
   ],
   "lanes": [
    {
-    "label": "① 센싱 — 노드 → 브로커 → 수집",
+    "label": "① 재기 — 노드가 재서 파이로 보낸다",
     "items": [
-     "환경노드 (UNO R4)|온도·습도·기압·조도·CO₂ 5분 평균 발행(BME688·SCD41·BH1750) + 네오픽셀 시간 점등",
-     "급수노드 (M5 Core S3)|폐루프 급수(0.2s 펄스+2.5s 측정) + soil·pump 발행 — 브로커가 죽어도 급수는 계속",
-     "mosquitto :1883|보고 채널이지 제어 채널이 아니다",
-     "run_collector.py|구독 → SQLite 저장. plant.db 의 유일한 writer"
+     "환경노드 (UNO R4)|온도·습도·기압·빛·CO₂를 10초마다 재서 5분 평균으로 보낸다. 파이와 USB 케이블로 직결(2026-09-28~) — Wi-Fi 비밀번호·IP 설정이 필요 없다",
+     "plantlink (파이)|USB 케이블로 글자 한 줄씩 들어오는 환경노드의 보고를 그대로 MQTT 우체국에 넣어 주고, 반대로 현재 시각과 조명 켬/끔 명령을 노드에 내려준다",
+     "급수노드 (M5 Core S3) ×6, w1~w6 ↔ 화분 p1~p6|흙 수분을 재고, 마르면 0.2초씩 펌프를 돌려 물을 준다. 결과(soil·pump)를 Wi-Fi로 보고 — 파이가 꺼져 있어도 급수는 계속",
+     "mosquitto :1883|MQTT 우체국. \"보고\"만 지나가고 \"명령\"은 지나가지 않는다(조명 켬/끔 하나만 예외)",
+     "run_collector.py|우체국을 구독해 plant.db 에 한 줄씩 저장. 이 파일에 쓰는 프로그램은 이것 하나뿐"
     ]
    },
    {
-    "label": "② 촬영 — 타이머 → 계측 → 발행",
+    "label": "② 찍기 — 타이머 → 촬영 → 면적 → 보고",
     "items": [
-     "plantsnap.timer|05:50 새벽(dawn) · 15:00 오후(pm) + 부팅 시 catchup",
-     "plantsvc capture|촬영 → ExG(초록 초과 지수 2G−R−B)+Otsu(자동 문턱값) 면적 측정 → growth.jsonl → MQTT 발행",
-     "run_collector|측정 결과도 센서와 같은 길로 들어와 저장 — DB 에 쓰는 프로그램은 언제나 run_collector 하나"
+     "plantsnap.timer|05:50 새벽(dawn) · 15:00 오후(pm). 재부팅 뒤에는 catchup 이 그날 놓친 촬영을 보충",
+     "plantsvc capture|고정 노출로 찍고 → 초록 픽셀만 골라(ExG) → 자동 문턱값(Otsu)으로 잎 면적을 센다 → growth 로 보고",
+     "run_collector|촬영 결과도 센서값과 같은 길(MQTT)로 들어와 저장된다 — DB 에 쓰는 문은 하나"
     ]
    },
    {
-    "label": "③ 조회 — 브라우저 → API → 분석",
+    "label": "③ 보기 — 브라우저 → API → 분석",
     "items": [
-     "React SPA (:8080)|개요·처리·생장·카메라·시스템 5페이지, PWA",
-     "plantsvc api|/api/* REST + /ws 실시간 + MJPEG 미리보기",
-     "analytics|plant.db 읽기 전용 — RGR·Validity·톱니·처짐 계산, 빈 테이블은 DUMMY 합성"
+     "React 웹 (:8080)|개요·처리·생장·카메라·시스템 5개 화면. 휴대폰에서도 열린다",
+     "plantsvc api|/api/* (데이터 요청) + /ws (실시간 알림) + 카메라 미리보기 영상",
+     "analytics|plant.db 를 읽기만 해서 RGR·Validity·톱니·처짐을 계산. 데이터가 없는 칸은 DUMMY(가짜 예시) 로 채우고 배지를 띄운다"
     ]
    },
    {
-    "label": "④ 설정·카메라 — 5단계 세팅",
+    "label": "④ 맞추기 — 카메라 세팅 5단계와 설정 파일",
     "items": [
-     "camera/setup|노출 → 배율 → ROI → 처리군 → 기준 사진",
-     "config_store|data/config.json 소유 — 밴드·스케줄·처리군 배정의 단일 출처",
-     "camera.manager|고정 노출·초점 잠금, 촬영 시간대(새벽/오후)별 노출 프리셋"
+     "camera/setup|노출 → 배율 → ROI(화분 자리) → 처리군 → 기준 사진. 설치 90° 회전은 가운데를 잘라 가로 4:3 유지",
+     "config_store|data/config.json 하나가 모든 설정의 원본 — 수분 밴드·촬영 시각·처리군 배정",
+     "camera.manager|노출·초점을 잠가 6주 내내 같은 사진. 새벽(LED)·오후(자연광) 노출 프로필 2벌"
     ]
    },
    {
-    "label": "⑤ 배포 — 로컬 PC → GitHub → 파이",
+    "label": "⑤ 보내기 — PC 에서 고치고 파이에 배포",
     "items": [
-     "deploy.ps1|push → 파이 pull --ff-only → install.sh --update → 헬스체크",
-     "install.sh|systemd 유닛을 현재 사용자·경로로 렌더 — 어느 파이든 클론 그대로 설치",
-     "web/dist|파이에 node 없음 — PC 빌드 업로드 또는 릴리스 tarball"
+     "deploy.ps1|PC 에서 한 번: push → 파이 pull → install.sh --update → 상태 점검",
+     "install.sh|systemd 유닛을 그 파이의 사용자·경로로 만들어 설치 — 어느 파이든 클론만 하면 된다",
+     "web/dist|파이엔 node 가 없어 웹 화면은 PC 에서 빌드해 올린다(-Web local)"
     ]
    }
   ]
@@ -98,21 +100,21 @@
    "c": "timer",
    "n": "plantsnap.timer (+catchup)",
    "s": "05:50 새벽(dawn) · 15:00 오후(pm)",
-   "d": "촬영 타이머. 부팅 시 plantsnap-catchup 이 그날 놓친 phase 를 복구한다 — 정전 대비.",
+   "d": "촬영 타이머. 05:50 과 15:00 에 plantsvc capture 를 부른다. 재부팅 뒤에는 plantsnap-catchup 이 그날 놓친 촬영을 보충한다 — 정전 대비.",
    "row": 4
   },
   "ps.deploy": {
    "c": "timer",
    "n": "deploy.ps1 / install.sh",
    "s": "PC → 파이 배포",
-   "d": "push → 파이 pull --ff-only → install --update → 헬스체크 를 한 번에. 파이 작업트리는 항상 clean(배포 전용).",
+   "d": "PC 에서 한 번 실행하면 push → 파이 pull --ff-only → install.sh --update → 상태 점검까지. 파이에서는 코드를 고치지 않는다(작업트리 항상 clean). 웹 화면이 바뀌었으면 -Web local 로 PC 빌드를 함께 올린다.",
    "row": 6
   },
   "hub.run_collector": {
    "c": "job",
    "n": "hub/run_collector.py",
    "s": "MQTT → SQLite",
-   "d": "plant.db 의 유일한 writer. 토픽 4종(env·soil·pump·growth)을 구독해 1행씩 저장한다. writer 를 하나로 강제해 잠금·정합 문제를 원천 차단.",
+   "d": "plant.db 에 쓰는 유일한 프로그램. MQTT 토픽 4종(env·soil·pump·growth)을 구독해 한 줄씩 저장한다. \"쓰는 사람이 하나\"라서 두 프로그램이 동시에 써서 꼬이는 일이 없다.",
    "row": 0
   },
   "hub.plantsvc.app": {
@@ -140,21 +142,21 @@
    "c": "lib",
    "n": "plantsvc/analytics/*",
    "s": "읽기 전용 분석",
-   "d": "RGR(ln A 기울기)·Validity(Δμ/σ비)·톱니·처짐 계산. 그룹 비교는 Cohen's d 효과크기·95% CI 로. plant.db 를 읽기만 하고, 빈 테이블은 DUMMY 합성으로 채워 배지를 띄운다.",
+   "d": "읽기 전용 계산기. 자람(RGR: 잎 면적에 로그를 씌운 값이 하루에 얼마나 오르는가), 실험이 제대로 가는지 감시값(Validity: 두 모둠 평균 수분이 같은지 · 변동폭은 다른지), 수분이 오르내리는 톱니 그래프, 오후 잎 처짐을 plant.db 에서 계산한다. 두 모둠의 차이는 \"얼마나 큰 차이인가\"를 나타내는 효과크기(Cohen's d)와 그 신뢰 범위(95% 신뢰구간)로 보여 준다. 데이터가 없는 칸은 DUMMY(가짜 예시)로 채우고 배지를 띄운다.",
    "row": 3
   },
   "pkg.camera": {
    "c": "lib",
    "n": "plantsvc/camera/*",
    "s": "picamera2 관리",
-   "d": "고정 노출·초점 잠금·촬영 시간대(새벽/오후)별 노출 프리셋·MJPEG 미리보기. 설치 방향은 서버측 회전(capture.rotation, eff_size 기준 ROI)·웹의 보기 전용 90° 회전으로 보정. 가짜 카메라(PLANT_FAKE_HW=1)로 하드웨어 없이도 전 경로 시험 가능.",
+   "d": "카메라 관리자. 노출·초점을 잠가 매일 같은 조건으로 찍고, 새벽(LED)·오후(자연광) 노출 프로필을 따로 둔다. 카메라를 90° 눕혀 달면 원본의 가운데 3:4 띠만 잘라 돌려 가로 4:3 을 유지한다(rot_aspect, 리샘플 없음 — 왜곡 0). 가짜 카메라(PLANT_FAKE_HW=1)로 하드웨어 없이도 전 과정을 연습할 수 있다.",
    "row": 5
   },
   "pkg.capture": {
    "c": "lib",
    "n": "plantsvc/capture/*",
    "s": "촬영 루틴",
-   "d": "촬영 → 측정 → growth.jsonl 기록 → MQTT 발행. 가짜 프레임의 측정값은 절대 발행하지 않는다.",
+   "d": "촬영 → 측정 → growth.jsonl 기록 → MQTT 발행(publisher.py 가 브로커에 직접). 가짜 프레임(PLANT_FAKE_HW)의 측정값은 기본적으로 발행하지 않는다 — 테스트용 --allow-fake-publish 로만 허용.",
    "row": 4
   },
   "pkg.vision": {
@@ -181,8 +183,8 @@
   "mod.mqtt": {
    "c": "lib",
    "n": "mqtt_bridge.py",
-   "s": "발행 전용",
-   "d": "capture 의 growth 발행과 조명 원격 점등(plant/light/set)을 브로커로 내보낸다. 구독은 collector 몫 — 방향을 섞지 않는다.",
+   "s": "구독 → /ws 푸시 · 조명 명령 발행",
+   "d": "허브 쪽 MQTT 창구. env·soil·pump·growth·light 5개 토픽을 구독해 브라우저(/ws)로 밀어 주고(화면이 새로고침 없이 바뀌는 이유), 조명 명령(plant/light/set) 하나만 발행한다. 노드가 보고한 조명 상태를 기억해 화면 토글이 실제 상태를 보이게 한다. growth 발행은 촬영 루틴(capture/publisher.py)이 브로커에 직접 한다. 센서 데이터 저장은 여기서 하지 않는다 — run_collector 의 몫.",
    "row": 8
   },
   "mod.realtime": {
@@ -196,7 +198,7 @@
    "c": "lib",
    "n": "doctor.py",
    "s": "자가 점검",
-   "d": "venv·카메라·DB·브로커·타이머·시간대 점검표. install.sh 마지막 단계와 검증 루프의 독립 확인 경로.",
+   "d": "venv·카메라·DB·브로커·타이머·시간대 점검표. install.sh 마지막 단계와 사람이 직접 확인하는 경로. plantlink(USB 브릿지)는 점검표에 없으므로 systemctl is-active plantlink 로 따로 본다.",
    "row": 10
   },
   "file.plantdb": {
@@ -252,35 +254,49 @@
    "c": "api",
    "n": "카메라 미리보기",
    "s": "MJPEG 스트림",
-   "d": "세팅 5단계의 실시간 프리뷰. 수동 끄기 버튼으로 예약 촬영에 카메라를 즉시 양보한다.",
+   "d": "세팅 화면의 실시간 미리보기(MJPEG). 코드 기본은 품질 80·80ms 지만, 학교에선 PC↔파이 통신이 홍콩 릴레이를 돌아 느려 파이의 config.json 에서 55·160ms(≈6fps)로 낮춰 두었다. 촬영본 품질과는 무관.",
    "row": 5
   },
   "broker": {
    "c": "api",
    "n": "mosquitto :1883",
    "s": "MQTT 브로커",
-   "d": "보고 채널이지 제어 채널이 아니다 — 유일한 예외는 조명 점등(plant/light/set). 브로커가 죽어도 급수는 계속된다(잃는 건 로그뿐).",
+   "d": "MQTT 우체국. 노드의 \"보고\"가 지나가는 곳이지 \"명령\"을 내리는 곳이 아니다 — 예외는 조명 켬/끔 하나. 우체국이 멈춰도 급수는 계속되고 잃는 것은 기록뿐이다.",
    "row": 0
   },
   "web.app": {
    "c": "web",
    "n": "React SPA (web/src)",
    "s": "개요·처리·생장·카메라·시스템",
-   "d": "Vite+TS+Tailwind v4+ECharts. plantlab 네이비 디자인 시스템, ?mock=1 로 백엔드 없이 시연 가능.",
+   "d": "브라우저에서 열리는 화면(React 로 제작). 개요·처리·생장·카메라·시스템 5개 페이지, 휴대폰에서도 열린다. 주소 뒤에 ?mock=1 을 붙이면 백엔드 없이 가짜 데이터로 시연된다.",
    "row": 2
   },
   "node.env": {
    "c": "web",
    "n": "환경노드 (UNO R4 WiFi)",
-   "s": "펌웨어 plant_env_r4wifi.ino",
-   "d": "온도·습도·기압·조도·CO₂ 를 5분 평균으로 무선 보고(BME688·SCD41·BH1750). 촬영 조명(네오픽셀)도 이 노드가 시간 창(05:45~06:15)으로 독립 점등 — 창 점등은 어떤 원격 명령으로도 꺼지지 않는다(실험 조명 보호), 원격 점등은 30분 자동 소등. 오프라인 큐 8건으로 발행 실패를 복구한다.",
+   "s": "plant_env_r4wifi.ino · LINK_MODE=1 (USB)",
+   "d": "온도·습도·기압·빛·CO₂(온습도·기압 센서 BME688, CO₂ 센서 SCD41, 조도 센서 BH1750)를 10초마다 재서 5분 평균으로 파이에 USB 로 보낸다. 촬영 조명(RGBW 네오픽셀 61구 — 빨강·초록·파랑을 섞은 백색은 스펙트럼이 비어 ExG 가 흔들리므로 전용 백색(W) 칩만 켠다, 전류도 1/3)도 이 보드가 05:45~06:15 에 스스로 켠다 — 그 시간의 점등은 어떤 명령으로도 끌 수 없다(실험 조명 보호). 화면 버튼으로 켠 조명은 30분 뒤 자동 소등. 시각은 파이가 5분마다 내려준다(보드 시계가 시간당 1분 이상 흐르기 때문). Wi-Fi 모드(LINK_MODE=0)는 예비.",
    "row": 0
   },
   "node.water": {
    "c": "web",
    "n": "급수노드 (M5 Core S3)",
    "s": "펌웨어 water_node.ino",
-   "d": "흙이 마르면 스스로 조금씩 물을 주는 자립형 급수기. 0.2초 펄스로 나눠 주고 2.5초 스며듦을 기다리는 것은 과급수 방지, 서버 없이 도는 것은 네트워크가 죽어도 실험이 멈추지 않게 하기 위해서다. 처리군은 화면 터치로 지정(NVS 저장). 오프라인 큐 12건으로 발행 실패를 복구한다.",
+   "d": "흙이 마르면 스스로 조금씩 물을 주는 자립형 급수기(화분마다 1대, 펌웨어는 공통). 10초마다 재서 3번 연속 마름이면 급수 시작, 0.2초 펌프 → 2.5초 스며들기 → 다시 재기를 반복하다 목표에 닿으면 멈춘다(과급수 방지). 어느 모둠(stable/fluct)인지는 화면의 칩을 눌러 정하고 보드에 저장된다. 보고가 실패하면 12건까지 모아 두었다가 다시 보낸다.",
+   "row": 1
+  },
+  "sysd.plantlink": {
+   "c": "timer",
+   "n": "plantlink.service",
+   "s": "systemd",
+   "d": "환경노드 USB 브릿지를 상주 실행. 케이블이 빠졌다 꽂혀도 5초마다 다시 찾는다.",
+   "row": 1
+  },
+  "hub.serial_bridge": {
+   "c": "job",
+   "n": "hub/serial_bridge.py",
+   "s": "USB 시리얼 ↔ MQTT",
+   "d": "환경노드가 USB 로 보내는 \"PUB <토픽> <JSON>\" 한 줄을 그대로 MQTT 로 발행하고, 반대로 조명 명령(plant/light/set)을 \"L 1/0\", 파이의 현재 시각을 \"T <초 단위 시각>\"으로 5분마다 내려준다. 학교 Wi-Fi 가 기기끼리 통신을 막아서(메시 유닛 간 격리) 케이블로 바꾼 것 — 허브·화면 코드는 한 줄도 안 바뀌었다.",
    "row": 1
   }
  },
@@ -319,7 +335,7 @@
    "hub.run_collector",
    "broker",
    "http",
-   "subscribe plant/#"
+   "subscribe plant/+/{env,soil,pump,growth}"
   ],
   [
    "hub.run_collector",
@@ -418,12 +434,6 @@
    "raw·mask"
   ],
   [
-   "pkg.capture",
-   "mod.mqtt",
-   "imp",
-   "growth 발행"
-  ],
-  [
    "pkg.vision",
    "file.photos",
    "rd",
@@ -433,7 +443,7 @@
    "mod.mqtt",
    "broker",
    "http",
-   "publish"
+   "5토픽 구독 · light/set 발행"
   ],
   [
    "mod.realtime",
@@ -484,16 +494,34 @@
    ""
   ],
   [
-   "node.env",
-   "broker",
-   "http",
-   "plant/<n>/env"
-  ],
-  [
    "node.water",
    "broker",
    "http",
    "soil · pump"
+  ],
+  [
+   "sysd.plantlink",
+   "hub.serial_bridge",
+   "call",
+   ""
+  ],
+  [
+   "node.env",
+   "hub.serial_bridge",
+   "http",
+   "USB 시리얼 PUB"
+  ],
+  [
+   "hub.serial_bridge",
+   "broker",
+   "http",
+   "publish · light/set 구독"
+  ],
+  [
+   "pkg.capture",
+   "broker",
+   "http",
+   "growth 발행 (qos 1)"
   ]
  ],
  "dbs": [
@@ -729,17 +757,17 @@
   ]
  ],
  "glossary_label": "핵심 기술 · 용어",
- "glossary_html": "<h2>왜 이렇게 설계했나 — 실험 논리 5장</h2><div class='flow'><div class='card hl'><b>옌센 부등식</b><small>생장이 수분의 비선형 함수 f 라면 E[f(w)] ≠ f(E[w]) — 평균이 같아도 변동성이 생장을 바꿀 수 있다. 그래서 평균은 고정하고 변동성만 처리한다.</small></div><div class='card'><b>두 밴드의 중심은 같다</b><small>stable (1940+1900)/2 = fluct (2020+1820)/2 = 1920 — 폭만 다르다. 중심이 다르면 '평균 효과'가 섞여 실험이 무너진다.</small></div><div class='card'><b>왜 새벽 촬영인가</b><small>조명 창 안 = 6주 내내 같은 빛(ExG 전제) + 밤새 팽압 회복 = 처짐 없는 면적. 오후(pm) 촬영과의 차이가 곧 처짐(수분 스트레스) 지표.</small></div><div class='card'><b>왜 % 가 아니라 raw 밴드인가</b><small>보정상수(RAW_DRY/WET)를 다시 잡으면 같은 흙이 다른 %로 보인다 — raw 는 센서가 실제로 내는 값이라 보정과 무관.</small></div><div class='card'><b>남은 양 &lt; 최소 도즈(DOSE_MIN)면 주지 않는다</b><small>조금 마른 채 두는 것이 넘겨 젖히는 것보다 낫다 — 초과는 평균을 올려 두 처리군의 '평균 일치'를 깨뜨린다.</small></div></div><h2>설계 문법</h2><div class='flow'><div class='card'><b>노드가 잰다</b><small>측정·급수는 노드 독립 — 허브가 죽어도 실험은 계속</small></div><div class='card'><b>브로커로 보고한다</b><small>MQTT 는 보고 채널, 제어 채널이 아니다</small></div><div class='card hl'><b>writer 는 하나</b><small>plant.db 는 run_collector 만 쓴다 — 나머지 전부 읽기 전용</small></div><div class='card'><b>화면은 파생이다</b><small>analytics 가 읽어 계산, 빈 곳은 DUMMY 로 채우고 배지</small></div><div class='card'><b>결론은 사전등록</b><small>가설·분석·효과크기를 파종 전에 못 박는다</small></div></div><h2>채택 기술 — 왜 이 선택인가</h2><table class='cols'><tr><td>MQTT (mosquitto)</td><td>노드 → 허브 단방향 보고. 제어를 싣지 않아 네트워크 장애가 급수를 못 막는다. 유일한 예외는 조명 점등 토픽 하나.</td></tr><tr><td>SQLite 단일 writer</td><td>서버 DB 없이 파일 하나 + writer 프로세스 하나. 동시 쓰기 잠금 문제를 구조로 제거했다.</td></tr><tr><td>FastAPI + React 단일 앱</td><td>Streamlit·setup_camera 두 포트를 :8080 하나로. 파이에 node 가 없어 빌드는 PC/릴리스에서 온다.</td></tr><tr><td>systemd 템플릿 렌더</td><td>유닛에 사용자·경로를 하드코딩하지 않고 설치 시 렌더 — 어느 파이든 클론 그대로 설치된다.</td></tr><tr><td>ExG + Otsu</td><td>초록 초과 지수로 잎을 분리해 투영 면적을 잰다. 조명 고정(노출 잠금 + 새벽 LED)이 전제 조건.</td></tr><tr><td>RGR (상대생장률)</td><td>ln(면적)의 일수 기울기. 큰 개체가 절대량으로 더 자라는 편향을 제거해 처리군을 공정 비교한다.</td></tr></table><h2>도메인 용어</h2><table class='cols'><tr><td>stable / fluct</td><td>꾸준군/널뜀군. 밴드 중심은 같고 폭만 다르다 — 변동성만이 처리다.</td></tr><tr><td>RAW 밴드 (RAW_ON/OFF)</td><td>급수 시작/정지 ADC 원값 문턱. pct 가 아니라 raw 로 정한다.</td></tr><tr><td>phase (dawn/pm)</td><td>하루 2회 촬영. RGR 은 dawn 만, pm 은 정오 처짐 지수용.</td></tr><tr><td>DUMMY 배지</td><td>빈 테이블을 합성 데이터로 채웠다는 표시. 실측 유입 시 테이블별로 꺼진다.</td></tr><tr><td>Validity</td><td>Δμ 정렬(평균 같음) / σ 비(변동 다름) — 실험 전제가 지켜지는지의 감시값.</td></tr><tr><td>px_per_cm</td><td>촬영 시점 배율. 값이 튀면 카메라가 밀렸다는 경보다.</td></tr></table><p class='note'>가장 오해하기 쉬운 것: <b>area_cm2 는 잎면적이 아니라 위에서 본 투영 면적</b>이다. 잎이 겹치면 과소평가되므로 절대값이 아니라 같은 개체의 시간 변화(RGR)로만 해석한다.</p>",
+ "glossary_html": "<h2>왜 이렇게 설계했나 — 실험 논리 5장</h2><div class='flow'><div class='card hl'><b>평균은 같게, 들쭉날쭉함만 다르게</b><small>자람이 수분에 비례하지 않고 굽은 곡선이라면, 평균이 같아도 오르내림이 큰 쪽이 다르게 자랄 수 있다(옌센 부등식). 그래서 두 모둠의 평균 수분은 똑같이 맞추고 변동폭만 바꾼다.</small></div><div class='card'><b>두 밴드의 가운데 값은 같다</b><small>stable (1940+1900)/2 = fluct (2020+1820)/2 = 1920. 가운데가 다르면 '물을 더 준 효과'가 섞여 실험이 무너진다.</small></div><div class='card'><b>왜 새벽에 찍나</b><small>05:45~06:15 는 LED 만 켜진 시간이라 6주 내내 같은 빛 + 밤새 물을 머금어 잎이 처지지 않은 상태. 오후 사진과의 차이가 곧 '처짐(목마름)' 지표가 된다.</small></div><div class='card'><b>왜 % 가 아니라 센서 원값(raw)인가</b><small>%는 보정값(완전 마름·완전 젖음)을 다시 잡으면 같은 흙이 다른 숫자로 보인다. raw 는 센서가 실제로 내는 값이라 보정과 무관하게 비교된다.</small></div><div class='card'><b>남은 양이 최소 한 모금보다 적으면 안 준다</b><small>최소 한 모금 = 펄스 1회 0.2초(약 2mL). 그보다 적게 필요하면 조금 마른 채 둔다 — 넘치면 평균이 올라 '두 모둠 평균 같음'이 깨진다.</small></div></div><h2>이 프로젝트를 관통하는 설계 문법</h2><div class='flow'><div class='card'><b>노드가 혼자 한다</b><small>물 주기·조명은 각 보드가 스스로. 파이·네트워크가 죽어도 실험은 계속된다</small></div><div class='card'><b>우체국은 보고용</b><small>MQTT 로는 '잰 값'만 흐른다. 노드에게 명령을 내리는 통로가 아니다(조명 켬/끔 하나만 예외)</small></div><div class='card hl'><b>DB 에 쓰는 문은 하나</b><small>plant.db 를 쓰는 프로그램은 run_collector 뿐. 나머지는 전부 읽기만 한다 — 그래서 꼬이지 않는다</small></div><div class='card'><b>화면은 계산 결과</b><small>analytics 가 DB 를 읽어 그때그때 계산. 비어 있으면 DUMMY(가짜 예시)로 채우고 배지를 띄운다</small></div><div class='card'><b>결론은 미리 적어 둔다</b><small>가설·분석 방법·효과크기 기준을 씨 뿌리기 전에 정해 둔다(사전등록). 나중에 입맛대로 바꾸지 않기 위해</small></div></div><h2>채택 기술 — 쉽게 말하면, 그리고 왜 이 선택인가</h2><table class='cols'><tr><td>MQTT (mosquitto)</td><td>기기들 사이의 <b>우체국</b>. 보내는 쪽은 '주소(토픽)'에 편지를 넣고, 받는 쪽은 그 주소를 구독한다. 노드 → 파이 한 방향 보고만 실어 네트워크 장애가 급수를 못 막게 했다.</td></tr><tr><td>USB 시리얼 링크 (plantlink)</td><td>환경노드와 파이를 <b>케이블 한 가닥</b>으로 잇고, 글자 한 줄씩 주고받는 가장 단순한 통신. 학교 Wi-Fi 가 기기끼리 통신을 막아서 택했다. 파이가 그 줄을 MQTT 우체국에 대신 넣어 주므로 나머지 프로그램은 바뀐 게 없다.</td></tr><tr><td>SQLite 단일 writer</td><td>서버 없이 <b>파일 하나가 데이터베이스</b>. 쓰는 프로그램을 하나로 못 박아 동시 쓰기 충돌을 구조로 없앴다.</td></tr><tr><td>systemd 유닛·타이머</td><td>리눅스의 <b>자동 실행 관리자</b>. 부팅하면 서비스를 띄우고 죽으면 다시 살리며, 정해진 시각에 촬영을 부른다. 유닛 파일은 설치 때 그 파이의 사용자·경로로 만들어진다.</td></tr><tr><td>FastAPI + React 한 앱</td><td>데이터 API·화면·카메라 미리보기를 <b>포트 하나(:8080)</b>로. 파이엔 node 가 없어 화면은 PC 에서 빌드해 올린다.</td></tr><tr><td>ExG + Otsu</td><td>사진에서 <b>초록이 유난히 센 픽셀</b>만 고르고(ExG = 2G−R−B), 문턱값은 사진마다 자동으로 정한다(Otsu). 그 픽셀 수 × 배율 = 잎 면적. 조명·노출이 매일 같아야 성립한다.</td></tr><tr><td>RGR (상대생장률)</td><td>잎 면적에 로그를 씌운 값이 <b>하루에 얼마나 오르는가</b>. 큰 개체가 절대량으로 더 자라는 편향을 없애 두 모둠을 공정하게 비교한다.</td></tr><tr><td>워치독(WDT)·오프라인 큐</td><td>보드가 멈추면 스스로 재부팅하는 <b>감시 타이머</b>, 보고가 실패하면 모아 두었다 다시 보내는 <b>대기줄</b>. 사람이 없는 6주를 버티기 위한 장치.</td></tr></table><h2>도메인 용어</h2><table class='cols'><tr><td>stable / fluct</td><td>꾸준군 / 널뜀군. 수분 밴드의 가운데는 같고 폭만 다르다 — '들쭉날쭉함'만이 처리다.</td></tr><tr><td>RAW 밴드 (RAW_ON / RAW_OFF)</td><td>급수를 시작·멈추는 센서 원값 문턱. 숫자가 클수록 마른 흙.</td></tr><tr><td>phase (dawn / pm)</td><td>하루 두 번 촬영. 자람(RGR)은 새벽만, 오후는 처짐 비교용.</td></tr><tr><td>ROI</td><td>사진에서 '이 화분' 으로 셈할 네모 영역. 6개.</td></tr><tr><td>px_per_cm (배율)</td><td>1cm 가 몇 픽셀인지. 매일 다시 재서 값이 튀면 카메라가 밀렸다는 경보.</td></tr><tr><td>DUMMY 배지</td><td>아직 실제 데이터가 없어 가짜 예시로 채웠다는 표시. 실제 값이 들어오면 꺼진다.</td></tr><tr><td>lux (조도)</td><td>사람 눈 기준 밝기. 식물이 실제로 쓰는 빛(PAR, 광합성 유효광)과 다르고 광원마다 환산이 달라, 절대값이 아니라 '같은 자리의 변화'를 보는 데만 쓴다.</td></tr><tr><td>Validity</td><td>두 모둠의 평균이 정말 같은지(Δμ) · 변동폭이 정말 다른지(σ 비) 를 매일 확인하는 감시값.</td></tr><tr><td>급수노드 화면 상태</td><td>SAFE=미가동(초기·STOP 뒤 — 처리군 칩과 초기 젖음 안내가 보임) · watching=마름 감시 중 · DOSING/soaking=0.2초 펄스·2.5초 스며듦 반복 · settling=3분 침투 검증 · FAULT=고장(no rise·verify fail, 10분 쉬고 자동 재시도). 버튼은 [AUTO/STOP]·[PUMP](누르는 동안 수동 급수, 기록은 reason=prime)·[RESET](1.5초 길게).</td></tr></table><p class='note'>가장 헷갈리기 쉬운 것: <b>area_cm2 는 잎의 실제 넓이가 아니라 위에서 내려다본 그림자 넓이(투영 면적)</b>다. 잎이 겹치면 작게 나오므로, 절대값이 아니라 같은 화분의 시간에 따른 변화(RGR)로만 해석한다.</p>",
  "scenarios": [
   {
    "id": "dawn",
-   "label": "새벽 촬영 한 사이클",
-   "intro": "매일 05:45~06:15 창에서 일어나는 일. 조명·촬영·측정·발행·저장이 서로 다른 기기에서 독립적으로 맞물린다. 새벽에 찍는 이유: 조명 창(05:45~06:15) 안이라 매일 같은 빛이고, 밤새 수분을 회복해 잎이 처지지 않은 상태라 면적 비교가 공정하다.",
+   "label": "흐름 A 새벽 촬영 한 사이클",
+   "intro": "매일 새벽 05:45~06:15 에 일어나는 일. 조명·촬영·면적 측정·보고·저장이 서로 다른 기기에서 맞물린다. 새벽에 찍는 이유: 이 시간엔 LED 만 켜져 있어 6주 내내 같은 빛이고, 밤새 물을 머금어 잎이 처지지 않은 상태라 면적 비교가 공정하다.",
    "steps": [
     {
      "t": "05:45",
      "node": "node.env",
-     "text": "환경노드가 NTP 시간창으로 네오픽셀 점등 — 파이·명령 없이 독립 동작"
+     "text": "환경노드가 자기 시계(파이가 5분마다 맞춰 줌)로 LED 61구를 켠다 — 파이 명령 없이 독립 동작"
     },
     {
      "t": "05:50",
@@ -764,11 +792,11 @@
     },
     {
      "t": "+수 초",
-     "node": "mod.mqtt",
+     "node": "pkg.capture",
      "also": [
       "broker"
      ],
-     "text": "growth 측정값을 MQTT 로 발행 — 가짜 프레임(PLANT_FAKE_HW)이면 절대 발행하지 않음"
+     "text": "촬영 루틴이 growth 측정값을 MQTT 로 직접 발행 — 가짜 프레임(PLANT_FAKE_HW) 값은 기본적으로 발행하지 않는다(테스트용 --allow-fake-publish 로만 허용)"
     },
     {
      "t": "동시",
@@ -781,7 +809,7 @@
     {
      "t": "06:15",
      "node": "node.env",
-     "text": "소등. 촬영 창 밖·NTP 실패 시에는 무조건 소등"
+     "text": "소등. 시간 창 밖이거나 파이 시각을 3시간 넘게 못 받으면 창 점등은 하지 않는다(안전측)"
     },
     {
      "t": "이후",
@@ -792,23 +820,23 @@
   },
   {
    "id": "water",
-   "label": "급수 한 사이클",
+   "label": "흐름 B 급수 한 사이클",
    "intro": "급수는 노드 안에서 완결된다. 네트워크·브로커·파이가 모두 죽어도 급수는 계속되고, 잃는 것은 로그뿐이다.",
    "steps": [
     {
      "t": "감시",
      "node": "node.water",
-     "text": "10초 간격 측정에서 RAW_ON 초과가 연속 3회면 급수 시작 — 센서 요동 오급수 차단"
+     "text": "10초마다 흙 수분을 잰다. \"마름 문턱값(RAW_ON)\"보다 마른 값이 3번 연속 나와야 급수를 시작한다 — 센서가 한 번 튀어서 물을 주는 일을 막는다"
     },
     {
      "t": "급수",
      "node": "node.water",
-     "text": "0.2초 펄스 + 2.5초 스며듦·측정 반복. RAW_OFF 도달 시 남은 예산을 버리고 조기 중지 (과급수 방지)"
+     "text": "펌프를 0.2초 돌리고 2.5초 기다려 물이 스며들면 다시 잰다. 이걸 반복하다 \"젖음 문턱값(RAW_OFF)\"에 닿으면 즉시 멈춘다 — 한 번에 많이 주지 않아 넘치지 않는다"
     },
     {
      "t": "검증",
      "node": "node.water",
-     "text": "3분 침투 검증 — no-rise·MAX_SHOTS 면 고장 판정(SAFE). 도즈 효율(kPerMs)은 계속 학습"
+     "text": "3분 뒤 수분이 정말 올랐는지 다시 본다. 물을 줬는데 안 오르거나(no rise), 정해진 횟수(6회)를 다 썼는데도 안 차면(verify fail) 펌프·호스 고장으로 보고 FAULT 상태로 들어가 10분 쉰 뒤 자동 재시도한다. 펌프는 어떤 경우에도 한 번에 5초를 넘겨 돌지 않는다(하드 상한). 정상이면 \"펌프 1초당 수분이 얼마나 오르는지\"를 기억해 다음 급수량 계산에 쓴다"
     },
     {
      "t": "보고",
@@ -832,7 +860,178 @@
      "also": [
       "web.app"
      ],
-     "text": "습윤–건조 톱니·관수 기록·Validity(Δμ/σ비)로 가공되어 개요·처리 탭에 표시"
+     "text": "수분 톱니 그래프(젖음→마름 반복)·급수 기록·실험 감시값(Validity)으로 가공되어 개요·처리 탭에 표시"
+    }
+   ]
+  },
+  {
+   "id": "firstrun",
+   "label": "실습 ① 처음 설치부터 첫 화면까지",
+   "intro": "새 라즈베리파이(또는 PC) 한 대로 이 시스템을 띄우는 순서. 하드웨어가 없어도 PLANT_FAKE_HW=1 로 끝까지 해볼 수 있다. 약 30분.",
+   "steps": [
+    {
+     "t": "1",
+     "node": "ps.deploy",
+     "text": "PC 의 터미널(PowerShell)을 열고 git clone <저장소 주소> 로 코드를 내려받은 뒤 그 폴더로 들어간다. 이어서 uv run pytest -q (파이썬 실행 도우미 uv 로 자동 테스트를 돌리는 명령)를 친다. 성공: 마지막 줄에 passed 만 있고 failed 가 없으면 내 PC 에서 코드가 멀쩡한 것"
+    },
+    {
+     "t": "2",
+     "node": "web.app",
+     "also": [
+      "api.rest"
+     ],
+     "text": "cd web && npm run dev → http://localhost:5173/?mock=1 — 백엔드 없이 가짜 데이터로 5개 화면을 둘러본다(scenario=setup-fresh 등)"
+    },
+    {
+     "t": "3",
+     "node": "hub.plantsvc.app",
+     "also": [
+      "mod.config"
+     ],
+     "text": "백엔드(화면 뒤에서 데이터를 만들어 주는 서버 프로그램)를 가짜 카메라 모드로 띄운다. PowerShell 이면 $env:PLANT_FAKE_HW=1 을 먼저 치고 uv run plantsvc serve (맥·리눅스는 한 줄로 PLANT_FAKE_HW=1 uv run plantsvc serve). 브라우저에서 http://localhost:8080 을 연다. 성공: 개요 화면이 뜨고 data/config.json 이 새로 생겨 있으면 된다(config.example.json 을 복사해 자동 생성)"
+    },
+    {
+     "t": "4",
+     "node": "ps.deploy",
+     "also": [
+      "sysd.plantsvc",
+      "sysd.planthub"
+     ],
+     "text": "PC 에서 ssh pl 로 라즈베리파이에 접속한다(pl 은 파이의 별명). 파이에서 git clone <저장소 주소> ~/plant 로 코드를 받고 cd ~/plant && scripts/install.sh 를 친다. 파이썬 가상환경(venv)·MQTT 우체국(mosquitto)·자동 실행 등록(systemd 유닛: planthub·plantsvc·plantlink·plantsnap.timer)이 한 번에 설치된다. 성공: systemctl is-active mosquitto planthub plantsvc plantlink 가 전부 active. 이후 파이의 코드는 손대지 말고 PC 의 deploy.ps1 로만 고친다(실습 ④)"
+    },
+    {
+     "t": "5",
+     "node": "mod.doctor",
+     "text": "~/plant/.venv/bin/plantsvc doctor — 카메라·DB·브로커·타이머·시간대 점검표가 전부 OK 인지 본다. WARN 은 \"아직 세팅 전\" 항목(배율·ROI·기준 사진)"
+    },
+    {
+     "t": "6",
+     "node": "web.app",
+     "text": "http://raspi:8080 접속 — 데이터가 없는 칸은 DUMMY 배지. 노드를 켜면 테이블별로 배지가 꺼진다"
+    }
+   ]
+  },
+  {
+   "id": "camsetup",
+   "label": "실습 ② 카메라 세팅 5단계",
+   "intro": "(먼저 \"흐름 A\" 를 읽으면 왜 노출을 두 벌 잠그는지 이해된다.) 트레이에 화분 6개를 2×3 으로 놓고, 브라우저에서 http://raspi:8080/camera/setup (카메라 세팅 화면)을 연다. 화면 위에서부터 0→5 순서로 진행하고, 각 단계는 체크가 켜지면 끝이다. 한 번 맞추면 6주 동안 손대지 않는다 — 노출(사진 밝기)·초점·배율이 바뀌면 면적 비교가 깨지기 때문.",
+   "steps": [
+    {
+     "t": "0",
+     "node": "pkg.camera",
+     "also": [
+      "api.mjpeg"
+     ],
+     "text": "미리보기(실시간 영상)에 화분 6개가 가로 2줄×세로 3칸으로 반듯하게 보이는지 확인한다. 카메라를 90° 눕혀 달았으면 [설치 90° 회전] — 가운데를 잘라 가로 4:3 으로 보정된다. 성공: 화분이 화면 밖으로 잘리지 않고 모두 보이면 된다"
+    },
+    {
+     "t": "1",
+     "node": "pkg.camera",
+     "text": "노출(사진 밝기) 잠그기: 조명 토글을 켜고 [새벽(조명) 프로필 측정], 끄고 [오후(자연광) 프로필 측정]을 차례로 누른다. 새벽은 LED 만, 오후는 햇빛이라 밝기가 달라 두 벌을 따로 잠근다. 성공: 두 버튼 옆에 측정된 노출값이 표시되면 된다"
+    },
+    {
+     "t": "2",
+     "node": "mod.config",
+     "text": "배율: 자 위의 두 점을 찍고 실제 길이(cm)를 넣는다 → px_per_cm. 이 값으로 픽셀 수가 cm² 가 된다"
+    },
+    {
+     "t": "3",
+     "node": "pkg.vision",
+     "text": "화분 영역(ROI, 사진에서 \"이 화분\"으로 셈할 네모) 잡기: [격자로 나누기](자동 6등분) 또는 [잎 찾아 배치](초록을 찾아 자동 배치)를 누르고 네모를 끌어 화분 하나가 네모 하나에 꼭 들어가게 맞춘다. 네모 밖의 초록(이끼·호스)은 세지 않는다. 성공: p1~p6 라벨이 붙은 네모 6개가 각 화분을 덮고 있으면 된다"
+    },
+    {
+     "t": "4",
+     "node": "mod.config",
+     "also": [
+      "file.config"
+     ],
+     "text": "처리군: 화분마다 stable/fluct 를 정한다(무작위 섞기 버튼). 급수노드 칩과 다르면 화면이 경고한다 — config.json 이 기준"
+    },
+    {
+     "t": "5",
+     "node": "pkg.vision",
+     "also": [
+      "file.photos"
+     ],
+     "text": "기준 사진(calib.jpg): [지금 촬영] 으로 한 장 저장. 이후 매일 이 사진과 겹쳐 카메라가 밀렸는지 검사한다(px_per_cm 이 튀면 경보)"
+    },
+    {
+     "t": "확인",
+     "node": "pkg.capture",
+     "text": "[지금 촬영]을 누르고 결과에 6/6 ok 가 나오면 세팅 끝. 다음 날 아침 생장 탭에서 05:50 새벽(dawn) 사진이 들어왔는지, 사진을 열어 LED 아래(배경이 어둡고 잎만 환한 상태)에서 찍혔는지 본다. 더 자세히는 ssh pl \"journalctl -u plantsnap -n 20\" (파이의 실행 기록 보기)에 ok 가 찍혔는지"
+    }
+   ]
+  },
+  {
+   "id": "nodes",
+   "label": "실습 ③ 노드 펌웨어 올리기와 현장 세팅",
+   "intro": "(먼저 \"흐름 B\" 를 읽으면 SAFE·watching·FAULT 가 무슨 상태인지 이해된다.) 보드 두 종류에 펌웨어를 올리고 실험대에서 켜는 순서. 환경노드는 USB 로, 급수노드는 Wi-Fi 로 파이와 만난다.",
+   "steps": [
+    {
+     "t": "환경 1",
+     "node": "node.env",
+     "text": "Arduino IDE 에서 보드 \"UNO R4 WiFi\" 선택 → firmware/plant_env_r4wifi.ino 그대로 업로드(LINK_MODE=1 이라 Wi-Fi 정보 불필요). 시리얼 모니터에 [BOOT] 한 번, LINK: usb-serial 이 보이면 정상"
+    },
+    {
+     "t": "환경 2",
+     "node": "node.env",
+     "text": "시리얼 모니터에 t 를 입력 → LED 앞 4구가 빨강·초록·파랑·백색 순이면 색 순서 OK. 1/0 으로 켬/끔 테스트"
+    },
+    {
+     "t": "환경 3",
+     "node": "hub.serial_bridge",
+     "also": [
+      "sysd.plantlink"
+     ],
+     "text": "시리얼 모니터를 닫고 케이블을 파이 USB 에 꽂는다. 파이에서 journalctl -u plantlink -f (연결 기록 보기)에 node: TIME OK (host) 가, 5분 뒤 node: PUB(late): {\"node\":\"env_F09338\",…} 가 보이면 끝. 토픽 단위로 보려면 mosquitto_sub -t \"plant/+/env\" -v"
+    },
+    {
+     "t": "급수 1",
+     "node": "node.water",
+     "text": "Arduino IDE 에서 firmware/water_node.ino 를 열고 보드 \"M5CoreS3\"를 선택한다. 파일 맨 위 다섯 줄을 고친다 — WIFI_SSID·WIFI_PASS(파이가 붙어 있는 Wi-Fi 이름·비밀번호), BROKER(파이 주소 192.168.1.209), NODE_ID(노드 이름, 예 \"w2\"), PLANT_ID(화분 번호, 예 \"p2\"; w2↔p2 처럼 같은 번호). 저장소 파일은 자리표시자라 그대로 올리면 보고가 전혀 오지 않는다. 성공: 보드 화면에 SAFE 가 뜨고 Wi-Fi 연결 표시가 보이면 된다"
+    },
+    {
+     "t": "급수 2",
+     "node": "node.water",
+     "text": "화면의 [STBL]/[FLCT] 칩으로 모둠을 정한다(보드에 저장). SAFE 화면의 초기 젖음 게이지가 OK 가 될 때까지 물을 부어 모든 화분을 같은 출발선에 놓는다. 손으로 물을 더 주려면 [PUMP]를 누르고 있는다(기록에 reason=prime 으로 남는다)"
+    },
+    {
+     "t": "급수 3",
+     "node": "node.water",
+     "also": [
+      "broker"
+     ],
+     "text": "보드 화면의 [AUTO]를 누르면 자동 급수가 시작된다. 브라우저 개요 탭 화분 카드에서 그 화분(w1~w6 ↔ p1~p6)의 토양 수분(soil) 숫자가 5분 안에 갱신되고 DUMMY 배지가 꺼지면 성공. 10분이 지나도 안 들어오면 노드가 파이와 다른 Wi-Fi 중계기에 붙은 것이다(학교 Wi-Fi 는 중계기가 여러 대이고 서로 다른 중계기에 붙은 기기끼리는 통신이 막힌다) — 노드를 파이 가까이로 옮기고 전원을 뺐다 다시 꽂는다"
+    }
+   ]
+  },
+  {
+   "id": "deploy",
+   "label": "실습 ④ 코드 한 줄 고쳐서 파이에 반영하기",
+   "intro": "모든 수정은 PC 에서 시작해 파이로 흐른다. 파이에서 직접 고치면 다음 배포가 실패한다(작업트리가 더러워져 pull --ff-only 거부).",
+   "steps": [
+    {
+     "t": "1",
+     "node": "web.app",
+     "text": "PC 에서 파일을 고친다(예: web/src/features/camera-setup/strings.ts 의 버튼 문구). npm run lint && npm run build, uv run pytest -q 로 깨진 곳이 없는지"
+    },
+    {
+     "t": "2",
+     "node": "ps.deploy",
+     "text": "git commit → .\\scripts\\deploy.ps1 -Web local — push 와 파이 pull, install.sh --update, 서비스 재시작, 상태 점검을 한 번에. 웹을 안 고쳤으면 -Web skip"
+    },
+    {
+     "t": "3",
+     "node": "mod.doctor",
+     "also": [
+      "api.rest"
+     ],
+     "text": "deploy.ps1 이 끝나면 PC 터미널 마지막에 == OK version=… git=<7자리 코드> 가 찍힌다. 이 코드(커밋 해시: 내가 저장한 버전의 고유 번호)가 git log -1 --oneline 의 앞 7자리와 같으면 파이에 내 버전이 올라간 것. 그 위 점검표에서 fail 이 0 이면 성공(warn 은 카메라 세팅 전이면 정상)"
+    },
+    {
+     "t": "4",
+     "node": "sysd.plantsvc",
+     "text": "문제가 생기면 ssh pl \"cd ~/plant && scripts/rollback.sh <이전 해시>\" — 바로 이전 커밋으로 되돌린다"
     }
    ]
   }
@@ -855,14 +1054,14 @@
     "ExG(초록 초과 지수 2G−R−B)+Otsu(자동 문턱값) 면적 측정|가공 ①",
     "growth 테이블 + photos/raw|저장 — img_file 로 증거 연결",
     "RGR = ln(A) 기울기|가공 ② (새벽 dawn 만)",
-    "생장 탭 포레스트 플롯·CSV|소비 — 그룹 비교는 Cohen's d 효과크기·95% CI 로"
+    "생장 탭 그래프·CSV 내려받기|소비 — 두 모둠 차이는 효과크기(Cohen's d)·95% 신뢰구간으로"
    ]
   },
   {
    "label": "환경 (readings)",
    "steps": [
-    "BME688·SCD41·BH1750|탄생",
-    "plant/<n>/env 5분 평균|MQTT 이동 (오프라인 큐 8건)",
+    "온습도·기압(BME688)·CO₂(SCD41)·조도(BH1750) 센서|탄생",
+    "USB 시리얼 \"PUB plant/<n>/env …\" → plantlink → MQTT|이동 (실패 시 노드 큐 8건)",
     "readings 테이블|저장",
     "KPI·스파크라인·VPD|가공",
     "개요 탭|소비"
@@ -876,14 +1075,23 @@
     "data/config.json|저장 — 단일 출처, git 제외",
     "촬영 스케줄·노출·처리군 배정|소비 (촬영·분석 판정 기준)"
    ]
+  },
+  {
+   "label": "조명 상태 (light)",
+   "steps": [
+    "환경노드 시간창 05:45~06:15 또는 화면 토글|탄생 — 노드가 결정, 명령은 요청일 뿐",
+    "조명 상태 보고(켜짐/꺼짐 + 누가 켰는지)|USB → plantlink → MQTT 이동",
+    "plantsvc mqtt_bridge 메모리|저장(최근 상태 1건, DB 아님)",
+    "카메라 설정 화면 조명 토글 색|소비 — 노드가 보고한 실제 상태만 표시"
+   ]
   }
  ],
  "ops": {
-  "intro": "기기 4대가 각자 역할로 돈다. 파이는 배포 전용(작업트리 clean), 노드는 독립 동작, 개발은 로컬 PC 에서만.",
+  "intro": "기기 9대가 각자 역할로 돈다. 파이는 \"받기만 하는\" 배포 대상(코드 수정 금지), 노드는 혼자 도는 기계, 개발은 PC 에서만. 학교 Wi-Fi 는 기기끼리 통신을 막는(메시 유닛 간 격리) 네트워크라 환경노드는 USB 로, 급수노드는 파이와 같은 유닛에 붙여 쓴다.",
   "devices": [
    {
     "label": "Raspberry Pi 5 — hub",
-    "host": "jh@raspi · ~/plant · school-cne(192.168.1.214) · Tailscale 100.80.188.63",
+    "host": "jh@raspi · ~/plant · 학교 LAN 192.168.1.209 고정(Wi-Fi 유닛 7E:72 고정) · Tailscale 100.80.188.63",
     "services": [
      {
       "name": "mosquitto",
@@ -895,6 +1103,11 @@
       "name": "planthub.service",
       "restart": "always",
       "d": "run_collector — plant.db 유일 writer"
+     },
+     {
+      "name": "plantlink.service",
+      "restart": "always",
+      "d": "serial_bridge — 환경노드 USB ↔ MQTT, 5분마다 노드 시각 동기"
      },
      {
       "name": "plantsvc.service",
@@ -909,44 +1122,50 @@
      }
     ],
     "notes": [
-     "코드 수정 금지 — git pull --ff-only 만",
-     "sudo 는 /etc/sudoers.d/plant 의 6개 명령만 NOPASSWD",
-     "시간대 Asia/Seoul (timers 는 시스템 tz 로 발화)"
+     "코드 수정 금지 — PC 의 deploy.ps1 이 git pull --ff-only 로 가져간다",
+     "sudo 는 /etc/sudoers.d/plant 의 6개 명령(nmcli·systemctl·apt-get·timedatectl·install·usermod)만 비밀번호 없이",
+     "시간대 Asia/Seoul. 재부팅은 사람이: sudo systemctl reboot (카메라가 \"frontend timed out\" 으로 멈추면 이것으로 복구됐다, 10-07)",
+     "PC 에서 화면이 느리면 정상 — 학교에선 Tailscale 이 홍콩 릴레이를 돈다(RTT 200ms). 미리보기 품질을 낮춰 두었다"
     ]
    },
    {
-    "label": "환경노드 — UNO R4 WiFi",
-    "host": "firmware/plant_env_r4wifi.ino",
+    "label": "환경노드 — UNO R4 WiFi (USB 직결)",
+    "host": "firmware/plant_env_r4wifi.ino · LINK_MODE=1 · 파이 USB /dev/serial/by-id/usb-Arduino_UNO_R4_WiFi_* (없으면 /dev/ttyACM0, PLANT_SERIAL_PORT 로 지정 가능)",
     "notes": [
-     "환경 5종 5분 평균 발행, 오프라인 큐 8건·WDT 5초",
-     "네오픽셀 조명: 시간창 05:45~06:15 독립 점등 + MQTT plant/light/set 원격(30분 자동 소등)",
-     "업로드는 Arduino IDE — 배포 파이프라인과 무관"
+     "환경 5종 10초 샘플 → 5분 평균 → USB 로 \"PUB plant/env_F09338/env {…}\"",
+     "조명 RGBW 61구(핀 9). 밝기 80/255 ≈ 0.35A (USB 전원으로 감당할 수 있는 밝기). 시간창 05:45~06:15 자동 + 화면 토글(30분 자동 소등)",
+     "시리얼 1/0/t = 켬/끔/색순서 검사. 재플래싱은 파이에서 뽑아 PC 에서, 다시 꽂으면 plantlink 가 자동 재연결",
+     "Wi-Fi 모드(LINK_MODE=0)는 예비 — 브로커가 안 닿으면 워치독 리셋 루프가 났던 경로라 지금은 쓰지 않는다"
     ]
    },
    {
     "label": "급수노드 — M5 Core S3",
-    "host": "firmware/water_node.ino (화분당 1대)",
+    "host": "firmware/water_node.ino (화분당 1대 w1~w6 ↔ p1~p6 · Wi-Fi · 브로커 192.168.1.209)",
     "notes": [
      "폐루프 급수는 노드 안에서 완결 — WiFi·브로커 죽어도 계속",
      "처리군은 SAFE 화면 터치 칩으로 지정(NVS 저장), 펌웨어는 전 노드 공통",
-     "수동 급수(PRIME)도 reason=prime 으로 DB 기록"
+     "수동 급수([PUMP] 버튼)도 reason=prime 으로 DB 기록",
+     "파이와 같은 Wi-Fi 유닛(BSSID 7E:72)에 붙어야 보고가 닿는다 — 안 들어오면 파이 가까이에서 전원 재투입"
     ]
    },
    {
     "label": "개발 PC — Windows",
     "host": "C:/Users/JH_School/Projects/Plant_Growth_Monitoring_Demo",
     "notes": [
-     "deploy.ps1 한 번 = push + 파이 pull + install --update + 헬스체크",
+     "deploy.ps1 한 번 = push + 파이 pull + install --update + 상태 점검 (웹 수정 시 -Web local)",
      "다른 기기는 Claude Code 원격제어로 이 PC 세션에 접속",
-     "Smart App Control 때문에 win32 만 pydantic<2.11 고정"
+     "Smart App Control 때문에 win32 만 pydantic<2.11 고정",
+     "SSH 별명: pl(식물 파이) — ssh pl 로 바로 접속"
     ]
    }
   ],
   "checks": [
-   "ssh raspi 'systemctl is-active plantsvc planthub mosquitto plantsnap.timer'",
-   "curl http://raspi:8080/api/system/status — version·git_rev·camera 확인",
-   "ssh raspi '~/plant/.venv/bin/plantsvc doctor --brief'",
-   "데모(목 데이터): xparapx.github.io/Plant_Growth_Monitoring_Demo/app/"
+   "ssh pl \"systemctl is-active mosquitto planthub plantsvc plantlink plantsnap.timer\" — 5개 모두 active",
+   "ssh pl \"journalctl -u plantlink -n 5\" — 5분마다 node: PUB(late): {…env…} 가 찍히는지 (plantlink 는 doctor 점검표에 없으므로 이 명령으로 본다)",
+   "curl http://raspi:8080/api/system/status — version·git_rev·camera 확인 (Tailscale 필요)",
+   "ssh pl \"~/plant/.venv/bin/plantsvc doctor\" — 점검표. WARN 은 세팅 전 항목",
+   "카메라가 안 보이면: ssh pl \"journalctl -u plantsvc -n 30 | grep -i timed\" → \"frontend has timed out\" 이면 sudo systemctl reboot, 그래도 안 되면 CSI 케이블 재삽입",
+   "데모(가짜 데이터): xparapx.github.io/Plant_Growth_Monitoring_Demo/app/"
   ]
  },
  "diff_ignore": [

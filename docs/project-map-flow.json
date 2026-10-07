@@ -22,7 +22,7 @@
           "coll",
           "pdb"
         ],
-        "note": "환경·토양 측정값이 MQTT 를 거쳐 단일 writer 저장소로 들어간다."
+        "note": "환경값은 USB → plantlink, 토양값은 Wi-Fi 로 MQTT 를 거쳐 단일 writer 저장소로 들어간다."
       },
       {
         "id": "vision",
@@ -70,7 +70,7 @@
       "id": "envn",
       "type": "external",
       "label": "ENV NODE",
-      "sublabel": "temp·hum·CO2·lux",
+      "sublabel": "USB → plantlink",
       "stage": 0,
       "row": 0,
       "tag": "5-min avg"
@@ -153,7 +153,7 @@
       "from": "envn",
       "to": "topics",
       "label": "env",
-      "classification": "5-min bucket",
+      "classification": "USB · plantlink",
       "variant": "emphasis",
       "route": "straight",
       "labelDy": -22
@@ -221,8 +221,8 @@
       "dot": "emerald",
       "title": "단방향 보고",
       "items": [
-        "노드는 사실만 발행 — 누구도 노드를 명령하지 않는다",
-        "브로커 장애의 대가는 로그뿐, 급수는 계속"
+        "노드는 사실만 발행 — 누구도 노드를 명령하지 않는다(조명 켬/끔만 예외)",
+        "환경노드는 USB, 급수노드는 Wi-Fi — 브로커 장애의 대가는 로그뿐"
       ]
     },
     {

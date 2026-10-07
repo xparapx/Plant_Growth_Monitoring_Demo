@@ -11,12 +11,13 @@
         "label": "센싱 경로",
         "focus": [
           "envn",
+          "link",
           "watn",
           "mqtt",
           "coll",
           "pdb"
         ],
-        "note": "노드가 MQTT 로 발행하고, 수집기 하나만 plant.db 를 쓴다."
+        "note": "환경노드는 USB 케이블로 plantlink 에, 급수노드는 Wi-Fi 로 MQTT 에. 저장은 수집기 하나만 한다."
       },
       {
         "id": "capture",
@@ -49,16 +50,31 @@
       "id": "envn",
       "type": "external",
       "label": "ENV NODE",
-      "sublabel": "UNO R4 WiFi",
+      "sublabel": "UNO R4 · USB",
       "pos": [
         40,
-        120
+        60
       ],
       "size": [
         150,
         64
       ],
       "tag": "5-min publish"
+    },
+    {
+      "id": "link",
+      "type": "backend",
+      "label": "LINK",
+      "sublabel": "serial_bridge.py",
+      "pos": [
+        300,
+        60
+      ],
+      "size": [
+        150,
+        64
+      ],
+      "tag": "USB <-> MQTT"
     },
     {
       "id": "watn",
@@ -210,6 +226,7 @@
       "kind": "region",
       "label": "Raspberry Pi 5 (hub)",
       "wraps": [
+        "link",
         "mqtt",
         "coll",
         "pdb",
@@ -224,9 +241,22 @@
     {
       "id": "env-pub",
       "from": "envn",
+      "to": "link",
+      "label": "USB serial",
+      "variant": "default"
+    },
+    {
+      "id": "link-pub",
+      "from": "link",
       "to": "mqtt",
-      "label": "env",
-      "variant": "dashed"
+      "label": "publish",
+      "variant": "dashed",
+      "fromSide": "bottom",
+      "toSide": "top",
+      "labelAt": [
+        375,
+        138
+      ]
     },
     {
       "id": "wat-pub",
@@ -314,7 +344,7 @@
       "title": "노드 독립",
       "items": [
         "급수는 노드 안에서 완결된다",
-        "조명은 환경노드 시계로 독립 점등",
+        "조명은 환경노드 시계로 독립 점등(파이가 5분마다 시각만 맞춰 줌)",
         "브로커가 죽어도 잃는 건 로그뿐"
       ]
     },
@@ -332,8 +362,8 @@
       "title": "광학 고정",
       "items": [
         "노출·초점을 6주간 고정",
-        "새벽 LED 창 05:45~06:15",
-        "px_per_cm 이 튀면 밀림 경보"
+        "새벽 LED 창 05:45~06:15 · RGBW 61구",
+        "90° 설치는 가운데를 잘라 가로 4:3 유지"
       ]
     }
   ]

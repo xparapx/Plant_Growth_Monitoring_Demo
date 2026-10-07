@@ -54,7 +54,7 @@ CREATE TABLE IF NOT EXISTS pump_log(
   raw_before  INTEGER,
   raw_after   INTEGER,
   shots       INTEGER,-- doses used in this cycle (MAX_SHOTS => verify fail)
-  reason      TEXT    -- filled | dosed | no rise | verify fail | manual
+  reason      TEXT    -- filled | dosed | no rise | verify fail | prime
 )""",
     "growth": """
 CREATE TABLE IF NOT EXISTS growth(
