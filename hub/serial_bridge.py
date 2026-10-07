@@ -75,6 +75,10 @@ def on_connect(c, u, f, rc, props):
 
 
 def on_message(c, u, msg):
+    if getattr(msg, "retain", False):
+        # a retained "1" would re-light the strip on every bridge restart -- commands are momentary
+        print(f"[LINK] ignored retained {msg.topic}")
+        return
     v = msg.payload.decode(errors="replace").strip().lower()
     parts = msg.topic.split("/")
     # plant/<node>/light/set only for our node; plant/light/set is broadcast
