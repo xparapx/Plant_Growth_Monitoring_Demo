@@ -78,3 +78,18 @@ def test_single_flight(context):
     finally:
         ctx.runner._lock.release()
     assert isinstance(ctx.runner, CaptureRunner)
+
+
+def test_missing_phase_profile_is_measured_once(context):
+    ctx = context
+    _setup(ctx)
+    ctx.runner._publish = lambda *a, **k: (True, "")
+    assert ctx.store.get().capture.dawn is None
+    job = ctx.runner.run("dawn", trigger="test")
+    assert job.state == "done", job.error
+    names = [s["name"] for s in job.steps]
+    assert names.index("controls") < names.index("auto_profile") < names.index("capture")
+    prof = ctx.store.get().capture.dawn
+    assert prof is not None and prof.exposure_us > 0
+    again = ctx.runner.run("dawn", force=True)
+    assert "auto_profile" not in [s["name"] for s in again.steps]     # 두 번째부터는 고정값 사용

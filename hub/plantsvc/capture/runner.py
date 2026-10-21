@@ -97,6 +97,24 @@ class CaptureRunner:
         return False
 
     # ---- helpers --------------------------------------------------------------
+    def _ensure_phase_profile(self, job: JobRecord) -> None:
+        from ..config_model import PhaseCtl
+        cap = self.store.get().capture
+        if job.phase not in ("dawn", "pm") or getattr(cap, job.phase) is not None:
+            return
+        self._mark(job, "auto_profile")
+        vals = self.camera.auto_cycle()
+        ctl = PhaseCtl(exposure_us=int(vals["exposure_us"]), gain=float(vals["gain"]),
+                       colour_gains=(float(vals["colour_gains"][0]), float(vals["colour_gains"][1])))
+
+        def _u(c):
+            setattr(c.capture, job.phase, ctl)
+        self.store.update(_u)
+        self._log(job, f"[{job.phase}] 프로필 없음 → 자동 측정해 저장: exp {ctl.exposure_us} · gain {ctl.gain:.2f} · "
+                       f"WB {ctl.colour_gains[0]:.2f}/{ctl.colour_gains[1]:.2f} (이후 고정)")
+        if ctl.gain > 4.0:
+            self._log(job, f"[{job.phase}] ⚠ gain {ctl.gain:.1f} 높음 — 조명을 밝게 하고 설정 화면에서 다시 측정 권장")
+
     def _mark(self, job: JobRecord, step: str, **extra: Any) -> None:
         now = now_utc()
         if job.steps:
@@ -211,7 +229,10 @@ class CaptureRunner:
                 self._mark(job, "camera_open")
                 self.camera.ensure_open(for_capture=True)
                 self._mark(job, "controls")
-                # phase 프로필(dawn=조명 아래, pm=자연광) — 없으면 공통값 그대로
+                # phase 프로필(dawn=조명 아래, pm=자연광)이 아직 없으면 <그 시간대의 실제 빛 아래서>
+                # 한 번 자동 측정해 프로필로 저장한다 — 낮에 새벽 조명 조건을 만들 수 없으므로(2026-10-21).
+                # 이후 촬영은 그 값으로 고정된다(한 번만 일어남). 초점(lens)은 공통값을 유지한다.
+                self._ensure_phase_profile(job)
                 self.camera.apply_controls(self.store.get().capture.for_phase(job.phase))
                 self._mark(job, "settle")
                 self._wait(0.1 if job.fake else 2.0, job)
