@@ -11,6 +11,8 @@
        (목표 raw 도달 시 즉시 중지) → 다 주면 3분 침투 검증 → 필요하면 반복
        0.2초/2.5초는 dry_probe 주기 측정 경험(2026-09)에서 온 값입니다.
 
+  ■ 관찰 모드(2026-10-21~): 급수는 손으로, 노드는 토양수분 센서로만 쓴다 — [AUTO] 를 누르지 않으면
+    SAFE 상태로 5분마다 soil 만 보고한다. 펌프 호스를 빼 두어도 된다.
   ■ 노드마다 고칠 곳은 NODE_ID·PLANT_ID 두 줄(+ 저장소 자리표시자인 WIFI_SSID·WIFI_PASS·BROKER). 처리군(stable/fluct)은
     화면에서 지정합니다 — SAFE 상태에서 상단 라벨 탭 = 전환, NVS 저장.
 */
@@ -28,6 +30,11 @@
   const char* WIFI_SSID = "your-hotspot";
   const char* WIFI_PASS = "your-password";
   const char* BROKER    = "192.168.1.33";
+  // ★ 학교 메시 Wi-Fi 는 유닛(BSSID)이 다르면 기기끼리 통신이 막힌다(2026-09-28 실측).
+  //   파이가 고정된 유닛의 BSSID 를 적으면 그 유닛에만 붙는다. 전부 0 이면 아무 유닛(기본).
+  //   파이 쪽 값은 `nmcli -t -f ACTIVE,BSSID dev wifi | grep ^yes` 로 확인 (예: 06:29:D5:24:7E:72).
+  const uint8_t WIFI_BSSID[6] = {0x06, 0x29, 0xD5, 0x24, 0x7E, 0x72};
+  const int     WIFI_CHANNEL  = 11;                   // 그 유닛의 채널 (0 = 자동)
   const int   BROKER_PORT = 1883;
   const char* NODE_ID   = "w2";             // 급수 노드 이름 (노드마다 다르게)
 
@@ -379,7 +386,11 @@ void setup(){
   WiFi.mode(WIFI_STA);
   Serial.printf("[WIFI] ssid=[%s] pass_len=%d  broker=%s:%d\n",
                 WIFI_SSID, (int)strlen(WIFI_PASS), BROKER, BROKER_PORT);
-  WiFi.begin(WIFI_SSID, WIFI_PASS);         // ★ 연결될 때까지 기다리지 않습니다.
+  {                                         // ★ 연결될 때까지 기다리지 않습니다.
+    bool pin = false; for (int i = 0; i < 6; i++) pin |= (WIFI_BSSID[i] != 0);
+    if (pin) WiFi.begin(WIFI_SSID, WIFI_PASS, WIFI_CHANNEL, WIFI_BSSID);   // 파이와 같은 유닛에만
+    else     WiFi.begin(WIFI_SSID, WIFI_PASS);
+  }
   WiFi.setAutoReconnect(true);              //   물 주는 일이 네트워크를 기다리면 안 됩니다.
   mqtt.setServer(BROKER, BROKER_PORT);
   mqtt.setKeepAlive(60);

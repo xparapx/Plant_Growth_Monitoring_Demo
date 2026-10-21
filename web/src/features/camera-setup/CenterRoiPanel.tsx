@@ -18,8 +18,9 @@ export function CenterRoiPanel() {
   const [view, setView] = useState<View>('now')
   const [proposedAt, setProposedAt] = useState<number | null>(null)
   const [confirm, setConfirm] = useState(false)
-  const image = status.latest_raw ? 'latest' : 'calib'
-  const hasImage = !!status.latest_raw || status.calib.exists
+  const [live, setLive] = useState(true)   // 기본: 지금 카메라 프레임 (최근 촬영본은 식재 전 사진일 수 있다)
+  const image = live ? 'live' : status.latest_raw ? 'latest' : 'calib'
+  const hasImage = live || !!status.latest_raw || status.calib.exists
 
   const preview = async () => {
     const r = await run('centerroi', { image, apply: false })
@@ -31,7 +32,7 @@ export function CenterRoiPanel() {
     if (r) { setProposedAt(null); setView('now') }
   }
 
-  const baseSrc = status.latest_raw ? `/api/images/raw/${status.latest_raw}?w=1280` : `/api/camera/calib.jpg?t=${status.calib.mtime ?? 0}`
+  const baseSrc = live ? `/api/camera/frame.jpg?t=${proposedAt ?? 0}` : status.latest_raw ? `/api/images/raw/${status.latest_raw}?w=1280` : `/api/camera/calib.jpg?t=${status.calib.mtime ?? 0}`
   const [w, h] = status.preview_size
 
   return (
@@ -41,6 +42,7 @@ export function CenterRoiPanel() {
         sub={hasImage ? ss.centerSrc(image) : ss.centerNoImage}
         actions={
           <div className="flex flex-wrap items-center gap-2">
+            <Segmented size="sm" ariaLabel={ss.centerSrc(image)} value={live ? 'live' : 'latest'} onChange={(v) => { setLive(v === 'live'); setProposedAt(null); setView('now') }} options={[{ value: 'live', label: ss.centerLive }, { value: 'latest', label: ss.centerLatest }]} />
             {proposedAt !== null && (
               <Segmented size="sm" ariaLabel={ko.setup.centerRoi} value={view} onChange={setView} options={[{ value: 'now', label: ss.centerNow }, { value: 'proposed', label: ss.centerProposed }]} />
             )}

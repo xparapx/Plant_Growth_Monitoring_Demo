@@ -47,6 +47,12 @@ cd web && npm run lint && npm run build
 - 파이 sudoers 는 명령 화이트리스트라 `sudo -n true` 가 실패한다 — install.sh 는 `sudo -n systemctl --version` 으로 판정(09-28 수정 전엔 매번 "run: …" 만 찍고 유닛을 안 깔았다).
 - 파이에는 node 가 없음 → 웹은 PC 빌드 업로드(`deploy.ps1 -Web local`) 또는 GitHub 릴리스 tarball.
 
+## 운영 모드 — 관찰 모드 (2026-10-21 확정)
+
+- 상추 6종을 p1~p6 에 심음. **급수는 수동**(공간 문제로 펌프 자동화 포기), 급수노드는 **토양수분 센서 전용**(SAFE 상태 유지, [AUTO] 누르지 않음). 처리군 비교(stable/fluct)는 하지 않고 생장 과정 데이터만 수집한다.
+- 2026-10-21 에 `reset_run.py --yes` 로 soil·pump_log·growth 를 비우고 `run_started` 를 기록, `analysis.dummy_fill=off` 로 목업 채움 중지. 그 이후 행은 전부 실데이터.
+- 급수노드 펌웨어에 `WIFI_BSSID`(파이 유닛 7E:72, ch11) 고정 옵션 추가 — 전부 0 이면 아무 유닛.
+
 ## 현재 상태 (2026-09-12)
 
 - `main` 이 유일한 브랜치. 웹 UI 통합 완료, GitHub Pages(개요·매뉴얼·`/app` 데모) 배포 중.

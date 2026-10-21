@@ -44,8 +44,8 @@ store = ConfigStore(p.config, example=p.example_config)
 cfg = store.get()
 print("\n새 구간의 배정: " + " · ".join(f"{r.plant_id}={r.treat or '(빈칸)'}" for r in cfg.rois))
 if not cfg.rois or any(r.treat not in ("stable", "fluct") for r in cfg.rois):
-    print("  ★ 처리군이 비어 있습니다 — 웹 UI 카메라 설정에서 먼저 배정하세요")
-    sys.exit(1)
+    print("  ★ 처리군이 비어 있습니다 — 관찰 모드(급수 수동·비교군 없음)면 그대로 진행해도 됩니다."
+          " 비교 실험이면 웹 UI 카메라 설정에서 먼저 배정하세요")
 
 if not GO:
     print("\n  실제로 비우려면:  uv run python hub/reset_run.py --yes")

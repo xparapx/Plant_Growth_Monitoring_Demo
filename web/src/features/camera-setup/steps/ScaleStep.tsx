@@ -13,7 +13,7 @@ export function ScaleStep({ cm, setCm }: StepProps) {
   const hint = status.pts.length === 0 ? ko.setup.hint.p1 : status.pts.length === 1 ? ko.setup.hint.p2 : null
   return (
     <div className="flex flex-col gap-3">
-      <NumberField label={ko.setup.lengthCm} value={cm} onChange={(v) => setCm(v === '' ? 0 : v)} min={0.5} step={0.5} unit="cm" />
+      <div className="text-[11.5px] text-muted">{ss.scaleOrder}</div>
       <div className="flex flex-wrap gap-2">
         <Button variant={measure ? 'primary' : 'alt'} size="sm" onClick={() => setMeasure(!measure)} disabled={disabled} aria-pressed={measure} className="min-h-10 flex-1 md:min-h-9">
           {measure ? ss.measureOn : ss.measureOff}
@@ -23,7 +23,13 @@ export function ScaleStep({ cm, setCm }: StepProps) {
         </Button>
       </div>
       {measure && hint && <div className="text-[12px] text-muted">{hint}</div>}
-      {status.pts.length >= 2 && (
+      <div className="flex items-end gap-2">
+        <NumberField label={ko.setup.lengthCm} value={cm} onChange={(v) => setCm(v === '' ? 0 : v)} min={0.5} step={0.5} unit="cm" className="flex-1" />
+        <Button variant="primary" onClick={() => run('setscale', { cm })} busy={pending === 'setscale'} disabled={disabled || status.pts.length < 2 || !cm} className="h-10">
+          {ko.setup.applyScale}
+        </Button>
+      </div>
+      {status.pts.length >= 2 && status.cm > 0 && status.ppc > 0 && (
         <div className="num rounded-[8px] bg-ok-soft px-3 py-2 text-[12px] text-ok-ink">
           {ss.scaleReadout(fmtNum(status.ppc, 1), status.cm)} — {status.msg}
         </div>

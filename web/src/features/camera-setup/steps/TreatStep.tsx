@@ -40,9 +40,9 @@ export function TreatStep(_p: StepProps) {
         </div>
       )}
       {n > 0 && (
-        <button type="button" onClick={() => setManual(!manual)} aria-expanded={manual} className="self-start text-[11px] text-muted underline-offset-2 hover:underline">
-          {manual ? ko.common.close : ko.setup.modeManual.split(' — ')[0]}
-        </button>
+        <Button variant="sub" size="sm" onClick={() => setManual(!manual)} aria-expanded={manual} className="self-start">
+          {manual ? ko.setup.manualClose : ko.setup.manualOpen}
+        </Button>
       )}
       {manual && n > 0 && (
         <ul className="flex flex-col gap-1.5">

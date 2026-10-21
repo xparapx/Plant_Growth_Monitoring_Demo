@@ -196,18 +196,37 @@ class SetupSession:
         return f"설치 회전 {rot}°{how} 저장 — 촬영본 {W}×{H}{tail}"
 
     def act_point(self, p):
-        x, y, cm = float(p["x"]), float(p["y"]), float(p.get("cm", self.cm or 10))
-        cfg = self.store.get()
+        """두 점 찍기. 길이(cm)는 두 점을 찍은 <뒤> act_setscale 로 넣는다 — 순서가 자연스럽다.
+        (cm 을 같이 보내면 예전처럼 즉시 계산: 호환용)"""
+        x, y, cm = float(p["x"]), float(p["y"]), float(p.get("cm") or 0)
         pts = self.pts if len(self.pts) < 2 else []
         pts.append([x, y])
         self.pts = pts
-        self.cm = cm
         if len(pts) < 2:
             return "첫 점 찍음 — 반대쪽 끝을 한 번 더 클릭하세요"
+        if cm <= 0:
+            d_cap = self._pts_cap_px()
+            return f"두 점 찍음 — 원본 {d_cap:.0f}px. 두 점 사이 실제 길이(cm)를 입력하고 [배율 적용]을 누르세요"
+        return self._apply_scale(cm)
+
+    def _pts_cap_px(self) -> float:
+        cfg = self.store.get()
+        pts = self.pts
         d_prev = float(np.hypot(pts[0][0] - pts[1][0], pts[0][1] - pts[1][1]))
-        d_cap = d_prev / cfg.scale
+        return d_prev / cfg.scale
+
+    def act_setscale(self, p):
+        """두 점이 찍힌 뒤 실제 길이(cm)로 배율을 확정한다."""
+        if len(self.pts) < 2:
+            return "먼저 [두 점 찍기]로 자 양 끝을 클릭하세요"
+        return self._apply_scale(float(p.get("cm") or 0))
+
+    def _apply_scale(self, cm: float):
+        cfg = self.store.get()
+        self.cm = cm
+        d_cap = self._pts_cap_px()
         if cm <= 0 or d_cap <= 0:
-            return "길이가 0입니다"
+            return "길이가 0입니다 — 두 점 사이 실제 길이(cm)를 입력하세요"
         ppc = d_cap / cm
         self.ppc_fixed = ppc
 
@@ -341,7 +360,14 @@ class SetupSession:
     def act_centerroi(self, p):
         cfg = self.store.get()
         which = p.get("image", "calib")
-        src = self.paths.calib if which == "calib" else (self.paths.raw / (self.latest_raw() or ""))
+        if which == "live":                          # 지금 카메라가 보는 장면으로 — 최근 촬영본이 옛것일 때(식재 전 등)
+            src = self.paths.data_dir / "center_live.jpg"
+            try:
+                self.camera.capture_still(src)
+            except Exception as e:  # noqa: BLE001
+                return f"지금 프레임 촬영 실패: {e}"
+        else:
+            src = self.paths.calib if which == "calib" else (self.paths.raw / (self.latest_raw() or ""))
         if not src.exists() or src.is_dir():
             return "사진이 없습니다 — 먼저 [촬영] 하세요"
         img = cv2.imread(str(src))

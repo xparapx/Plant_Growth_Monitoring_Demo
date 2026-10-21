@@ -25,6 +25,21 @@ export function runAction(st: MockState, name: string, body: Body): ActionResult
   return { msg, status }
 }
 
+function applyScale(st: MockState, cm: number): string {
+  const pts = st.setup.pts
+  st.setup.cm = cm
+  const dPrev = Math.hypot(pts[0][0] - pts[1][0], pts[0][1] - pts[1][1]), dCap = dPrev / SCALE
+  if (cm <= 0 || dCap <= 0) return '길이가 0입니다 — 두 점 사이 실제 길이(cm)를 입력하세요'
+  const ppc = dCap / cm
+  st.setup.ppcFixed = ppc
+  bumpConfig(st, (c) => { c.qc.px_per_cm_ref = Math.round(ppc * 10) / 10 })
+  const frameCm = CAP[0] / ppc, lay = st.cfg.layout, need = lay.cols * lay.pot_cm + (lay.cols - 1) * lay.gap_cm
+  let warn = ''
+  if (lay.pot_cm && frameCm < need) warn = `   ⚠ 프레임 폭 ${frameCm.toFixed(0)}cm 가 배치 ${need.toFixed(0)}cm 보다 좁습니다 — 다시 재세요`
+  else if (lay.pot_cm && frameCm > need * 3) warn = `   ⚠ 프레임 폭 ${frameCm.toFixed(0)}cm 는 배치 ${need.toFixed(0)}cm 의 3배가 넘습니다 — 길이 입력칸을 확인하세요`
+  return `${dCap.toFixed(0)}px(원본) / ${g(cm)}cm  ->  ${ppc.toFixed(1)} px/cm  · 프레임 폭 ${frameCm.toFixed(0)}cm · 기록${warn}`
+}
+
 const ACTIONS: Record<string, (st: MockState, p: Body) => string> = {
   open(st) { st.cam.state = 'open'; st.cam.clients = 1; broadcast('camera.state', { state: 'open' }); return '카메라 열림' },
   close(st) { st.cam.state = 'closed'; st.cam.clients = 0; broadcast('camera.state', { state: 'closed' }); return '카메라 닫음 — 예약 촬영이 쓸 수 있습니다' },
@@ -66,22 +81,17 @@ const ACTIONS: Record<string, (st: MockState, p: Body) => string> = {
   },
 
   point(st, p) {
-    const x = num(p, 'x'), y = num(p, 'y'), cm = num(p, 'cm', st.setup.cm || 10)
+    const x = num(p, 'x'), y = num(p, 'y'), cm = num(p, 'cm', 0)
     const pts = st.setup.pts.length < 2 ? st.setup.pts : []
     pts.push([x, y])
     st.setup.pts = pts
-    st.setup.cm = cm
     if (pts.length < 2) return '첫 점 찍음 — 반대쪽 끝을 한 번 더 클릭하세요'
-    const dPrev = Math.hypot(pts[0][0] - pts[1][0], pts[0][1] - pts[1][1]), dCap = dPrev / SCALE
-    if (cm <= 0 || dCap <= 0) return '길이가 0입니다'
-    const ppc = dCap / cm
-    st.setup.ppcFixed = ppc
-    bumpConfig(st, (c) => { c.qc.px_per_cm_ref = Math.round(ppc * 10) / 10 })
-    const frameCm = CAP[0] / ppc, lay = st.cfg.layout, need = lay.cols * lay.pot_cm + (lay.cols - 1) * lay.gap_cm
-    let warn = ''
-    if (lay.pot_cm && frameCm < need) warn = `   ⚠ 프레임 폭 ${frameCm.toFixed(0)}cm 가 배치 ${need.toFixed(0)}cm 보다 좁습니다 — 다시 재세요`
-    else if (lay.pot_cm && frameCm > need * 3) warn = `   ⚠ 프레임 폭 ${frameCm.toFixed(0)}cm 는 배치 ${need.toFixed(0)}cm 의 3배가 넘습니다 — 길이 입력칸을 확인하세요`
-    return `${dCap.toFixed(0)}px(원본) / ${g(cm)}cm  ->  ${ppc.toFixed(1)} px/cm  · 프레임 폭 ${frameCm.toFixed(0)}cm · 기록${warn}`
+    if (cm <= 0) return `두 점 찍음 — 원본 ${(Math.hypot(pts[0][0] - pts[1][0], pts[0][1] - pts[1][1]) / SCALE).toFixed(0)}px. 두 점 사이 실제 길이(cm)를 입력하고 [배율 적용]을 누르세요`
+    return applyScale(st, cm)
+  },
+  setscale(st, p) {
+    if (st.setup.pts.length < 2) return '먼저 [두 점 찍기]로 자 양 끝을 클릭하세요'
+    return applyScale(st, num(p, 'cm', 0))
   },
   clearpoints(st) { st.setup.pts = []; return '배율 측정점 초기화' },
   setpot(st, p) {

@@ -13,7 +13,7 @@ const MOVE_PX = 6
    단 상태에서 4:3 가로를 유지하려면 서버 크롭이 필요했다.) */
 
 /** Live MJPEG preview with the interactive SVG overlay (the only pointer target). */
-export function PreviewStage({ cm, camOn = true, className = '' }: { cm: number; camOn?: boolean; className?: string }) {
+export function PreviewStage({ camOn = true, className = '' }: { cm?: number; camOn?: boolean; className?: string }) {
   const { status, mode, run, disabled } = useSetup()
   const imgRef = useRef<HTMLImageElement>(null)
   const svgRef = useRef<SVGSVGElement>(null)
@@ -54,7 +54,7 @@ export function PreviewStage({ cm, camOn = true, className = '' }: { cm: number;
     const p = dp
     const x = Math.round(p.x), y = Math.round(p.y)
     if (mode === 'naming') void run('pickroi', { x, y })
-    else if (mode === 'measure') void run('point', { x, y, cm })
+    else if (mode === 'measure') void run('point', { x, y })
   }
 
   const interactive = live && mode !== 'idle' && !disabled
