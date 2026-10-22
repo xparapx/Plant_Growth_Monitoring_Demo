@@ -51,6 +51,7 @@ cd web && npm run lint && npm run build
 
 - 상추 6종을 p1~p6 에 심음. **급수는 수동**(공간 문제로 펌프 자동화 포기), 급수노드는 **토양수분 센서 전용**(SAFE 상태 유지, [AUTO] 누르지 않음). 처리군 비교(stable/fluct)는 하지 않고 생장 과정 데이터만 수집한다.
 - 2026-10-21 에 `reset_run.py --yes` 로 soil·pump_log·growth 를 비우고 `run_started` 를 기록, `analysis.dummy_fill=off` 로 목업 채움 중지. 그 이후 행은 전부 실데이터.
+- **보조 생장 조명**(2026-10-23~): `config.json` 의 `light` 절(enabled·on·off·until·pause_around_pm_min)을 plantlink 가 매분 읽어 창 안이면 10분마다 `L 1`, 창 끝·pm 촬영 전후엔 `L 0`. 펌웨어 변경 없음. 새벽 창(05:45~06:15)은 펌웨어 독립. 설정 변경은 시스템 페이지 JSON 또는 `PATCH /api/config {"light":{…}}`. 실측: LED 밝기 80 은 센서 위치에서 +21 lx 뿐 — 생장용으로는 별도 재배등 또는 외부 5V+밝기 255 가 필요.
 - 급수노드 펌웨어에 `WIFI_BSSID`(파이 유닛 7E:72, ch11) 고정 옵션 추가 — 전부 0 이면 아무 유닛.
 
 ## 현재 상태 (2026-09-12)

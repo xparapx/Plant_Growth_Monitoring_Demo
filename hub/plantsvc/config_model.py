@@ -170,6 +170,18 @@ class Preview(BaseModel):
     frame_ms: int = 80
 
 
+class GrowLight(BaseModel):
+    """보조 생장 조명 — 환경노드 LED 를 낮 시간대에 켜 둔다 (모종기 등). plantlink 가 config.json 을 읽어
+    창 안이면 10분마다 'L 1' 을 보내고(노드 30분 자동소등 안에서 갱신), 창이 끝나면 'L 0'.
+    새벽 촬영 창(05:45~06:15)은 노드 펌웨어가 독립 처리하므로 건드리지 않는다.
+    pm 촬영 전후 pause_min 동안은 끈다 — 오후 프로필(자연광 기준)과 사진 조건을 맞추기 위해."""
+    enabled: bool = False
+    on: str = "07:00"              # KST (tz 기준) HH:MM
+    off: str = "20:00"
+    until: str | None = None       # "YYYY-MM-DD" — 이 날짜(포함)까지만. None 이면 계속
+    pause_around_pm_min: int = 10  # pm 촬영 시각 전후 N 분 소등 (0 = 끄지 않음)
+
+
 class Config(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
@@ -186,6 +198,7 @@ class Config(BaseModel):
     schedule: Schedule = Field(default_factory=Schedule)
     mqtt: Mqtt = Field(default_factory=Mqtt)
     preview: Preview = Field(default_factory=Preview)
+    light: GrowLight = Field(default_factory=GrowLight)
 
     @field_validator("tz")
     @classmethod
